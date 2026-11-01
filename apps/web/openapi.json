@@ -1,0 +1,1135 @@
+{
+  "components": {
+    "schemas": {
+      "Asset": {
+        "additionalProperties": false,
+        "properties": {
+          "filename": {
+            "description": "Original filename, for display.",
+            "title": "Filename",
+            "type": "string"
+          },
+          "kind": {
+            "description": "What the file is used for.",
+            "enum": [
+              "thrust_curve",
+              "drag_table",
+              "ork",
+              "other"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "size": {
+            "description": "File size.",
+            "minimum": 0.0,
+            "title": "Size",
+            "type": "integer",
+            "units": "bytes"
+          }
+        },
+        "required": [
+          "kind",
+          "filename",
+          "size"
+        ],
+        "title": "Asset",
+        "type": "object"
+      },
+      "Body_importMission": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_importMission",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "Health": {
+        "properties": {
+          "status": {
+            "description": "'ok' when the API process is serving.",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "Health",
+        "type": "object"
+      },
+      "Issue": {
+        "properties": {
+          "code": {
+            "description": "Machine-readable issue code.",
+            "title": "Code",
+            "type": "string"
+          },
+          "message": {
+            "description": "What is wrong, in plain language.",
+            "title": "Message",
+            "type": "string"
+          },
+          "path": {
+            "description": "Location in the mission config, e.g. 'site.rail_length_m'.",
+            "title": "Path",
+            "type": "string"
+          },
+          "severity": {
+            "description": "Errors block a run; warnings do not.",
+            "enum": [
+              "error",
+              "warning"
+            ],
+            "title": "Severity",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "message",
+          "code",
+          "severity"
+        ],
+        "title": "Issue",
+        "type": "object"
+      },
+      "Mission": {
+        "additionalProperties": false,
+        "description": "A complete mission config. Serialised as YAML (or JSON).",
+        "properties": {
+          "assets": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Asset"
+            },
+            "description": "Content-addressed files, keyed by sha256: thrust curves, drag tables, .ork originals.",
+            "title": "Assets",
+            "type": "object"
+          },
+          "ballast": {
+            "additionalProperties": true,
+            "description": "Not modelled yet: accepted as-is so configs round-trip.",
+            "title": "Ballast",
+            "type": "object"
+          },
+          "constraints": {
+            "additionalProperties": true,
+            "description": "Not modelled yet: accepted as-is so configs round-trip.",
+            "title": "Constraints",
+            "type": "object"
+          },
+          "environment": {
+            "additionalProperties": true,
+            "description": "Not modelled yet: accepted as-is so configs round-trip.",
+            "title": "Environment",
+            "type": "object"
+          },
+          "extends": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Path of a base config this one overrides (not yet supported).",
+            "title": "Extends"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/MissionMeta",
+            "description": "Name, id, authorship."
+          },
+          "monte_carlo": {
+            "additionalProperties": true,
+            "description": "Not modelled yet: accepted as-is so configs round-trip.",
+            "title": "Monte Carlo",
+            "type": "object"
+          },
+          "motor": {
+            "additionalProperties": true,
+            "description": "Not modelled yet: accepted as-is so configs round-trip.",
+            "title": "Motor",
+            "type": "object"
+          },
+          "recovery": {
+            "additionalProperties": true,
+            "description": "Not modelled yet: accepted as-is so configs round-trip.",
+            "title": "Recovery",
+            "type": "object"
+          },
+          "rocket": {
+            "additionalProperties": true,
+            "description": "Not modelled yet: accepted as-is so configs round-trip.",
+            "title": "Rocket",
+            "type": "object"
+          },
+          "schema_version": {
+            "const": 1,
+            "default": 1,
+            "description": "Config schema version. Older configs are migrated on load.",
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "site": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Site"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Launch site and range geometry."
+          },
+          "solver": {
+            "additionalProperties": true,
+            "description": "Not modelled yet: accepted as-is so configs round-trip.",
+            "title": "Solver",
+            "type": "object"
+          }
+        },
+        "required": [
+          "meta"
+        ],
+        "title": "Mission",
+        "type": "object"
+      },
+      "MissionDocument": {
+        "properties": {
+          "config_hash": {
+            "description": "sha256 of the canonical config.",
+            "title": "Config Hash",
+            "type": "string"
+          },
+          "issues": {
+            "description": "Warnings from physical checks (never errors).",
+            "items": {
+              "$ref": "#/components/schemas/Issue"
+            },
+            "title": "Issues",
+            "type": "array"
+          },
+          "mission": {
+            "$ref": "#/components/schemas/Mission",
+            "description": "The full mission config."
+          },
+          "updated_utc": {
+            "description": "Last saved, UTC.",
+            "format": "date-time",
+            "title": "Updated Utc",
+            "type": "string"
+          }
+        },
+        "required": [
+          "mission",
+          "config_hash",
+          "updated_utc",
+          "issues"
+        ],
+        "title": "MissionDocument",
+        "type": "object"
+      },
+      "MissionMeta": {
+        "additionalProperties": false,
+        "properties": {
+          "authors": {
+            "description": "Who wrote this config.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Authors",
+            "type": "array"
+          },
+          "created_utc": {
+            "description": "When the mission was first created, UTC.",
+            "format": "date-time",
+            "title": "Created Utc",
+            "type": "string"
+          },
+          "id": {
+            "description": "ULID identifying this mission; stable across edits.",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "description": "Human-readable mission name.",
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "notes": {
+            "default": "",
+            "description": "Free-form notes.",
+            "title": "Notes",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "MissionMeta",
+        "type": "object"
+      },
+      "MissionSummary": {
+        "properties": {
+          "config_hash": {
+            "description": "sha256 of the canonical config.",
+            "title": "Config Hash",
+            "type": "string"
+          },
+          "id": {
+            "description": "Mission id (ULID).",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "description": "Mission name.",
+            "title": "Name",
+            "type": "string"
+          },
+          "updated_utc": {
+            "description": "Last saved, UTC.",
+            "format": "date-time",
+            "title": "Updated Utc",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "config_hash",
+          "updated_utc"
+        ],
+        "title": "MissionSummary",
+        "type": "object"
+      },
+      "Problem": {
+        "properties": {
+          "code": {
+            "description": "Machine-readable problem code.",
+            "title": "Code",
+            "type": "string"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Explanation of this occurrence.",
+            "title": "Detail"
+          },
+          "issues": {
+            "description": "Per-field problems, if any.",
+            "items": {
+              "$ref": "#/components/schemas/Issue"
+            },
+            "title": "Issues",
+            "type": "array"
+          },
+          "status": {
+            "description": "HTTP status code.",
+            "title": "Status",
+            "type": "integer"
+          },
+          "title": {
+            "description": "Short summary of the problem type.",
+            "title": "Title",
+            "type": "string"
+          },
+          "type": {
+            "default": "about:blank",
+            "description": "URI identifying the problem type.",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "status",
+          "code"
+        ],
+        "title": "Problem",
+        "type": "object"
+      },
+      "Site": {
+        "additionalProperties": false,
+        "properties": {
+          "access_roads": {
+            "description": "Recovery access roads as polylines.",
+            "items": {
+              "items": {
+                "description": "A point as [longitude, latitude], WGS84, in degrees.",
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ],
+                "type": "array"
+              },
+              "type": "array"
+            },
+            "title": "Access Roads",
+            "type": "array"
+          },
+          "boundary": {
+            "anyOf": [
+              {
+                "items": {
+                  "description": "A point as [longitude, latitude], WGS84, in degrees.",
+                  "maxItems": 2,
+                  "minItems": 2,
+                  "prefixItems": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "number"
+                    }
+                  ],
+                  "type": "array"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Range boundary polygon. Drives the probability of landing out of bounds. Open ring: the first point is not repeated.",
+            "title": "Boundary"
+          },
+          "elevation_m": {
+            "description": "Pad elevation above mean sea level.",
+            "maximum": 9000.0,
+            "minimum": -500.0,
+            "title": "Elevation M",
+            "type": "number",
+            "units": "m"
+          },
+          "hazards": {
+            "description": "Hazard polygons the rocket must not land in.",
+            "items": {
+              "items": {
+                "description": "A point as [longitude, latitude], WGS84, in degrees.",
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ],
+                "type": "array"
+              },
+              "type": "array"
+            },
+            "title": "Hazards",
+            "type": "array"
+          },
+          "heading_deg": {
+            "description": "Rail azimuth, clockwise from true north.",
+            "exclusiveMaximum": 360.0,
+            "minimum": 0.0,
+            "title": "Heading Deg",
+            "type": "number",
+            "units": "deg"
+          },
+          "inclination_deg": {
+            "description": "Rail angle above the horizontal (90 is vertical).",
+            "maximum": 90.0,
+            "minimum": 0.0,
+            "title": "Inclination Deg",
+            "type": "number",
+            "units": "deg"
+          },
+          "latitude_deg": {
+            "description": "Launch pad latitude, WGS84.",
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Latitude Deg",
+            "type": "number",
+            "units": "deg"
+          },
+          "longitude_deg": {
+            "description": "Launch pad longitude, WGS84.",
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "title": "Longitude Deg",
+            "type": "number",
+            "units": "deg"
+          },
+          "rail_length_m": {
+            "description": "Usable length of the launch rail.",
+            "exclusiveMinimum": 0.0,
+            "maximum": 30.0,
+            "title": "Rail Length M",
+            "type": "number",
+            "units": "m"
+          }
+        },
+        "required": [
+          "latitude_deg",
+          "longitude_deg",
+          "elevation_m",
+          "rail_length_m",
+          "inclination_deg",
+          "heading_deg"
+        ],
+        "title": "Site",
+        "type": "object"
+      },
+      "SystemInfo": {
+        "properties": {
+          "field_mode": {
+            "description": "Whether the deployment is in field mode.",
+            "title": "Field Mode",
+            "type": "boolean"
+          },
+          "git_sha": {
+            "description": "Commit the running build was made from.",
+            "title": "Git Sha",
+            "type": "string"
+          },
+          "queue_available": {
+            "description": "Whether the job queue (Redis) is reachable.",
+            "title": "Queue Available",
+            "type": "boolean"
+          },
+          "rocketpy_version": {
+            "description": "RocketPy version the workers simulate with.",
+            "title": "Rocketpy Version",
+            "type": "string"
+          },
+          "simcore_version": {
+            "description": "simcore package version.",
+            "title": "Simcore Version",
+            "type": "string"
+          },
+          "worker_count": {
+            "description": "Workers currently sending heartbeats.",
+            "title": "Worker Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "rocketpy_version",
+          "simcore_version",
+          "git_sha",
+          "worker_count",
+          "queue_available",
+          "field_mode"
+        ],
+        "title": "SystemInfo",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      },
+      "ValidationReport": {
+        "properties": {
+          "issues": {
+            "description": "Errors and warnings.",
+            "items": {
+              "$ref": "#/components/schemas/Issue"
+            },
+            "title": "Issues",
+            "type": "array"
+          },
+          "valid": {
+            "description": "True when there are no errors (warnings allowed).",
+            "title": "Valid",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "valid"
+        ],
+        "title": "ValidationReport",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "title": "Apogee API",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/health": {
+      "get": {
+        "operationId": "getHealth",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health",
+        "tags": [
+          "system"
+        ]
+      }
+    },
+    "/api/missions": {
+      "get": {
+        "operationId": "listMissions",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MissionSummary"
+                  },
+                  "title": "Response Listmissions",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Missions",
+        "tags": [
+          "missions"
+        ]
+      },
+      "post": {
+        "operationId": "createMission",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Mission"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MissionDocument"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No mission with that id."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflicts with a stored mission."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The mission is not valid."
+          }
+        },
+        "summary": "Create Mission",
+        "tags": [
+          "missions"
+        ]
+      }
+    },
+    "/api/missions/import": {
+      "post": {
+        "description": "Import a mission.yaml (any schema version). Bundles (.mission.zip) are not supported yet.",
+        "operationId": "importMission",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_importMission"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MissionDocument"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No mission with that id."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflicts with a stored mission."
+          },
+          "415": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unsupported file."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The mission is not valid."
+          }
+        },
+        "summary": "Import Mission",
+        "tags": [
+          "missions"
+        ]
+      }
+    },
+    "/api/missions/validate": {
+      "post": {
+        "description": "Check a mission config without storing or simulating it.\n\nAccepts any schema version; older configs are migrated first. Always\nreturns 200 with a report: errors block a run, warnings do not.",
+        "operationId": "validateMission",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Data",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationReport"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Validate",
+        "tags": [
+          "missions"
+        ]
+      }
+    },
+    "/api/missions/{mission_id}": {
+      "delete": {
+        "operationId": "deleteMission",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "mission_id",
+            "required": true,
+            "schema": {
+              "title": "Mission Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No mission with that id."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflicts with a stored mission."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The mission is not valid."
+          }
+        },
+        "summary": "Delete Mission",
+        "tags": [
+          "missions"
+        ]
+      },
+      "get": {
+        "operationId": "getMission",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "mission_id",
+            "required": true,
+            "schema": {
+              "title": "Mission Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MissionDocument"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No mission with that id."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflicts with a stored mission."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The mission is not valid."
+          }
+        },
+        "summary": "Get Mission",
+        "tags": [
+          "missions"
+        ]
+      },
+      "put": {
+        "operationId": "updateMission",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "mission_id",
+            "required": true,
+            "schema": {
+              "title": "Mission Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Mission"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MissionDocument"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No mission with that id."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflicts with a stored mission."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The mission is not valid."
+          }
+        },
+        "summary": "Update Mission",
+        "tags": [
+          "missions"
+        ]
+      }
+    },
+    "/api/missions/{mission_id}/export": {
+      "get": {
+        "operationId": "exportMission",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "mission_id",
+            "required": true,
+            "schema": {
+              "title": "Mission Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "default": "yaml",
+              "enum": [
+                "yaml",
+                "zip"
+              ],
+              "title": "Format",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/yaml": {}
+            },
+            "description": "The mission file."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No mission with that id."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflicts with a stored mission."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The mission is not valid."
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Format not implemented yet."
+          }
+        },
+        "summary": "Export Mission",
+        "tags": [
+          "missions"
+        ]
+      }
+    },
+    "/api/system/info": {
+      "get": {
+        "operationId": "getSystemInfo",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemInfo"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "System Info",
+        "tags": [
+          "system"
+        ]
+      }
+    }
+  }
+}

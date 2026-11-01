@@ -1,0 +1,47 @@
+# uv workspace: one lockfile for every Python package so the api and worker
+# images are reproducible and share a dependency layer.
+[project]
+name = "apogee"
+version = "0.1.0"
+requires-python = ">=3.13,<3.14"
+# Installs every member into the one dev environment.
+dependencies = ["simcore", "apogee-api", "apogee-worker"]
+
+[tool.uv]
+package = false
+
+[tool.uv.workspace]
+members = ["packages/simcore", "apps/api", "apps/worker"]
+
+[tool.uv.sources]
+simcore = { workspace = true }
+apogee-api = { workspace = true }
+apogee-worker = { workspace = true }
+
+[dependency-groups]
+dev = [
+  "pytest>=8",
+  "ruff>=0.9",
+  "mypy>=1.14",
+  "httpx2",
+  "hypothesis>=6",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+extend-exclude = ["*.md"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
+
+[tool.mypy]
+strict = true
+plugins = ["pydantic.mypy"]
+files = ["packages/simcore/src"]
+
+[tool.pytest.ini_options]
+testpaths = ["packages/simcore/tests", "apps/api/tests"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["simcore", "apogee_api", "apogee_worker"]

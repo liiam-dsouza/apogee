@@ -1,0 +1,20 @@
+[project]
+name = "simcore"
+version = "0.1.0"
+description = "Apogee simulation library: mission config, RocketPy adapters, Monte Carlo, ballast, weather, HIL. No HTTP."
+requires-python = ">=3.13,<3.14"
+dependencies = [
+  # Pinned exactly: every result records this version, and an upgrade must
+  # pass the golden-flight regression tests before it lands.
+  "rocketpy==1.13.0",
+  "pydantic>=2.14,<3",
+  "ruamel.yaml>=0.19",
+  "python-ulid>=4.1",
+]
+
+[project.scripts]
+simcore = "simcore.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

@@ -1,0 +1,120 @@
+@import 'tailwindcss';
+
+@import '@fontsource/barlow/400.css';
+@import '@fontsource/barlow/500.css';
+@import '@fontsource/barlow/600.css';
+@import '@fontsource/barlow-condensed/500.css';
+@import '@fontsource/barlow-condensed/600.css';
+
+/*
+ * Palette: pre-dawn launch site. Dark is the default theme; light is a
+ * high-contrast sunlight mode, not a soft daytime theme.
+ * The brand colour (primary) is deliberately not green/amber/red — those are
+ * reserved for go / caution / no-go so status is never confused with brand.
+ *
+ * Token names follow shadcn/ui so registry components (shadcn, mapcn) theme
+ * correctly without edits. `surface`, `surface-2` and the status colours are
+ * Apogee additions.
+ */
+:root {
+  color-scheme: dark;
+  --background: #0f1720;
+  --foreground: #e6ecf2;
+  --surface: #17212c;
+  --surface-2: #1e2a37;
+  --border: #2a3949;
+  --muted-foreground: #8c9db0;
+  --primary: #a9b8ff;
+  --primary-foreground: #0f1720;
+  --go: #4cc38a;
+  --caution: #e8b13a;
+  --nogo: #ef5b5b;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+  --background: #ffffff;
+  --foreground: #000000;
+  --surface: #f1f3f6;
+  --surface-2: #e4e8ee;
+  --border: #8995a3;
+  --muted-foreground: #3a4654;
+  --primary: #2438b8;
+  --primary-foreground: #ffffff;
+  --go: #0a7a47;
+  --caution: #8a5a00;
+  --nogo: #b3121b;
+}
+
+/* Dark is the default; only an explicit light theme switches it off. */
+@custom-variant dark (&:where(:root:not([data-theme='light']), :root:not([data-theme='light']) *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
+  --color-input: var(--border);
+  --color-ring: var(--primary);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-go: var(--go);
+  --color-caution: var(--caution);
+  --color-nogo: var(--nogo);
+
+  /* shadcn semantic aliases onto the palette above */
+  --color-card: var(--surface);
+  --color-card-foreground: var(--foreground);
+  --color-popover: var(--surface-2);
+  --color-popover-foreground: var(--foreground);
+  --color-secondary: var(--surface-2);
+  --color-secondary-foreground: var(--foreground);
+  --color-muted: var(--surface-2);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--surface-2);
+  --color-accent-foreground: var(--foreground);
+  --color-destructive: var(--nogo);
+
+  --font-sans: 'Barlow', system-ui, sans-serif;
+  --font-display: 'Barlow Condensed', 'Barlow', system-ui, sans-serif;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    font-feature-settings: 'tnum' 1;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+  }
+  .maplibregl-popup-content {
+    @apply bg-transparent! shadow-none! p-0! rounded-none!;
+  }
+  .maplibregl-popup-tip {
+    @apply hidden!;
+  }
+  .maplibregl-ctrl-attrib {
+    @apply bg-background! text-muted-foreground! border-border! rounded-md! border! shadow-sm!;
+  }
+  .maplibregl-ctrl-attrib a {
+    @apply text-muted-foreground!;
+  }
+  .maplibregl-ctrl-attrib a:hover {
+    @apply text-foreground!;
+  }
+  .maplibregl-ctrl-attrib-button {
+    @apply bg-transparent! dark:invert;
+  }
+}

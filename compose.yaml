@@ -1,0 +1,82 @@
+# One `docker compose up` gives a working system on a laptop with only Docker installed.
+#
+#   docker compose up --build              # web, api, workers, redis
+#   docker compose --profile full up       # + offline map tile server
+#
+# Copy .env.example to .env to change ports, worker count or field mode.
+
+name: apogee
+
+x-python: &python
+  image: apogee-python:${APOGEE_VERSION:-dev}
+  build:
+    context: .
+    dockerfile: docker/python.Dockerfile
+    args:
+      GIT_SHA: ${GIT_SHA:-dev}
+  environment:
+    APOGEE_REDIS_URL: redis://redis:6379
+    APOGEE_DATA_DIR: /data
+    APOGEE_FIELD_MODE: ${FIELD_MODE:-false}
+    APOGEE_MAX_JOBS: ${APOGEE_MAX_JOBS:-4}
+  volumes:
+    - apogee-data:/data          # SQLite + result Parquet
+    - apogee-cache:/cache        # weather cache
+    - ${MISSIONS_DIR:-./missions}:/missions   # the team's mission configs, a Git repo on the host
+  depends_on:
+    redis:
+      condition: service_healthy
+  restart: unless-stopped
+
+services:
+  web:
+    image: apogee-web:${APOGEE_VERSION:-dev}
+    build:
+      context: .
+      dockerfile: docker/web.Dockerfile
+      args:
+        VITE_FIELD_MODE: ${FIELD_MODE:-false}
+        VITE_MAP_PMTILES: ${MAP_PMTILES:-}
+    ports:
+      - "${WEB_PORT:-8080}:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+  api:
+    <<: *python
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 10s
+      timeout: 3s
+      start_period: 20s
+
+  worker:
+    <<: *python
+    command: ["arq", "apogee_worker.main.WorkerSettings"]
+    deploy:
+      replicas: ${WORKER_REPLICAS:-2}
+
+  redis:
+    image: redis:8-alpine
+    # Bound to localhost so `make dev` can use it; not exposed to the hotspot.
+    ports:
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+    restart: unless-stopped
+
+  tiles:
+    profiles: [full]
+    image: nginx:1.29-alpine
+    volumes:
+      - apogee-tiles:/usr/share/nginx/html:ro   # put basemap.pmtiles here
+    restart: unless-stopped
+
+volumes:
+  apogee-data:
+  apogee-cache:
+  apogee-tiles:
