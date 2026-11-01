@@ -34,3 +34,12 @@ test('the active indicator stays inside its own button', async ({ page }) => {
     }).toPass()
   }
 })
+
+test('every rail button fits on a short laptop screen', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 700 })
+  await page.goto('/missions')
+  for (const link of await rail(page).getByRole('link').all()) {
+    const box = (await link.boundingBox())!
+    expect(box.y + box.height, await link.getAttribute('href') ?? '').toBeLessThanOrEqual(700)
+  }
+})

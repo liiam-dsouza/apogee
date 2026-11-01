@@ -36,6 +36,94 @@
         "title": "Asset",
         "type": "object"
       },
+      "AssetInfo": {
+        "properties": {
+          "filename": {
+            "description": "Original filename.",
+            "title": "Filename",
+            "type": "string"
+          },
+          "kind": {
+            "description": "What the file is.",
+            "enum": [
+              "thrust_curve",
+              "drag_table"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "sha256": {
+            "description": "Content hash; how missions refer to the file.",
+            "title": "Sha256",
+            "type": "string"
+          },
+          "size": {
+            "description": "File size.",
+            "title": "Size",
+            "type": "integer",
+            "units": "bytes"
+          },
+          "thrust_curve": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ThrustCurveInfo"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Parsed motor data, for thrust curves."
+          }
+        },
+        "required": [
+          "sha256",
+          "kind",
+          "filename",
+          "size"
+        ],
+        "title": "AssetInfo",
+        "type": "object"
+      },
+      "AtAltitude": {
+        "additionalProperties": false,
+        "properties": {
+          "altitude_m": {
+            "description": "Deployment altitude above ground level.",
+            "exclusiveMinimum": 0.0,
+            "title": "Altitude M",
+            "type": "number",
+            "units": "m"
+          },
+          "kind": {
+            "const": "altitude_agl",
+            "description": "Deploy at an altitude while descending.",
+            "title": "Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "altitude_m"
+        ],
+        "title": "AtAltitude",
+        "type": "object"
+      },
+      "AtApogee": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "const": "apogee",
+            "description": "Deploy at apogee.",
+            "title": "Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "title": "AtApogee",
+        "type": "object"
+      },
       "Body_importMission": {
         "properties": {
           "file": {
@@ -48,6 +136,333 @@
           "file"
         ],
         "title": "Body_importMission",
+        "type": "object"
+      },
+      "Body_uploadAsset": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "thrust_curve",
+              "drag_table"
+            ],
+            "title": "Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file",
+          "kind"
+        ],
+        "title": "Body_uploadAsset",
+        "type": "object"
+      },
+      "ChannelInfo": {
+        "properties": {
+          "description": {
+            "description": "What the channel measures.",
+            "title": "Description",
+            "type": "string"
+          },
+          "name": {
+            "description": "Channel id, used in series requests.",
+            "title": "Name",
+            "type": "string"
+          },
+          "units": {
+            "description": "Units of the values.",
+            "title": "Units",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "units",
+          "description"
+        ],
+        "title": "ChannelInfo",
+        "type": "object"
+      },
+      "Drag": {
+        "additionalProperties": false,
+        "properties": {
+          "multiplier": {
+            "default": 1.0,
+            "description": "Scales both curves. 1 uses them as given; post-flight calibration fits this.",
+            "exclusiveMinimum": 0.0,
+            "maximum": 5.0,
+            "title": "Multiplier",
+            "type": "number"
+          },
+          "power_off": {
+            "$ref": "#/components/schemas/DragCurve",
+            "description": "Drag coefficient after burnout."
+          },
+          "power_on": {
+            "$ref": "#/components/schemas/DragCurve",
+            "description": "Drag coefficient while the motor burns."
+          }
+        },
+        "required": [
+          "power_off",
+          "power_on"
+        ],
+        "title": "Drag",
+        "type": "object"
+      },
+      "DragCurve": {
+        "additionalProperties": false,
+        "description": "Drag coefficient against Mach: a table asset, or a constant.",
+        "properties": {
+          "constant_cd": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A constant drag coefficient, if there is no table.",
+            "title": "Constant Cd"
+          },
+          "table": {
+            "anyOf": [
+              {
+                "description": "sha256 of a file in the mission's assets.",
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "CSV asset of (Mach, CD) rows. Takes precedence over constant_cd.",
+            "title": "Table"
+          }
+        },
+        "title": "DragCurve",
+        "type": "object"
+      },
+      "Environment": {
+        "additionalProperties": false,
+        "properties": {
+          "atmosphere": {
+            "description": "Atmosphere and wind the flight is simulated in.",
+            "discriminator": {
+              "mapping": {
+                "profile": "#/components/schemas/ResolvedProfile",
+                "standard": "#/components/schemas/StandardAtmosphere"
+              },
+              "propertyName": "kind"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/StandardAtmosphere"
+              },
+              {
+                "$ref": "#/components/schemas/ResolvedProfile"
+              }
+            ],
+            "title": "Atmosphere"
+          }
+        },
+        "title": "Environment",
+        "type": "object"
+      },
+      "FlightRequest": {
+        "properties": {
+          "ascent_only": {
+            "default": false,
+            "description": "Stop at apogee: about 30% faster, no landing data.",
+            "title": "Ascent Only",
+            "type": "boolean"
+          },
+          "mission": {
+            "$ref": "#/components/schemas/Mission",
+            "description": "The mission to fly, saved or not."
+          }
+        },
+        "required": [
+          "mission"
+        ],
+        "title": "FlightRequest",
+        "type": "object"
+      },
+      "FlightSummary": {
+        "description": "Summary scalars of one flight. Every constraint metric comes from here.",
+        "properties": {
+          "apogee_agl_m": {
+            "description": "Highest altitude above the pad.",
+            "title": "Apogee Agl M",
+            "type": "number",
+            "units": "m"
+          },
+          "apogee_time_s": {
+            "description": "Time from ignition to apogee.",
+            "title": "Apogee Time S",
+            "type": "number",
+            "units": "s"
+          },
+          "burnout_time_s": {
+            "description": "Motor burnout time.",
+            "title": "Burnout Time S",
+            "type": "number",
+            "units": "s"
+          },
+          "landing": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Landing"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Touchdown. None for an ascent-only flight, which stops at apogee."
+          },
+          "max_acceleration_ms2": {
+            "description": "Highest acceleration magnitude.",
+            "title": "Max Acceleration Ms2",
+            "type": "number",
+            "units": "m/s\u00b2"
+          },
+          "max_dynamic_pressure_pa": {
+            "description": "Highest dynamic pressure (max q).",
+            "title": "Max Dynamic Pressure Pa",
+            "type": "number",
+            "units": "Pa"
+          },
+          "max_mach": {
+            "description": "Highest Mach number.",
+            "title": "Max Mach",
+            "type": "number",
+            "units": "1"
+          },
+          "max_speed_ms": {
+            "description": "Highest speed.",
+            "title": "Max Speed Ms",
+            "type": "number",
+            "units": "m/s"
+          },
+          "max_stability_margin_cal": {
+            "description": "Highest static stability margin during powered and coasting flight.",
+            "title": "Max Stability Margin Cal",
+            "type": "number",
+            "units": "cal"
+          },
+          "min_stability_margin_cal": {
+            "description": "Lowest static stability margin during powered and coasting flight.",
+            "title": "Min Stability Margin Cal",
+            "type": "number",
+            "units": "cal"
+          },
+          "parachute_events": {
+            "description": "Recovery devices that deployed, in order.",
+            "items": {
+              "$ref": "#/components/schemas/ParachuteEvent"
+            },
+            "title": "Parachute Events",
+            "type": "array"
+          },
+          "rail_exit_velocity_ms": {
+            "description": "Speed when the last rail button leaves.",
+            "title": "Rail Exit Velocity Ms",
+            "type": "number",
+            "units": "m/s"
+          },
+          "stability_margin_at_rail_exit_cal": {
+            "description": "Static stability margin at rail exit, in body calibers.",
+            "title": "Stability Margin At Rail Exit Cal",
+            "type": "number",
+            "units": "cal"
+          }
+        },
+        "required": [
+          "apogee_agl_m",
+          "apogee_time_s",
+          "rail_exit_velocity_ms",
+          "stability_margin_at_rail_exit_cal",
+          "min_stability_margin_cal",
+          "max_stability_margin_cal",
+          "max_mach",
+          "max_speed_ms",
+          "max_dynamic_pressure_pa",
+          "max_acceleration_ms2",
+          "burnout_time_s",
+          "landing",
+          "parachute_events"
+        ],
+        "title": "FlightSummary",
+        "type": "object"
+      },
+      "Grains": {
+        "additionalProperties": false,
+        "properties": {
+          "cg_position_m": {
+            "description": "Centre of mass of the grain stack, forward of the nozzle exit.",
+            "title": "Cg Position M",
+            "type": "number",
+            "units": "m"
+          },
+          "count": {
+            "description": "Number of propellant grains.",
+            "maximum": 20.0,
+            "minimum": 1.0,
+            "title": "Count",
+            "type": "integer"
+          },
+          "density_kg_m3": {
+            "description": "Propellant density.",
+            "exclusiveMinimum": 0.0,
+            "title": "Density Kg M3",
+            "type": "number",
+            "units": "kg/m\u00b3"
+          },
+          "initial_height_m": {
+            "description": "Height of one grain before burning.",
+            "exclusiveMinimum": 0.0,
+            "title": "Initial Height M",
+            "type": "number",
+            "units": "m"
+          },
+          "initial_inner_radius_m": {
+            "description": "Grain core radius before burning.",
+            "minimum": 0.0,
+            "title": "Initial Inner Radius M",
+            "type": "number",
+            "units": "m"
+          },
+          "outer_radius_m": {
+            "description": "Grain outer radius.",
+            "exclusiveMinimum": 0.0,
+            "title": "Outer Radius M",
+            "type": "number",
+            "units": "m"
+          },
+          "separation_m": {
+            "description": "Gap between adjacent grains.",
+            "minimum": 0.0,
+            "title": "Separation M",
+            "type": "number",
+            "units": "m"
+          }
+        },
+        "required": [
+          "count",
+          "density_kg_m3",
+          "outer_radius_m",
+          "initial_inner_radius_m",
+          "initial_height_m",
+          "separation_m",
+          "cg_position_m"
+        ],
+        "title": "Grains",
         "type": "object"
       },
       "HTTPValidationError": {
@@ -113,6 +528,121 @@
         "title": "Issue",
         "type": "object"
       },
+      "JobState": {
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Why it failed, if it did.",
+            "title": "Error"
+          },
+          "id": {
+            "description": "Job id.",
+            "title": "Id",
+            "type": "string"
+          },
+          "result_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Result id once done.",
+            "title": "Result Id"
+          },
+          "status": {
+            "description": "Where the job is.",
+            "enum": [
+              "queued",
+              "running",
+              "done",
+              "failed",
+              "not_found"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status"
+        ],
+        "title": "JobState",
+        "type": "object"
+      },
+      "Landing": {
+        "properties": {
+          "drift_distance_m": {
+            "description": "Horizontal distance from pad to landing point.",
+            "title": "Drift Distance M",
+            "type": "number",
+            "units": "m"
+          },
+          "east_m": {
+            "description": "Landing point east of the pad.",
+            "title": "East M",
+            "type": "number",
+            "units": "m"
+          },
+          "flight_time_s": {
+            "description": "Time from ignition to touchdown.",
+            "title": "Flight Time S",
+            "type": "number",
+            "units": "s"
+          },
+          "kinetic_energy_j": {
+            "description": "Kinetic energy at touchdown, whole rocket as one body.",
+            "title": "Kinetic Energy J",
+            "type": "number",
+            "units": "J"
+          },
+          "latitude_deg": {
+            "description": "Landing point latitude, WGS84.",
+            "title": "Latitude Deg",
+            "type": "number",
+            "units": "deg"
+          },
+          "longitude_deg": {
+            "description": "Landing point longitude, WGS84.",
+            "title": "Longitude Deg",
+            "type": "number",
+            "units": "deg"
+          },
+          "north_m": {
+            "description": "Landing point north of the pad.",
+            "title": "North M",
+            "type": "number",
+            "units": "m"
+          },
+          "speed_ms": {
+            "description": "Speed at touchdown.",
+            "title": "Speed Ms",
+            "type": "number",
+            "units": "m/s"
+          }
+        },
+        "required": [
+          "east_m",
+          "north_m",
+          "latitude_deg",
+          "longitude_deg",
+          "drift_distance_m",
+          "speed_ms",
+          "kinetic_energy_j",
+          "flight_time_s"
+        ],
+        "title": "Landing",
+        "type": "object"
+      },
       "Mission": {
         "additionalProperties": false,
         "description": "A complete mission config. Serialised as YAML (or JSON).",
@@ -138,10 +668,8 @@
             "type": "object"
           },
           "environment": {
-            "additionalProperties": true,
-            "description": "Not modelled yet: accepted as-is so configs round-trip.",
-            "title": "Environment",
-            "type": "object"
+            "$ref": "#/components/schemas/Environment",
+            "description": "Atmosphere and wind."
           },
           "extends": {
             "anyOf": [
@@ -166,26 +694,34 @@
             "type": "object"
           },
           "motor": {
-            "additionalProperties": true,
-            "description": "Not modelled yet: accepted as-is so configs round-trip.",
-            "title": "Motor",
-            "type": "object"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Motor"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Solid rocket motor."
           },
           "recovery": {
-            "additionalProperties": true,
-            "description": "Not modelled yet: accepted as-is so configs round-trip.",
-            "title": "Recovery",
-            "type": "object"
+            "$ref": "#/components/schemas/Recovery",
+            "description": "Parachutes and other recovery devices."
           },
           "rocket": {
-            "additionalProperties": true,
-            "description": "Not modelled yet: accepted as-is so configs round-trip.",
-            "title": "Rocket",
-            "type": "object"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Rocket"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Airframe, without the motor."
           },
           "schema_version": {
-            "const": 1,
-            "default": 1,
+            "const": 2,
+            "default": 2,
             "description": "Config schema version. Older configs are migrated on load.",
             "title": "Schema Version",
             "type": "integer"
@@ -323,6 +859,151 @@
         "title": "MissionSummary",
         "type": "object"
       },
+      "Motor": {
+        "additionalProperties": false,
+        "properties": {
+          "burn_time_s": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Burn time. Unset takes it from the thrust curve.",
+            "title": "Burn Time S",
+            "units": "s"
+          },
+          "dry_cg_position_m": {
+            "description": "Centre of dry mass, forward of the nozzle exit.",
+            "title": "Dry Cg Position M",
+            "type": "number",
+            "units": "m"
+          },
+          "dry_inertia": {
+            "description": "Principal moments of inertia (I11, I22, I33) in kg\u00b7m\u00b2, about the centre of mass, with e3 along the rocket's axis.",
+            "maxItems": 3,
+            "minItems": 3,
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "title": "Dry Inertia",
+            "type": "array",
+            "units": "kg\u00b7m\u00b2"
+          },
+          "dry_mass_kg": {
+            "description": "Motor mass without propellant.",
+            "exclusiveMinimum": 0.0,
+            "title": "Dry Mass Kg",
+            "type": "number",
+            "units": "kg"
+          },
+          "grains": {
+            "$ref": "#/components/schemas/Grains",
+            "description": "Propellant grain geometry."
+          },
+          "nozzle_radius_m": {
+            "description": "Nozzle exit radius.",
+            "exclusiveMinimum": 0.0,
+            "title": "Nozzle Radius M",
+            "type": "number",
+            "units": "m"
+          },
+          "throat_radius_m": {
+            "description": "Nozzle throat radius.",
+            "exclusiveMinimum": 0.0,
+            "title": "Throat Radius M",
+            "type": "number",
+            "units": "m"
+          },
+          "thrust_curve": {
+            "description": "Thrust curve asset (.eng or .rse).",
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Thrust Curve",
+            "type": "string"
+          }
+        },
+        "required": [
+          "thrust_curve",
+          "dry_mass_kg",
+          "dry_inertia",
+          "dry_cg_position_m",
+          "nozzle_radius_m",
+          "throat_radius_m",
+          "grains"
+        ],
+        "title": "Motor",
+        "type": "object"
+      },
+      "NoseCone": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "description": "Nose cone profile.",
+            "enum": [
+              "von_karman",
+              "conical",
+              "tangent_ogive",
+              "lvhaack",
+              "elliptical",
+              "parabolic"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "length_m": {
+            "description": "Nose cone length, tip to shoulder.",
+            "exclusiveMinimum": 0.0,
+            "title": "Length M",
+            "type": "number",
+            "units": "m"
+          }
+        },
+        "required": [
+          "kind",
+          "length_m"
+        ],
+        "title": "NoseCone",
+        "type": "object"
+      },
+      "ParachuteEvent": {
+        "properties": {
+          "name": {
+            "description": "Recovery device name, from the mission.",
+            "title": "Name",
+            "type": "string"
+          },
+          "triggered_agl_m": {
+            "description": "Altitude above ground when the trigger fired.",
+            "title": "Triggered Agl M",
+            "type": "number",
+            "units": "m"
+          },
+          "triggered_s": {
+            "description": "Time the trigger fired.",
+            "title": "Triggered S",
+            "type": "number",
+            "units": "s"
+          }
+        },
+        "required": [
+          "name",
+          "triggered_s",
+          "triggered_agl_m"
+        ],
+        "title": "ParachuteEvent",
+        "type": "object"
+      },
       "Problem": {
         "properties": {
           "code": {
@@ -373,6 +1054,552 @@
           "code"
         ],
         "title": "Problem",
+        "type": "object"
+      },
+      "ProfileLevel": {
+        "additionalProperties": false,
+        "properties": {
+          "altitude_m": {
+            "description": "Geometric altitude above mean sea level.",
+            "title": "Altitude M",
+            "type": "number",
+            "units": "m"
+          },
+          "pressure_pa": {
+            "description": "Static pressure.",
+            "exclusiveMinimum": 0.0,
+            "title": "Pressure Pa",
+            "type": "number",
+            "units": "Pa"
+          },
+          "temperature_k": {
+            "description": "Air temperature.",
+            "exclusiveMinimum": 0.0,
+            "title": "Temperature K",
+            "type": "number",
+            "units": "K"
+          },
+          "wind_u_ms": {
+            "description": "Wind component towards east.",
+            "title": "Wind U Ms",
+            "type": "number",
+            "units": "m/s"
+          },
+          "wind_v_ms": {
+            "description": "Wind component towards north.",
+            "title": "Wind V Ms",
+            "type": "number",
+            "units": "m/s"
+          }
+        },
+        "required": [
+          "altitude_m",
+          "pressure_pa",
+          "temperature_k",
+          "wind_u_ms",
+          "wind_v_ms"
+        ],
+        "title": "ProfileLevel",
+        "type": "object"
+      },
+      "Provenance": {
+        "description": "Where a number came from: everything needed to reproduce it.",
+        "properties": {
+          "atmosphere": {
+            "description": "Atmosphere source, and its time for a profile.",
+            "title": "Atmosphere",
+            "type": "string"
+          },
+          "computed_utc": {
+            "description": "When the simulation ran.",
+            "format": "date-time",
+            "title": "Computed Utc",
+            "type": "string"
+          },
+          "drag": {
+            "description": "Drag source and multiplier.",
+            "title": "Drag",
+            "type": "string"
+          },
+          "git_sha": {
+            "description": "Commit of the running build.",
+            "title": "Git Sha",
+            "type": "string"
+          },
+          "mission_hash": {
+            "description": "sha256 of the canonical mission config.",
+            "title": "Mission Hash",
+            "type": "string"
+          },
+          "mission_id": {
+            "description": "Mission the result was run from.",
+            "title": "Mission Id",
+            "type": "string"
+          },
+          "mission_name": {
+            "description": "Mission name at run time.",
+            "title": "Mission Name",
+            "type": "string"
+          },
+          "rocketpy_version": {
+            "description": "RocketPy version that simulated it.",
+            "title": "Rocketpy Version",
+            "type": "string"
+          },
+          "seed": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Random seed; None for a deterministic flight.",
+            "title": "Seed"
+          },
+          "simcore_version": {
+            "description": "simcore version that built the simulation.",
+            "title": "Simcore Version",
+            "type": "string"
+          },
+          "thrust_curve": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "sha256 of the thrust curve used.",
+            "title": "Thrust Curve"
+          }
+        },
+        "required": [
+          "mission_id",
+          "mission_name",
+          "mission_hash",
+          "rocketpy_version",
+          "simcore_version",
+          "git_sha",
+          "atmosphere",
+          "thrust_curve",
+          "drag",
+          "seed",
+          "computed_utc"
+        ],
+        "title": "Provenance",
+        "type": "object"
+      },
+      "RailButtons": {
+        "additionalProperties": false,
+        "properties": {
+          "angular_position_deg": {
+            "default": 45.0,
+            "description": "Angle of the buttons around the body, relative to the fins.",
+            "title": "Angular Position Deg",
+            "type": "number",
+            "units": "deg"
+          },
+          "lower_position_m": {
+            "description": "Aft rail button, aft of the nose tip.",
+            "minimum": 0.0,
+            "title": "Lower Position M",
+            "type": "number",
+            "units": "m"
+          },
+          "upper_position_m": {
+            "description": "Forward rail button, aft of the nose tip.",
+            "minimum": 0.0,
+            "title": "Upper Position M",
+            "type": "number",
+            "units": "m"
+          }
+        },
+        "required": [
+          "upper_position_m",
+          "lower_position_m"
+        ],
+        "title": "RailButtons",
+        "type": "object"
+      },
+      "Recovery": {
+        "additionalProperties": false,
+        "properties": {
+          "devices": {
+            "description": "Recovery devices. None means a ballistic descent.",
+            "items": {
+              "$ref": "#/components/schemas/RecoveryDevice"
+            },
+            "title": "Devices",
+            "type": "array"
+          }
+        },
+        "title": "Recovery",
+        "type": "object"
+      },
+      "RecoveryDevice": {
+        "additionalProperties": false,
+        "properties": {
+          "cd_s_m2": {
+            "description": "Drag coefficient times reference area (CdS) of the open canopy.",
+            "exclusiveMinimum": 0.0,
+            "title": "Cd S M2",
+            "type": "number",
+            "units": "m\u00b2"
+          },
+          "lag_s": {
+            "default": 0.0,
+            "description": "Time from trigger to fully open canopy.",
+            "minimum": 0.0,
+            "title": "Lag S",
+            "type": "number",
+            "units": "s"
+          },
+          "name": {
+            "description": "Device name, e.g. 'Drogue' or 'Main'.",
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "sampling_rate_hz": {
+            "default": 100.0,
+            "description": "Rate the flight computer checks the trigger.",
+            "exclusiveMinimum": 0.0,
+            "title": "Sampling Rate Hz",
+            "type": "number",
+            "units": "Hz"
+          },
+          "trigger": {
+            "description": "When the device deploys.",
+            "discriminator": {
+              "mapping": {
+                "altitude_agl": "#/components/schemas/AtAltitude",
+                "apogee": "#/components/schemas/AtApogee"
+              },
+              "propertyName": "kind"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/AtApogee"
+              },
+              {
+                "$ref": "#/components/schemas/AtAltitude"
+              }
+            ],
+            "title": "Trigger"
+          }
+        },
+        "required": [
+          "name",
+          "cd_s_m2",
+          "trigger"
+        ],
+        "title": "RecoveryDevice",
+        "type": "object"
+      },
+      "ResolvedProfile": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "const": "profile",
+            "description": "A resolved atmosphere table, stored so runs are reproducible offline.",
+            "title": "Kind",
+            "type": "string"
+          },
+          "levels": {
+            "description": "Levels, ordered by increasing altitude.",
+            "items": {
+              "$ref": "#/components/schemas/ProfileLevel"
+            },
+            "minItems": 2,
+            "title": "Levels",
+            "type": "array"
+          },
+          "source": {
+            "description": "Where the profile came from, e.g. 'manual' or a model.",
+            "title": "Source",
+            "type": "string"
+          },
+          "valid_utc": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Time the profile describes, UTC.",
+            "title": "Valid Utc"
+          }
+        },
+        "required": [
+          "kind",
+          "source",
+          "levels"
+        ],
+        "title": "ResolvedProfile",
+        "type": "object"
+      },
+      "ResultRecord": {
+        "properties": {
+          "ascent_only": {
+            "description": "True if the flight stopped at apogee.",
+            "title": "Ascent Only",
+            "type": "boolean"
+          },
+          "channels": {
+            "description": "Trajectory channels available as series.",
+            "items": {
+              "$ref": "#/components/schemas/ChannelInfo"
+            },
+            "title": "Channels",
+            "type": "array"
+          },
+          "id": {
+            "description": "Result id; also its cache key.",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "description": "Result type. Only 'flight' so far.",
+            "title": "Kind",
+            "type": "string"
+          },
+          "points": {
+            "description": "Full-resolution samples per channel.",
+            "title": "Points",
+            "type": "integer"
+          },
+          "provenance": {
+            "$ref": "#/components/schemas/Provenance",
+            "description": "Where the result came from."
+          },
+          "summary": {
+            "$ref": "#/components/schemas/FlightSummary",
+            "description": "Summary scalars."
+          },
+          "warnings": {
+            "description": "Warnings RocketPy raised during the run.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "ascent_only",
+          "summary",
+          "provenance",
+          "channels",
+          "points",
+          "warnings"
+        ],
+        "title": "ResultRecord",
+        "type": "object"
+      },
+      "Rocket": {
+        "additionalProperties": false,
+        "properties": {
+          "drag": {
+            "$ref": "#/components/schemas/Drag",
+            "description": "Aerodynamic drag."
+          },
+          "dry_cg_m": {
+            "description": "Centre of mass without the motor, aft of the nose tip.",
+            "title": "Dry Cg M",
+            "type": "number",
+            "units": "m"
+          },
+          "dry_inertia": {
+            "description": "Principal moments of inertia (I11, I22, I33) in kg\u00b7m\u00b2, about the centre of mass, with e3 along the rocket's axis.",
+            "maxItems": 3,
+            "minItems": 3,
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "title": "Dry Inertia",
+            "type": "array",
+            "units": "kg\u00b7m\u00b2"
+          },
+          "dry_mass_kg": {
+            "description": "Mass without the motor.",
+            "exclusiveMinimum": 0.0,
+            "title": "Dry Mass Kg",
+            "type": "number",
+            "units": "kg"
+          },
+          "fins": {
+            "description": "Fin sets.",
+            "items": {
+              "$ref": "#/components/schemas/TrapezoidalFins"
+            },
+            "minItems": 1,
+            "title": "Fins",
+            "type": "array"
+          },
+          "motor_position_m": {
+            "description": "Position of the motor's nozzle exit, aft of the nose tip.",
+            "exclusiveMinimum": 0.0,
+            "title": "Motor Position M",
+            "type": "number",
+            "units": "m"
+          },
+          "nose": {
+            "$ref": "#/components/schemas/NoseCone",
+            "description": "Nose cone."
+          },
+          "radius_m": {
+            "description": "Body tube outer radius.",
+            "exclusiveMinimum": 0.0,
+            "maximum": 1.0,
+            "title": "Radius M",
+            "type": "number",
+            "units": "m"
+          },
+          "rail_buttons": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RailButtons"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Rail buttons. Without them the rail is a single point."
+          },
+          "tail": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Tail"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Boat-tail, if any."
+          }
+        },
+        "required": [
+          "radius_m",
+          "dry_mass_kg",
+          "dry_inertia",
+          "dry_cg_m",
+          "nose",
+          "fins",
+          "motor_position_m",
+          "drag"
+        ],
+        "title": "Rocket",
+        "type": "object"
+      },
+      "RunState": {
+        "properties": {
+          "cached": {
+            "description": "True if an identical run's result was reused.",
+            "title": "Cached",
+            "type": "boolean"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Why the run failed.",
+            "title": "Error"
+          },
+          "job_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Job to poll while not done.",
+            "title": "Job Id"
+          },
+          "result_id": {
+            "description": "Where the result is (or will be) stored.",
+            "title": "Result Id",
+            "type": "string"
+          },
+          "status": {
+            "description": "Run status.",
+            "enum": [
+              "queued",
+              "running",
+              "done",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "job_id",
+          "result_id",
+          "cached"
+        ],
+        "title": "RunState",
+        "type": "object"
+      },
+      "Series": {
+        "properties": {
+          "name": {
+            "description": "Channel id.",
+            "title": "Name",
+            "type": "string"
+          },
+          "t": {
+            "description": "Time since ignition, s.",
+            "items": {
+              "type": "number"
+            },
+            "title": "T",
+            "type": "array"
+          },
+          "units": {
+            "description": "Units of y.",
+            "title": "Units",
+            "type": "string"
+          },
+          "y": {
+            "description": "Values, in units.",
+            "items": {
+              "type": "number"
+            },
+            "title": "Y",
+            "type": "array"
+          }
+        },
+        "required": [
+          "name",
+          "units",
+          "t",
+          "y"
+        ],
+        "title": "Series",
         "type": "object"
       },
       "Site": {
@@ -508,6 +1735,22 @@
         "title": "Site",
         "type": "object"
       },
+      "StandardAtmosphere": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "const": "standard",
+            "description": "International Standard Atmosphere, no wind. For sanity runs.",
+            "title": "Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "title": "StandardAtmosphere",
+        "type": "object"
+      },
       "SystemInfo": {
         "properties": {
           "field_mode": {
@@ -550,6 +1793,153 @@
           "field_mode"
         ],
         "title": "SystemInfo",
+        "type": "object"
+      },
+      "Tail": {
+        "additionalProperties": false,
+        "properties": {
+          "bottom_radius_m": {
+            "description": "Radius at the aft end of the tail.",
+            "minimum": 0.0,
+            "title": "Bottom Radius M",
+            "type": "number",
+            "units": "m"
+          },
+          "length_m": {
+            "description": "Tail (boat-tail) length.",
+            "exclusiveMinimum": 0.0,
+            "title": "Length M",
+            "type": "number",
+            "units": "m"
+          },
+          "position_m": {
+            "description": "Position of the tail's forward end, aft of the nose tip.",
+            "minimum": 0.0,
+            "title": "Position M",
+            "type": "number",
+            "units": "m"
+          },
+          "top_radius_m": {
+            "description": "Radius at the forward end of the tail.",
+            "exclusiveMinimum": 0.0,
+            "title": "Top Radius M",
+            "type": "number",
+            "units": "m"
+          }
+        },
+        "required": [
+          "top_radius_m",
+          "bottom_radius_m",
+          "length_m",
+          "position_m"
+        ],
+        "title": "Tail",
+        "type": "object"
+      },
+      "ThrustCurveInfo": {
+        "properties": {
+          "burn_time_s": {
+            "description": "Last thrust point.",
+            "title": "Burn Time S",
+            "type": "number",
+            "units": "s"
+          },
+          "designation": {
+            "description": "Motor designation from the file header.",
+            "title": "Designation",
+            "type": "string"
+          },
+          "propellant_mass_kg": {
+            "description": "From the file header.",
+            "title": "Propellant Mass Kg",
+            "type": "number",
+            "units": "kg"
+          },
+          "total_impulse_ns": {
+            "description": "Area under the curve.",
+            "title": "Total Impulse Ns",
+            "type": "number",
+            "units": "N\u00b7s"
+          }
+        },
+        "required": [
+          "designation",
+          "total_impulse_ns",
+          "burn_time_s",
+          "propellant_mass_kg"
+        ],
+        "title": "ThrustCurveInfo",
+        "type": "object"
+      },
+      "TrapezoidalFins": {
+        "additionalProperties": false,
+        "properties": {
+          "cant_angle_deg": {
+            "default": 0.0,
+            "description": "Fin cant angle.",
+            "maximum": 10.0,
+            "minimum": -10.0,
+            "title": "Cant Angle Deg",
+            "type": "number",
+            "units": "deg"
+          },
+          "count": {
+            "description": "Number of fins in the set.",
+            "maximum": 8.0,
+            "minimum": 2.0,
+            "title": "Count",
+            "type": "integer"
+          },
+          "position_m": {
+            "description": "Position of the root chord's leading edge, aft of the nose tip.",
+            "minimum": 0.0,
+            "title": "Position M",
+            "type": "number",
+            "units": "m"
+          },
+          "root_chord_m": {
+            "description": "Chord length at the body tube.",
+            "exclusiveMinimum": 0.0,
+            "title": "Root Chord M",
+            "type": "number",
+            "units": "m"
+          },
+          "span_m": {
+            "description": "Distance from body tube to fin tip.",
+            "exclusiveMinimum": 0.0,
+            "title": "Span M",
+            "type": "number",
+            "units": "m"
+          },
+          "sweep_length_m": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Axial distance from root leading edge to tip leading edge. Unset means the tip chord is centred on the root chord.",
+            "title": "Sweep Length M",
+            "units": "m"
+          },
+          "tip_chord_m": {
+            "description": "Chord length at the fin tip.",
+            "minimum": 0.0,
+            "title": "Tip Chord M",
+            "type": "number",
+            "units": "m"
+          }
+        },
+        "required": [
+          "count",
+          "root_chord_m",
+          "tip_chord_m",
+          "span_m",
+          "position_m"
+        ],
+        "title": "TrapezoidalFins",
         "type": "object"
       },
       "ValidationError": {
@@ -622,6 +2012,95 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/assets": {
+      "post": {
+        "operationId": "uploadAsset",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_uploadAsset"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetInfo"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The file does not parse."
+          }
+        },
+        "summary": "Upload Asset",
+        "tags": [
+          "assets"
+        ]
+      }
+    },
+    "/api/assets/{sha256}": {
+      "get": {
+        "operationId": "downloadAsset",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sha256",
+            "required": true,
+            "schema": {
+              "title": "Sha256",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/octet-stream": {}
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Download Asset",
+        "tags": [
+          "assets"
+        ]
+      }
+    },
     "/api/health": {
       "get": {
         "operationId": "getHealth",
@@ -640,6 +2119,58 @@
         "summary": "Health",
         "tags": [
           "system"
+        ]
+      }
+    },
+    "/api/jobs/{job_id}": {
+      "get": {
+        "operationId": "getJob",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobState"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No job queue."
+          }
+        },
+        "summary": "Get Job",
+        "tags": [
+          "simulation"
         ]
       }
     },
@@ -729,7 +2260,7 @@
     },
     "/api/missions/import": {
       "post": {
-        "description": "Import a mission.yaml (any schema version). Bundles (.mission.zip) are not supported yet.",
+        "description": "Import a mission.yaml or a .mission.zip bundle (any schema version).\n\nA bundle's assets are hash-checked and added to the asset store, so the\nmission can be flown straight away.",
         "operationId": "importMission",
         "requestBody": {
           "content": {
@@ -1059,9 +2590,10 @@
         "responses": {
           "200": {
             "content": {
-              "application/yaml": {}
+              "application/yaml": {},
+              "application/zip": {}
             },
-            "description": "The mission file."
+            "description": "The mission file, or a bundle with its assets."
           },
           "404": {
             "content": {
@@ -1092,8 +2624,41 @@
               }
             },
             "description": "The mission is not valid."
+          }
+        },
+        "summary": "Export Mission",
+        "tags": [
+          "missions"
+        ]
+      }
+    },
+    "/api/results/{result_id}": {
+      "get": {
+        "description": "Summary, provenance and available channels for a result.",
+        "operationId": "getResult",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "result_id",
+            "required": true,
+            "schema": {
+              "title": "Result Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultRecord"
+                }
+              }
+            },
+            "description": "Successful Response"
           },
-          "501": {
+          "404": {
             "content": {
               "application/json": {
                 "schema": {
@@ -1101,12 +2666,180 @@
                 }
               }
             },
-            "description": "Format not implemented yet."
+            "description": "No result with that id."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
-        "summary": "Export Mission",
+        "summary": "Get Result",
         "tags": [
-          "missions"
+          "results"
+        ]
+      }
+    },
+    "/api/results/{result_id}/series": {
+      "get": {
+        "description": "Trajectory channels, downsampled with LTTB to at most ``max_points`` each.",
+        "operationId": "getResultSeries",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "result_id",
+            "required": true,
+            "schema": {
+              "title": "Result Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Comma-separated channel names.",
+            "in": "query",
+            "name": "vars",
+            "required": true,
+            "schema": {
+              "description": "Comma-separated channel names.",
+              "title": "Vars",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "max_points",
+            "required": false,
+            "schema": {
+              "default": 2000,
+              "maximum": 100000,
+              "minimum": 10,
+              "title": "Max Points",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Series"
+                  },
+                  "title": "Response Getresultseries",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No result with that id."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unknown channel."
+          }
+        },
+        "summary": "Get Series",
+        "tags": [
+          "results"
+        ]
+      }
+    },
+    "/api/sim/flight": {
+      "post": {
+        "description": "Simulate one deterministic flight.\n\nIdentical requests (same mission, versions and mode) reuse the stored\nresult. With ``wait_s`` the request waits for the job and usually returns\nit done; otherwise it returns 202 with a job to poll.",
+        "operationId": "runFlight",
+        "parameters": [
+          {
+            "description": "Wait this long for the result.",
+            "in": "query",
+            "name": "wait_s",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "description": "Wait this long for the result.",
+              "maximum": 60.0,
+              "minimum": 0,
+              "title": "Wait S",
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FlightRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunState"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunState"
+                }
+              }
+            },
+            "description": "Queued; poll the job."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The mission cannot be flown yet."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No job queue."
+          }
+        },
+        "summary": "Run Flight",
+        "tags": [
+          "simulation"
         ]
       }
     },

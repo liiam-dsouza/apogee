@@ -41,7 +41,12 @@ plugins = ["pydantic.mypy"]
 files = ["packages/simcore/src"]
 
 [tool.pytest.ini_options]
-testpaths = ["packages/simcore/tests", "apps/api/tests"]
+testpaths = ["packages/simcore/tests", "apps/api/tests", "tests/golden"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["simcore", "apogee_api", "apogee_worker"]
+
+# No type information shipped. Only simcore.engine imports rocketpy.
+[[tool.mypy.overrides]]
+module = ["rocketpy", "rocketpy.*", "pyarrow", "pyarrow.*"]
+ignore_missing_imports = true

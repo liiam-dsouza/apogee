@@ -55,7 +55,7 @@ export function Centre() {
         <input
           ref={fileInput}
           type="file"
-          accept=".yaml,.yml,.json"
+          accept=".yaml,.yml,.json,.zip"
           className="hidden"
           onChange={(e) => {
             onImport(e.target.files?.[0])
@@ -68,7 +68,7 @@ export function Centre() {
 
       {missions.data && missions.data.length === 0 && (
         <p className="max-w-[46ch] font-display text-2xl leading-snug font-medium text-muted-foreground">
-          No missions yet. Create one, or import a mission.yaml from your team's repository.
+          No missions yet. Create one, or import a mission.yaml or .mission.zip from your team's repository.
         </p>
       )}
 

@@ -1,8 +1,7 @@
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
-from apogee_api import queue
-from apogee_api.settings import get_settings
+from apogee_api.deps import QueueDep, SettingsDep
 from simcore.versions import rocketpy_version, simcore_version
 
 router = APIRouter(prefix="/api", tags=["system"])
@@ -27,8 +26,7 @@ async def health() -> Health:
 
 
 @router.get("/system/info", operation_id="getSystemInfo")
-async def system_info() -> SystemInfo:
-    settings = get_settings()
+async def system_info(queue: QueueDep, settings: SettingsDep) -> SystemInfo:
     workers = await queue.worker_count()
     return SystemInfo(
         rocketpy_version=rocketpy_version(),

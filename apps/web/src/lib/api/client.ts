@@ -17,6 +17,15 @@ export type ValidationReport = Schemas['ValidationReport']
 export type Issue = Schemas['Issue']
 export type Problem = Schemas['Problem']
 export type SystemInfo = Schemas['SystemInfo']
+export type Rocket = Schemas['Rocket']
+export type Motor = Schemas['Motor']
+export type RunState = Schemas['RunState']
+export type JobState = Schemas['JobState']
+export type ResultRecord = Schemas['ResultRecord']
+export type FlightSummary = Schemas['FlightSummary']
+export type Provenance = Schemas['Provenance']
+export type Series = Schemas['Series']
+export type AssetInfo = Schemas['AssetInfo']
 
 export const client = createClient<paths>({ baseUrl: '' })
 
@@ -88,6 +97,34 @@ export const api = {
         bodySerializer: (body) => {
           const form = new FormData()
           form.append('file', body.file as unknown as File)
+          return form
+        },
+      }),
+    ),
+  runFlight: (mission: Mission, { ascentOnly = false, waitS = 0 } = {}) =>
+    unwrap<RunState>(
+      client.POST('/api/sim/flight', {
+        params: { query: { wait_s: waitS } },
+        body: { mission, ascent_only: ascentOnly },
+      }),
+    ),
+  getJob: (id: string) => unwrap<JobState>(client.GET('/api/jobs/{job_id}', { params: { path: { job_id: id } } })),
+  getResult: (id: string) =>
+    unwrap<ResultRecord>(client.GET('/api/results/{result_id}', { params: { path: { result_id: id } } })),
+  getSeries: (id: string, channels: string[], maxPoints = 2000) =>
+    unwrap<Series[]>(
+      client.GET('/api/results/{result_id}/series', {
+        params: { path: { result_id: id }, query: { vars: channels.join(','), max_points: maxPoints } },
+      }),
+    ),
+  uploadAsset: (file: File, kind: AssetInfo['kind']) =>
+    unwrap<AssetInfo>(
+      client.POST('/api/assets', {
+        body: { file: file as unknown as string, kind },
+        bodySerializer: (body) => {
+          const form = new FormData()
+          form.append('file', body.file as unknown as File)
+          form.append('kind', body.kind)
           return form
         },
       }),

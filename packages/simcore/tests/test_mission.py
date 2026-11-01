@@ -118,3 +118,79 @@ def test_canonical_json_normalises_float_formatting() -> None:
     assert canonical_json({"a": 0.1 + 0.2}) == canonical_json({"a": 0.3})
     assert canonical_json({"a": -0.0}) == canonical_json({"a": 0})
     assert json.loads(canonical_json({"b": 2, "a": 1})) == {"a": 1, "b": 2}
+
+
+CALISTO_YAML = (
+    __import__("pathlib").Path(__file__).parents[3]
+    / "tests"
+    / "fixtures"
+    / "calisto"
+    / "calisto.mission.yaml"
+)
+
+
+def calisto() -> dict[str, Any]:
+    return parse_yaml(CALISTO_YAML.read_text())
+
+
+def test_calisto_fixture_is_clean() -> None:
+    mission, report = validate_mission(calisto())
+    assert mission is not None
+    assert report.issues == []
+
+
+def test_v1_empty_sections_migrate_to_v2() -> None:
+    data = {
+        "schema_version": 1,
+        "meta": {"name": "Old"},
+        "rocket": {},
+        "motor": {},
+        "recovery": {},
+        "environment": {},
+    }
+    mission = load_mission(data)
+    assert mission.schema_version == 2
+    assert mission.rocket is None
+    assert mission.recovery.devices == []
+
+
+def test_v1_non_empty_free_form_sections_are_reported_not_dropped() -> None:
+    _, report = validate_mission(
+        {"schema_version": 1, "meta": {"name": "Old"}, "rocket": {"foo": 1}}
+    )
+    assert not report.valid
+    assert any(i.path.startswith("rocket.") for i in report.issues)
+
+
+def test_missing_asset_points_at_the_field() -> None:
+    data = calisto()
+    data["assets"] = {}
+    _, report = validate_mission(data)
+    assert not report.valid
+    assert {i.path for i in report.issues} == {
+        "motor.thrust_curve",
+        "rocket.drag.power_off.table",
+        "rocket.drag.power_on.table",
+    }
+
+
+def test_cg_forward_of_nose_tip_is_an_error() -> None:
+    data = calisto()
+    data["rocket"]["dry_cg_m"] = -0.1
+    _, report = validate_mission(data)
+    assert [(i.path, i.code) for i in report.issues] == [("rocket.dry_cg_m", "cg_forward_of_nose")]
+
+
+def test_rail_buttons_out_of_order_is_an_error() -> None:
+    data = calisto()
+    rb = data["rocket"]["rail_buttons"]
+    rb["upper_position_m"], rb["lower_position_m"] = rb["lower_position_m"], rb["upper_position_m"]
+    _, report = validate_mission(data)
+    assert [i.code for i in report.issues] == ["rail_buttons_order"]
+
+
+def test_drag_curve_needs_exactly_one_source() -> None:
+    data = calisto()
+    data["rocket"]["drag"]["power_off"] = {"table": None, "constant_cd": None}
+    _, report = validate_mission(data)
+    assert any(i.path.startswith("rocket.drag.power_off") for i in report.issues)

@@ -16,6 +16,9 @@ docker compose up --build   # or: make up
 
 Open http://localhost:8080. API reference: http://localhost:8080/api/docs.
 
+New here? [Run your first flight](docs/guides/first-flight.md) with the
+reference rocket in `missions/examples/`.
+
 Add `--profile full` to also run the offline map tile server.
 
 ## Develop
@@ -48,6 +51,9 @@ make codegen      # after changing any API route or Pydantic model
 | `apps/web/` | React frontend (its own README). |
 | `docker/` | Dockerfiles and the nginx config. |
 | `docs/adr/` | Architecture decision records. |
+| `docs/methods/` | What each computation assumes and where it is weak. |
+| `docs/guides/` | Task walkthroughs. |
+| `tests/fixtures/`, `tests/golden/` | Reference rocket files and pinned golden-flight numbers. |
 | `missions/` | Mounted into the stack at `/missions`; keep your team's mission files here. |
 
 ## Rules that keep it maintainable

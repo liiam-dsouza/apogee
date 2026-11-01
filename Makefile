@@ -3,7 +3,7 @@
 GIT_SHA := $(shell git rev-parse --short HEAD 2>/dev/null || echo dev)
 export GIT_SHA
 
-.PHONY: help up down dev-redis dev-api dev-worker dev-web codegen codegen-check test lint
+.PHONY: help up down dev-redis dev-api dev-worker dev-web codegen codegen-check test lint example golden
 
 help:  ## List targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
@@ -17,8 +17,8 @@ down:  ## Stop the stack (data volumes are kept)
 dev-redis:  ## Run only Redis in Docker, for local development
 	docker compose up -d redis
 
-dev-api:  ## API with reload on http://localhost:8000 (needs dev-redis for jobs)
-	uv run uvicorn apogee_api.main:app --reload --port 8000 --reload-dir apps/api --reload-dir packages/simcore
+dev-api:  ## API with reload on http://localhost:8000; jobs run in-process (no Redis needed)
+	APOGEE_QUEUE=inline uv run uvicorn apogee_api.main:app --reload --port 8000 --reload-dir apps/api --reload-dir packages/simcore
 
 dev-worker:  ## Job worker against local Redis
 	uv run arq apogee_worker.main.WorkerSettings --watch packages/simcore
@@ -33,6 +33,12 @@ codegen:  ## Regenerate frontend API types from the FastAPI schema
 codegen-check: codegen  ## Fail if generated files are out of date (CI)
 	@out="$$(git status --porcelain -- apps/web/openapi.json apps/web/src/lib/api/schema.gen.ts apps/web/src/lib/api/fields.gen.ts)"; \
 	if [ -n "$$out" ]; then echo "Generated API files are stale; run make codegen and commit:"; echo "$$out"; exit 1; fi
+
+example:  ## Rebuild missions/examples/calisto.mission.zip from the test fixtures
+	uv run python -m simcore bundle tests/fixtures/calisto/calisto.mission.yaml -o missions/examples/calisto.mission.zip
+
+golden:  ## Re-pin golden flight numbers (only after a reviewed change; the diff is the review)
+	uv run python tests/golden/regenerate.py
 
 test:  ## Python and frontend tests
 	uv run pytest

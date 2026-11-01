@@ -1,18 +1,21 @@
 """arq worker: ``arq apogee_worker.main.WorkerSettings``.
 
-Consumes jobs from Redis and runs them through simcore. Publishes a heartbeat
-so the API can report how many workers are live.
+Consumes jobs from Redis and runs them through simcore in a process pool, so
+CPU-bound simulations never block the event loop (and its heartbeat).
 """
 
 import asyncio
 import contextlib
 import os
 import socket
+from concurrent.futures import ProcessPoolExecutor
+from functools import partial
 from typing import Any, ClassVar
 
 from arq.connections import RedisSettings
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from simcore import jobs
 from simcore.versions import rocketpy_version, simcore_version
 
 # Shared with apogee_api.queue; the worker must not import the API package.
@@ -26,6 +29,8 @@ class Settings(BaseSettings):
 
     redis_url: str = "redis://localhost:6379"
     max_jobs: int = 4
+    data_dir: str = ".data"
+    git_sha: str = "dev"
 
 
 settings = Settings()
@@ -36,6 +41,12 @@ async def ping(_: dict[str, Any]) -> dict[str, str]:
     return {"simcore_version": simcore_version(), "rocketpy_version": rocketpy_version()}
 
 
+async def simulate_flight(ctx: dict[str, Any], **kwargs: Any) -> str:
+    """One deterministic flight; returns the stored result id."""
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(ctx["pool"], partial(jobs.simulate_flight, **kwargs))
+
+
 async def _heartbeat(ctx: dict[str, Any]) -> None:
     key = ctx["heartbeat_key"]
     while True:
@@ -44,6 +55,7 @@ async def _heartbeat(ctx: dict[str, Any]) -> None:
 
 
 async def startup(ctx: dict[str, Any]) -> None:
+    ctx["pool"] = ProcessPoolExecutor(max_workers=settings.max_jobs)
     ctx["heartbeat_key"] = f"{WORKER_HEARTBEAT_PREFIX}{socket.gethostname()}:{os.getpid()}"
     ctx["heartbeat"] = asyncio.create_task(_heartbeat(ctx))
 
@@ -53,11 +65,14 @@ async def shutdown(ctx: dict[str, Any]) -> None:
     with contextlib.suppress(asyncio.CancelledError):
         await ctx["heartbeat"]
     await ctx["redis"].delete(ctx["heartbeat_key"])
+    ctx["pool"].shutdown(cancel_futures=True)
 
 
 class WorkerSettings:
-    functions: ClassVar = [ping]
+    functions: ClassVar = [ping, simulate_flight]
     on_startup = startup
     on_shutdown = shutdown
     redis_settings = RedisSettings.from_dsn(settings.redis_url)
     max_jobs = settings.max_jobs
+    # A full flight is ~300 ms; anything near this is stuck, not slow.
+    job_timeout = 300

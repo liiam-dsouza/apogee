@@ -1,0 +1,56 @@
+# Calisto: RocketPy's reference rocket, as an Apogee mission.
+# Positions are metres aft of the nose tip (ADR 0002), converted from
+# RocketPy's example (tail_to_nose, origin at the dry CG 1.278 m aft of the tip).
+schema_version: 2
+meta:
+  name: Calisto (reference)
+  id: 01JCALISTO0000000000000000
+  created_utc: 2026-11-02T00:00:00Z
+  authors: [RocketPy team (design), Apogee (conversion)]
+  notes: Golden reference flight. Parachute trigger noise is zero for determinism.
+rocket:
+  radius_m: 0.0635
+  dry_mass_kg: 14.426
+  dry_inertia: [6.321, 6.321, 0.034]
+  dry_cg_m: 1.278
+  nose: {kind: von_karman, length_m: 0.55829}
+  fins:
+    - {count: 4, root_chord_m: 0.12, tip_chord_m: 0.06, span_m: 0.11, position_m: 2.32756, cant_angle_deg: 0.5}
+  tail: {top_radius_m: 0.0635, bottom_radius_m: 0.0435, length_m: 0.06, position_m: 2.472656}
+  rail_buttons: {upper_position_m: 1.1962, lower_position_m: 1.8962, angular_position_deg: 45}
+  motor_position_m: 2.533
+  drag:
+    power_off: {table: 94760a42d5f5fad4fb815f448db72201fafd2b2a3c6ec2d2c83618b2953207e0}
+    power_on: {table: 94760a42d5f5fad4fb815f448db72201fafd2b2a3c6ec2d2c83618b2953207e0}
+motor:
+  thrust_curve: a18a3ae712108760c5fdbf5c5ddaefe50bb6a429d75bc5ab4bcf7ce7716548d8
+  burn_time_s: 3.9
+  dry_mass_kg: 1.815
+  dry_inertia: [0.125, 0.125, 0.002]
+  dry_cg_position_m: 0.317
+  nozzle_radius_m: 0.033
+  throat_radius_m: 0.011
+  grains:
+    count: 5
+    density_kg_m3: 1815
+    outer_radius_m: 0.033
+    initial_inner_radius_m: 0.015
+    initial_height_m: 0.12
+    separation_m: 0.005
+    cg_position_m: 0.397
+recovery:
+  devices:
+    - {name: Main, cd_s_m2: 10.0, trigger: {kind: altitude_agl, altitude_m: 800}, lag_s: 1.5, sampling_rate_hz: 105}
+    - {name: Drogue, cd_s_m2: 1.0, trigger: {kind: apogee}, lag_s: 1.5, sampling_rate_hz: 105}
+site:
+  latitude_deg: 32.990254
+  longitude_deg: -106.974998
+  elevation_m: 1400
+  rail_length_m: 5.2
+  inclination_deg: 85
+  heading_deg: 0
+environment:
+  atmosphere: {kind: standard}
+assets:
+  a18a3ae712108760c5fdbf5c5ddaefe50bb6a429d75bc5ab4bcf7ce7716548d8: {kind: thrust_curve, filename: Cesaroni_M1670.eng, size: 163}
+  94760a42d5f5fad4fb815f448db72201fafd2b2a3c6ec2d2c83618b2953207e0: {kind: drag_table, filename: powerOffDragCurve.csv, size: 3362}

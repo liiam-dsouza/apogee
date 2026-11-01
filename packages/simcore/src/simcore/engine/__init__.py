@@ -1,6 +1,17 @@
 """RocketPy adapters. The only module tree allowed to import ``rocketpy``.
 
-Not built yet: before writing it, read the pinned RocketPy version's docs for
-Environment, Rocket.add_surfaces, Rocket.add_parachute, MonteCarlo and the
-Stochastic* classes (see the project brief, "Simulation core").
+Nothing returned from here is a RocketPy object: results are FlightResult.
+Checked against the pinned RocketPy 1.13.0 API (see the tests/golden suite).
 """
+
+from simcore.engine.build import EngineInputError, check_runnable, run_flight
+from simcore.engine.result import TRAJECTORY_CHANNELS, FlightResult, FlightSummary
+
+__all__ = [
+    "TRAJECTORY_CHANNELS",
+    "EngineInputError",
+    "FlightResult",
+    "FlightSummary",
+    "check_runnable",
+    "run_flight",
+]

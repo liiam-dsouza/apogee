@@ -13,6 +13,16 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379"
     git_sha: str = "dev"
     field_mode: bool = False
+    #: "arq" (Redis + workers) or "inline" (jobs in the API process; dev and tests only).
+    queue: str = "arq"
+
+    @property
+    def assets_dir(self) -> Path:
+        return self.data_dir / "assets"
+
+    @property
+    def results_dir(self) -> Path:
+        return self.data_dir / "results"
 
 
 @lru_cache

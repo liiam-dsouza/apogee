@@ -7,12 +7,26 @@ register it in MIGRATIONS. Each migration takes and returns a plain dict.
 from collections.abc import Callable
 from typing import Any, Final
 
-CURRENT_SCHEMA_VERSION: Final = 1
+CURRENT_SCHEMA_VERSION: Final = 2
 
 Migration = Callable[[dict[str, Any]], dict[str, Any]]
 
+
+def v1_to_v2(data: dict[str, Any]) -> dict[str, Any]:
+    """Typed rocket, motor, recovery and environment sections.
+
+    v1 stored these as free-form mappings, always empty in practice. Empty
+    ones become "not set" (rocket, motor) or the new defaults (recovery,
+    environment). Anything else is left for validation to report with a path.
+    """
+    for key in ("rocket", "motor", "recovery", "environment"):
+        if data.get(key) == {}:
+            del data[key]
+    return data
+
+
 #: from-version -> function producing the next version
-MIGRATIONS: dict[int, Migration] = {}
+MIGRATIONS: dict[int, Migration] = {1: v1_to_v2}
 
 
 class MigrationError(ValueError):

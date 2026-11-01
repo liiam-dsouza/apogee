@@ -5,7 +5,7 @@ describe('units', () => {
   it('round-trips every quantity in both systems', () => {
     const quantities: Quantity[] = [
       'length', 'distance', 'altitude', 'speed', 'acceleration', 'mass', 'force',
-      'impulse', 'pressure', 'temperature', 'angle', 'energy',
+      'impulse', 'pressure', 'dynamic_pressure', 'temperature', 'angle', 'energy',
     ]
     for (const system of ['metric', 'imperial'] as UnitSystem[]) {
       for (const q of quantities) {

@@ -3,6 +3,83 @@
 Running log of what's built against the project brief. Newest first.
 Frontend paths are relative to `apps/web/`.
 
+## 2026-11-02: First real flight (milestone 1)
+
+**Done**
+- **Read the pinned RocketPy 1.13.0 API before writing the adapter** (signatures,
+  docstrings and source). That caught a wrong docstring: "ogive" is not an accepted nose
+  kind, `tangent` is.
+- **Mission schema v2** with typed `rocket`, `motor` (solid), `recovery` (devices with
+  apogee/altitude triggers) and `environment` (standard, or a resolved profile).
+  - Every field has units and a description.
+  - **Migration `v1_to_v2`** turns empty placeholder sections into "not set"; stored v1
+    missions are now migrated on read (they weren't before).
+  - **New physical checks:** CG forward of the nose tip or aft of the rocket, rail
+    buttons out of order, fins past the tail, assets missing from the mission, and a
+    wind profile starting above the pad.
+- **ADR 0002:** rocket positions are metres aft of the nose tip.
+- **simcore:**
+  - Content-addressed asset store with a hash check on read.
+  - `.eng` and drag-CSV importers matching RocketPy's own readers.
+  - **Engine adapter** (`build_*`, `run_flight` → `FlightResult`); no RocketPy object
+    escapes.
+  - **Result storage:** JSON plus Parquet, with atomic writes that are safe when two
+    workers produce the same result.
+  - **LTTB downsampling.**
+  - `.mission.zip` bundles, hash-verified and rejecting unexpected paths.
+  - **CLI:** `python -m simcore run|bundle`.
+- **Golden flight (Calisto).** The adapter reproduces RocketPy driven directly to 10⁻¹²,
+  and the summary is pinned.
+- **API:**
+  - `POST /api/assets` (parsed on upload) and `GET /api/assets/{sha}`.
+  - `POST /api/sim/flight`: validates, checks it's runnable, enqueues, can wait, and
+    reuses cached results.
+  - `GET /api/jobs/{id}`, `GET /api/results/{id}` and `/series` (LTTB).
+  - Mission `.mission.zip` import and export.
+  - Queue interface: arq in production, inline for tests and `make dev-api`.
+- **Worker:** a `simulate_flight` task in a process pool, so the CPU-bound flight never
+  blocks the heartbeat.
+- **Single flight section:**
+  - Hero apogee, ascent and landing stat tiles, an events table, and six synced
+    small-multiple uPlot charts with event annotations.
+  - A table view, a provenance panel, a stale-result banner, and "fix it here" links
+    on not-runnable problems.
+  - Chart colour `chart-1` was validated with the dataviz palette checker in both
+    themes; the UI accent failed the lightness band for data marks.
+- **Docs:** `docs/methods/flight.md` and `docs/guides/first-flight.md`. The example
+  bundle is at `missions/examples/calisto.mission.zip`.
+- **e2e:** importing the bundle and flying it; every rail button fits a 700 px-tall screen.
+
+**Findings worth keeping**
+- **RocketPy drag interpolation depends on the input type:** a list gets a cubic
+  spline, a CSV path gets linear. The adapter now passes an explicit linear `Function`.
+- **`Flight(max_time=...)` changes results at the mm level** (LSODA's first step); it's
+  pinned at 600 s.
+- **RocketPy isn't orientation-invariant:** the same rocket in `nose_to_tail` and
+  `tail_to_nose` differs by 2 cm of apogee.
+- **Results are byte-identical per platform, not across platforms:** macOS arm64
+  against Linux aarch64 differ by up to 6 × 10⁻⁵ relative. Golden tolerances are now
+  relative 2 × 10⁻⁴ plus unit-aware absolute floors. **x86-64 (CI) is not measured yet.**
+
+**Bugs found while doing this (fixed)**
+- **The rail overflowed screens under about 830 px tall.** Hardware, Docs and Settings
+  were off-screen. The rail now compacts on short screens and scrolls as a last resort,
+  with an e2e test.
+- **Canvas state:** uPlot leaves `textAlign = 'center'`, which misplaced every chart
+  label and broke collision checks.
+- **Synced crosshair:** ascent-only charts showed a clamped, wrong-time readout.
+- **Hero figure:** read "3,306m" with no space, which screen readers announced wrongly.
+- **`ProblemNotice`:** it called every non-API error "could not reach the API", and
+  its fix links did full page loads that would drop unsaved edits.
+
+**Known gaps**
+- Rocket, Motor and Recovery editors don't exist yet. Missions get a rocket from a YAML
+  or bundle import; OpenRocket import is next.
+- Landing energy is for the whole rocket, not per independently descending section.
+- The flight run is remembered per mission only in memory, so a reload forgets which
+  result was last.
+- Weather fetching and blending are not built; profiles can only come from a file.
+
 ## 2026-11-01: CI, mission editing, Site editor, rail navigation fix
 
 **Done**

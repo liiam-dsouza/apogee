@@ -6,9 +6,10 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.routing import APIRoute
 
-from apogee_api import problems, queue
+from apogee_api import problems
 from apogee_api.db import init_engine
-from apogee_api.routers import missions, system
+from apogee_api.queue import ArqQueue, InlineQueue, JobQueue
+from apogee_api.routers import assets, missions, results, sim, system
 from apogee_api.settings import get_settings
 
 
@@ -18,11 +19,14 @@ def _operation_id(route: APIRoute) -> str:
 
 
 @asynccontextmanager
-async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
     settings.data_dir.mkdir(parents=True, exist_ok=True)
     init_engine(settings.data_dir)
-    await queue.connect(settings.redis_url)
+    queue: JobQueue = (
+        InlineQueue() if settings.queue == "inline" else await ArqQueue.connect(settings.redis_url)
+    )
+    app.state.queue = queue
     yield
     await queue.close()
 
@@ -41,6 +45,9 @@ def create_app() -> FastAPI:
     problems.install(app)
     app.include_router(system.router)
     app.include_router(missions.router)
+    app.include_router(assets.router)
+    app.include_router(sim.router)
+    app.include_router(results.router)
     return app
 
 

@@ -4,6 +4,40 @@
  */
 
 export interface paths {
+    "/api/assets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Upload Asset */
+        post: operations["uploadAsset"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/assets/{sha256}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download Asset */
+        get: operations["downloadAsset"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -13,6 +47,23 @@ export interface paths {
         };
         /** Health */
         get: operations["getHealth"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/jobs/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Job */
+        get: operations["getJob"];
         put?: never;
         post?: never;
         delete?: never;
@@ -50,7 +101,10 @@ export interface paths {
         put?: never;
         /**
          * Import Mission
-         * @description Import a mission.yaml (any schema version). Bundles (.mission.zip) are not supported yet.
+         * @description Import a mission.yaml or a .mission.zip bundle (any schema version).
+         *
+         *     A bundle's assets are hash-checked and added to the asset store, so the
+         *     mission can be flown straight away.
          */
         post: operations["importMission"];
         delete?: never;
@@ -118,6 +172,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/results/{result_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Result
+         * @description Summary, provenance and available channels for a result.
+         */
+        get: operations["getResult"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/results/{result_id}/series": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Series
+         * @description Trajectory channels, downsampled with LTTB to at most ``max_points`` each.
+         */
+        get: operations["getResultSeries"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/sim/flight": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run Flight
+         * @description Simulate one deterministic flight.
+         *
+         *     Identical requests (same mission, versions and mode) reuse the stored
+         *     result. With ``wait_s`` the request waits for the job and usually returns
+         *     it done; otherwise it returns 202 with a job to poll.
+         */
+        post: operations["runFlight"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/system/info": {
         parameters: {
             query?: never;
@@ -158,10 +276,239 @@ export interface components {
              */
             size: number;
         };
+        /** AssetInfo */
+        AssetInfo: {
+            /**
+             * Filename
+             * @description Original filename.
+             */
+            filename: string;
+            /**
+             * Kind
+             * @description What the file is.
+             * @enum {string}
+             */
+            kind: "thrust_curve" | "drag_table";
+            /**
+             * Sha256
+             * @description Content hash; how missions refer to the file.
+             */
+            sha256: string;
+            /**
+             * Size
+             * @description File size.
+             */
+            size: number;
+            /** @description Parsed motor data, for thrust curves. */
+            thrust_curve?: components["schemas"]["ThrustCurveInfo"] | null;
+        };
+        /** AtAltitude */
+        AtAltitude: {
+            /**
+             * Altitude M
+             * @description Deployment altitude above ground level.
+             */
+            altitude_m: number;
+            /**
+             * @description Deploy at an altitude while descending. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            kind: "altitude_agl";
+        };
+        /** AtApogee */
+        AtApogee: {
+            /**
+             * @description Deploy at apogee. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            kind: "apogee";
+        };
         /** Body_importMission */
         Body_importMission: {
             /** File */
             file: string;
+        };
+        /** Body_uploadAsset */
+        Body_uploadAsset: {
+            /** File */
+            file: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "thrust_curve" | "drag_table";
+        };
+        /** ChannelInfo */
+        ChannelInfo: {
+            /**
+             * Description
+             * @description What the channel measures.
+             */
+            description: string;
+            /**
+             * Name
+             * @description Channel id, used in series requests.
+             */
+            name: string;
+            /**
+             * Units
+             * @description Units of the values.
+             */
+            units: string;
+        };
+        /** Drag */
+        Drag: {
+            /**
+             * Multiplier
+             * @description Scales both curves. 1 uses them as given; post-flight calibration fits this.
+             * @default 1
+             */
+            multiplier: number;
+            /** @description Drag coefficient after burnout. */
+            power_off: components["schemas"]["DragCurve"];
+            /** @description Drag coefficient while the motor burns. */
+            power_on: components["schemas"]["DragCurve"];
+        };
+        /**
+         * DragCurve
+         * @description Drag coefficient against Mach: a table asset, or a constant.
+         */
+        DragCurve: {
+            /**
+             * Constant Cd
+             * @description A constant drag coefficient, if there is no table.
+             */
+            constant_cd?: number | null;
+            /**
+             * Table
+             * @description CSV asset of (Mach, CD) rows. Takes precedence over constant_cd.
+             */
+            table?: string | null;
+        };
+        /** Environment */
+        Environment: {
+            /**
+             * Atmosphere
+             * @description Atmosphere and wind the flight is simulated in.
+             */
+            atmosphere?: components["schemas"]["StandardAtmosphere"] | components["schemas"]["ResolvedProfile"];
+        };
+        /** FlightRequest */
+        FlightRequest: {
+            /**
+             * Ascent Only
+             * @description Stop at apogee: about 30% faster, no landing data.
+             * @default false
+             */
+            ascent_only: boolean;
+            /** @description The mission to fly, saved or not. */
+            mission: components["schemas"]["Mission"];
+        };
+        /**
+         * FlightSummary
+         * @description Summary scalars of one flight. Every constraint metric comes from here.
+         */
+        FlightSummary: {
+            /**
+             * Apogee Agl M
+             * @description Highest altitude above the pad.
+             */
+            apogee_agl_m: number;
+            /**
+             * Apogee Time S
+             * @description Time from ignition to apogee.
+             */
+            apogee_time_s: number;
+            /**
+             * Burnout Time S
+             * @description Motor burnout time.
+             */
+            burnout_time_s: number;
+            /** @description Touchdown. None for an ascent-only flight, which stops at apogee. */
+            landing: components["schemas"]["Landing"] | null;
+            /**
+             * Max Acceleration Ms2
+             * @description Highest acceleration magnitude.
+             */
+            max_acceleration_ms2: number;
+            /**
+             * Max Dynamic Pressure Pa
+             * @description Highest dynamic pressure (max q).
+             */
+            max_dynamic_pressure_pa: number;
+            /**
+             * Max Mach
+             * @description Highest Mach number.
+             */
+            max_mach: number;
+            /**
+             * Max Speed Ms
+             * @description Highest speed.
+             */
+            max_speed_ms: number;
+            /**
+             * Max Stability Margin Cal
+             * @description Highest static stability margin during powered and coasting flight.
+             */
+            max_stability_margin_cal: number;
+            /**
+             * Min Stability Margin Cal
+             * @description Lowest static stability margin during powered and coasting flight.
+             */
+            min_stability_margin_cal: number;
+            /**
+             * Parachute Events
+             * @description Recovery devices that deployed, in order.
+             */
+            parachute_events: components["schemas"]["ParachuteEvent"][];
+            /**
+             * Rail Exit Velocity Ms
+             * @description Speed when the last rail button leaves.
+             */
+            rail_exit_velocity_ms: number;
+            /**
+             * Stability Margin At Rail Exit Cal
+             * @description Static stability margin at rail exit, in body calibers.
+             */
+            stability_margin_at_rail_exit_cal: number;
+        };
+        /** Grains */
+        Grains: {
+            /**
+             * Cg Position M
+             * @description Centre of mass of the grain stack, forward of the nozzle exit.
+             */
+            cg_position_m: number;
+            /**
+             * Count
+             * @description Number of propellant grains.
+             */
+            count: number;
+            /**
+             * Density Kg M3
+             * @description Propellant density.
+             */
+            density_kg_m3: number;
+            /**
+             * Initial Height M
+             * @description Height of one grain before burning.
+             */
+            initial_height_m: number;
+            /**
+             * Initial Inner Radius M
+             * @description Grain core radius before burning.
+             */
+            initial_inner_radius_m: number;
+            /**
+             * Outer Radius M
+             * @description Grain outer radius.
+             */
+            outer_radius_m: number;
+            /**
+             * Separation M
+             * @description Gap between adjacent grains.
+             */
+            separation_m: number;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -200,6 +547,73 @@ export interface components {
              */
             severity: "error" | "warning";
         };
+        /** JobState */
+        JobState: {
+            /**
+             * Error
+             * @description Why it failed, if it did.
+             */
+            error?: string | null;
+            /**
+             * Id
+             * @description Job id.
+             */
+            id: string;
+            /**
+             * Result Id
+             * @description Result id once done.
+             */
+            result_id?: string | null;
+            /**
+             * Status
+             * @description Where the job is.
+             * @enum {string}
+             */
+            status: "queued" | "running" | "done" | "failed" | "not_found";
+        };
+        /** Landing */
+        Landing: {
+            /**
+             * Drift Distance M
+             * @description Horizontal distance from pad to landing point.
+             */
+            drift_distance_m: number;
+            /**
+             * East M
+             * @description Landing point east of the pad.
+             */
+            east_m: number;
+            /**
+             * Flight Time S
+             * @description Time from ignition to touchdown.
+             */
+            flight_time_s: number;
+            /**
+             * Kinetic Energy J
+             * @description Kinetic energy at touchdown, whole rocket as one body.
+             */
+            kinetic_energy_j: number;
+            /**
+             * Latitude Deg
+             * @description Landing point latitude, WGS84.
+             */
+            latitude_deg: number;
+            /**
+             * Longitude Deg
+             * @description Landing point longitude, WGS84.
+             */
+            longitude_deg: number;
+            /**
+             * North M
+             * @description Landing point north of the pad.
+             */
+            north_m: number;
+            /**
+             * Speed Ms
+             * @description Speed at touchdown.
+             */
+            speed_ms: number;
+        };
         /**
          * Mission
          * @description A complete mission config. Serialised as YAML (or JSON).
@@ -226,13 +640,8 @@ export interface components {
             constraints?: {
                 [key: string]: unknown;
             };
-            /**
-             * Environment
-             * @description Not modelled yet: accepted as-is so configs round-trip.
-             */
-            environment?: {
-                [key: string]: unknown;
-            };
+            /** @description Atmosphere and wind. */
+            environment?: components["schemas"]["Environment"];
             /**
              * Extends
              * @description Path of a base config this one overrides (not yet supported).
@@ -247,34 +656,19 @@ export interface components {
             monte_carlo?: {
                 [key: string]: unknown;
             };
-            /**
-             * Motor
-             * @description Not modelled yet: accepted as-is so configs round-trip.
-             */
-            motor?: {
-                [key: string]: unknown;
-            };
-            /**
-             * Recovery
-             * @description Not modelled yet: accepted as-is so configs round-trip.
-             */
-            recovery?: {
-                [key: string]: unknown;
-            };
-            /**
-             * Rocket
-             * @description Not modelled yet: accepted as-is so configs round-trip.
-             */
-            rocket?: {
-                [key: string]: unknown;
-            };
+            /** @description Solid rocket motor. */
+            motor?: components["schemas"]["Motor"] | null;
+            /** @description Parachutes and other recovery devices. */
+            recovery?: components["schemas"]["Recovery"];
+            /** @description Airframe, without the motor. */
+            rocket?: components["schemas"]["Rocket"] | null;
             /**
              * Schema Version
              * @description Config schema version. Older configs are migrated on load.
-             * @default 1
+             * @default 2
              * @constant
              */
-            schema_version: 1;
+            schema_version: 2;
             /** @description Launch site and range geometry. */
             site?: components["schemas"]["Site"] | null;
             /**
@@ -360,6 +754,82 @@ export interface components {
              */
             updated_utc: string;
         };
+        /** Motor */
+        Motor: {
+            /**
+             * Burn Time S
+             * @description Burn time. Unset takes it from the thrust curve.
+             */
+            burn_time_s?: number | null;
+            /**
+             * Dry Cg Position M
+             * @description Centre of dry mass, forward of the nozzle exit.
+             */
+            dry_cg_position_m: number;
+            /**
+             * Dry Inertia
+             * @description Principal moments of inertia (I11, I22, I33) in kg·m², about the centre of mass, with e3 along the rocket's axis.
+             */
+            dry_inertia: [
+                number,
+                number,
+                number
+            ];
+            /**
+             * Dry Mass Kg
+             * @description Motor mass without propellant.
+             */
+            dry_mass_kg: number;
+            /** @description Propellant grain geometry. */
+            grains: components["schemas"]["Grains"];
+            /**
+             * Nozzle Radius M
+             * @description Nozzle exit radius.
+             */
+            nozzle_radius_m: number;
+            /**
+             * Throat Radius M
+             * @description Nozzle throat radius.
+             */
+            throat_radius_m: number;
+            /**
+             * Thrust Curve
+             * @description Thrust curve asset (.eng or .rse).
+             */
+            thrust_curve: string;
+        };
+        /** NoseCone */
+        NoseCone: {
+            /**
+             * Kind
+             * @description Nose cone profile.
+             * @enum {string}
+             */
+            kind: "von_karman" | "conical" | "tangent_ogive" | "lvhaack" | "elliptical" | "parabolic";
+            /**
+             * Length M
+             * @description Nose cone length, tip to shoulder.
+             */
+            length_m: number;
+        };
+        /** ParachuteEvent */
+        ParachuteEvent: {
+            /**
+             * Name
+             * @description Recovery device name, from the mission.
+             */
+            name: string;
+            /**
+             * Triggered Agl M
+             * @description Altitude above ground when the trigger fired.
+             */
+            triggered_agl_m: number;
+            /**
+             * Triggered S
+             * @description Time the trigger fired.
+             */
+            triggered_s: number;
+        };
         /** Problem */
         Problem: {
             /**
@@ -393,6 +863,310 @@ export interface components {
              * @default about:blank
              */
             type: string;
+        };
+        /** ProfileLevel */
+        ProfileLevel: {
+            /**
+             * Altitude M
+             * @description Geometric altitude above mean sea level.
+             */
+            altitude_m: number;
+            /**
+             * Pressure Pa
+             * @description Static pressure.
+             */
+            pressure_pa: number;
+            /**
+             * Temperature K
+             * @description Air temperature.
+             */
+            temperature_k: number;
+            /**
+             * Wind U Ms
+             * @description Wind component towards east.
+             */
+            wind_u_ms: number;
+            /**
+             * Wind V Ms
+             * @description Wind component towards north.
+             */
+            wind_v_ms: number;
+        };
+        /**
+         * Provenance
+         * @description Where a number came from: everything needed to reproduce it.
+         */
+        Provenance: {
+            /**
+             * Atmosphere
+             * @description Atmosphere source, and its time for a profile.
+             */
+            atmosphere: string;
+            /**
+             * Computed Utc
+             * Format: date-time
+             * @description When the simulation ran.
+             */
+            computed_utc: string;
+            /**
+             * Drag
+             * @description Drag source and multiplier.
+             */
+            drag: string;
+            /**
+             * Git Sha
+             * @description Commit of the running build.
+             */
+            git_sha: string;
+            /**
+             * Mission Hash
+             * @description sha256 of the canonical mission config.
+             */
+            mission_hash: string;
+            /**
+             * Mission Id
+             * @description Mission the result was run from.
+             */
+            mission_id: string;
+            /**
+             * Mission Name
+             * @description Mission name at run time.
+             */
+            mission_name: string;
+            /**
+             * Rocketpy Version
+             * @description RocketPy version that simulated it.
+             */
+            rocketpy_version: string;
+            /**
+             * Seed
+             * @description Random seed; None for a deterministic flight.
+             */
+            seed: number | null;
+            /**
+             * Simcore Version
+             * @description simcore version that built the simulation.
+             */
+            simcore_version: string;
+            /**
+             * Thrust Curve
+             * @description sha256 of the thrust curve used.
+             */
+            thrust_curve: string | null;
+        };
+        /** RailButtons */
+        RailButtons: {
+            /**
+             * Angular Position Deg
+             * @description Angle of the buttons around the body, relative to the fins.
+             * @default 45
+             */
+            angular_position_deg: number;
+            /**
+             * Lower Position M
+             * @description Aft rail button, aft of the nose tip.
+             */
+            lower_position_m: number;
+            /**
+             * Upper Position M
+             * @description Forward rail button, aft of the nose tip.
+             */
+            upper_position_m: number;
+        };
+        /** Recovery */
+        Recovery: {
+            /**
+             * Devices
+             * @description Recovery devices. None means a ballistic descent.
+             */
+            devices?: components["schemas"]["RecoveryDevice"][];
+        };
+        /** RecoveryDevice */
+        RecoveryDevice: {
+            /**
+             * Cd S M2
+             * @description Drag coefficient times reference area (CdS) of the open canopy.
+             */
+            cd_s_m2: number;
+            /**
+             * Lag S
+             * @description Time from trigger to fully open canopy.
+             * @default 0
+             */
+            lag_s: number;
+            /**
+             * Name
+             * @description Device name, e.g. 'Drogue' or 'Main'.
+             */
+            name: string;
+            /**
+             * Sampling Rate Hz
+             * @description Rate the flight computer checks the trigger.
+             * @default 100
+             */
+            sampling_rate_hz: number;
+            /**
+             * Trigger
+             * @description When the device deploys.
+             */
+            trigger: components["schemas"]["AtApogee"] | components["schemas"]["AtAltitude"];
+        };
+        /** ResolvedProfile */
+        ResolvedProfile: {
+            /**
+             * @description A resolved atmosphere table, stored so runs are reproducible offline. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            kind: "profile";
+            /**
+             * Levels
+             * @description Levels, ordered by increasing altitude.
+             */
+            levels: components["schemas"]["ProfileLevel"][];
+            /**
+             * Source
+             * @description Where the profile came from, e.g. 'manual' or a model.
+             */
+            source: string;
+            /**
+             * Valid Utc
+             * @description Time the profile describes, UTC.
+             */
+            valid_utc?: string | null;
+        };
+        /** ResultRecord */
+        ResultRecord: {
+            /**
+             * Ascent Only
+             * @description True if the flight stopped at apogee.
+             */
+            ascent_only: boolean;
+            /**
+             * Channels
+             * @description Trajectory channels available as series.
+             */
+            channels: components["schemas"]["ChannelInfo"][];
+            /**
+             * Id
+             * @description Result id; also its cache key.
+             */
+            id: string;
+            /**
+             * Kind
+             * @description Result type. Only 'flight' so far.
+             */
+            kind: string;
+            /**
+             * Points
+             * @description Full-resolution samples per channel.
+             */
+            points: number;
+            /** @description Where the result came from. */
+            provenance: components["schemas"]["Provenance"];
+            /** @description Summary scalars. */
+            summary: components["schemas"]["FlightSummary"];
+            /**
+             * Warnings
+             * @description Warnings RocketPy raised during the run.
+             */
+            warnings: string[];
+        };
+        /** Rocket */
+        Rocket: {
+            /** @description Aerodynamic drag. */
+            drag: components["schemas"]["Drag"];
+            /**
+             * Dry Cg M
+             * @description Centre of mass without the motor, aft of the nose tip.
+             */
+            dry_cg_m: number;
+            /**
+             * Dry Inertia
+             * @description Principal moments of inertia (I11, I22, I33) in kg·m², about the centre of mass, with e3 along the rocket's axis.
+             */
+            dry_inertia: [
+                number,
+                number,
+                number
+            ];
+            /**
+             * Dry Mass Kg
+             * @description Mass without the motor.
+             */
+            dry_mass_kg: number;
+            /**
+             * Fins
+             * @description Fin sets.
+             */
+            fins: components["schemas"]["TrapezoidalFins"][];
+            /**
+             * Motor Position M
+             * @description Position of the motor's nozzle exit, aft of the nose tip.
+             */
+            motor_position_m: number;
+            /** @description Nose cone. */
+            nose: components["schemas"]["NoseCone"];
+            /**
+             * Radius M
+             * @description Body tube outer radius.
+             */
+            radius_m: number;
+            /** @description Rail buttons. Without them the rail is a single point. */
+            rail_buttons?: components["schemas"]["RailButtons"] | null;
+            /** @description Boat-tail, if any. */
+            tail?: components["schemas"]["Tail"] | null;
+        };
+        /** RunState */
+        RunState: {
+            /**
+             * Cached
+             * @description True if an identical run's result was reused.
+             */
+            cached: boolean;
+            /**
+             * Error
+             * @description Why the run failed.
+             */
+            error?: string | null;
+            /**
+             * Job Id
+             * @description Job to poll while not done.
+             */
+            job_id: string | null;
+            /**
+             * Result Id
+             * @description Where the result is (or will be) stored.
+             */
+            result_id: string;
+            /**
+             * Status
+             * @description Run status.
+             * @enum {string}
+             */
+            status: "queued" | "running" | "done" | "failed";
+        };
+        /** Series */
+        Series: {
+            /**
+             * Name
+             * @description Channel id.
+             */
+            name: string;
+            /**
+             * T
+             * @description Time since ignition, s.
+             */
+            t: number[];
+            /**
+             * Units
+             * @description Units of y.
+             */
+            units: string;
+            /**
+             * Y
+             * @description Values, in units.
+             */
+            y: number[];
         };
         /** Site */
         Site: {
@@ -451,6 +1225,14 @@ export interface components {
              */
             rail_length_m: number;
         };
+        /** StandardAtmosphere */
+        StandardAtmosphere: {
+            /**
+             * @description International Standard Atmosphere, no wind. For sanity runs. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            kind: "standard";
+        };
         /** SystemInfo */
         SystemInfo: {
             /**
@@ -483,6 +1265,91 @@ export interface components {
              * @description Workers currently sending heartbeats.
              */
             worker_count: number;
+        };
+        /** Tail */
+        Tail: {
+            /**
+             * Bottom Radius M
+             * @description Radius at the aft end of the tail.
+             */
+            bottom_radius_m: number;
+            /**
+             * Length M
+             * @description Tail (boat-tail) length.
+             */
+            length_m: number;
+            /**
+             * Position M
+             * @description Position of the tail's forward end, aft of the nose tip.
+             */
+            position_m: number;
+            /**
+             * Top Radius M
+             * @description Radius at the forward end of the tail.
+             */
+            top_radius_m: number;
+        };
+        /** ThrustCurveInfo */
+        ThrustCurveInfo: {
+            /**
+             * Burn Time S
+             * @description Last thrust point.
+             */
+            burn_time_s: number;
+            /**
+             * Designation
+             * @description Motor designation from the file header.
+             */
+            designation: string;
+            /**
+             * Propellant Mass Kg
+             * @description From the file header.
+             */
+            propellant_mass_kg: number;
+            /**
+             * Total Impulse Ns
+             * @description Area under the curve.
+             */
+            total_impulse_ns: number;
+        };
+        /** TrapezoidalFins */
+        TrapezoidalFins: {
+            /**
+             * Cant Angle Deg
+             * @description Fin cant angle.
+             * @default 0
+             */
+            cant_angle_deg: number;
+            /**
+             * Count
+             * @description Number of fins in the set.
+             */
+            count: number;
+            /**
+             * Position M
+             * @description Position of the root chord's leading edge, aft of the nose tip.
+             */
+            position_m: number;
+            /**
+             * Root Chord M
+             * @description Chord length at the body tube.
+             */
+            root_chord_m: number;
+            /**
+             * Span M
+             * @description Distance from body tube to fin tip.
+             */
+            span_m: number;
+            /**
+             * Sweep Length M
+             * @description Axial distance from root leading edge to tip leading edge. Unset means the tip chord is centred on the root chord.
+             */
+            sweep_length_m?: number | null;
+            /**
+             * Tip Chord M
+             * @description Chord length at the fin tip.
+             */
+            tip_chord_m: number;
         };
         /** ValidationError */
         ValidationError: {
@@ -519,6 +1386,79 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    uploadAsset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_uploadAsset"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssetInfo"];
+                };
+            };
+            /** @description The file does not parse. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    downloadAsset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sha256: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/octet-stream": unknown;
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     getHealth: {
         parameters: {
             query?: never;
@@ -535,6 +1475,46 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Health"];
+                };
+            };
+        };
+    };
+    getJob: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobState"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description No job queue. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -867,13 +1847,14 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description The mission file. */
+            /** @description The mission file, or a bundle with its assets. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/yaml": unknown;
+                    "application/zip": unknown;
                 };
             };
             /** @description No mission with that id. */
@@ -903,8 +1884,137 @@ export interface operations {
                     "application/json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Format not implemented yet. */
-            501: {
+        };
+    };
+    getResult: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                result_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResultRecord"];
+                };
+            };
+            /** @description No result with that id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    getResultSeries: {
+        parameters: {
+            query: {
+                /** @description Comma-separated channel names. */
+                vars: string;
+                max_points?: number;
+            };
+            header?: never;
+            path: {
+                result_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Series"][];
+                };
+            };
+            /** @description No result with that id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Unknown channel. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    runFlight: {
+        parameters: {
+            query?: {
+                /** @description Wait this long for the result. */
+                wait_s?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FlightRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunState"];
+                };
+            };
+            /** @description Queued; poll the job. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunState"];
+                };
+            };
+            /** @description The mission cannot be flown yet. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description No job queue. */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };

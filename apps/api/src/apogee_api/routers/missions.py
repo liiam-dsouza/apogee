@@ -13,12 +13,16 @@ from pydantic import BaseModel, Field
 from sqlmodel import Session, col, select
 
 from apogee_api.db import MissionRecord, get_session
+from apogee_api.deps import AssetStoreDep
 from apogee_api.problems import ApiProblem, Problem
+from simcore.assets import AssetError
+from simcore.bundle import MAX_BUNDLE_BYTES, BundleError, read_bundle, write_bundle
 from simcore.mission import (
     Issue,
     Mission,
     ValidationReport,
     dump_yaml,
+    load_mission,
     mission_hash,
     parse_yaml,
     validate_mission,
@@ -139,7 +143,8 @@ def create_mission(mission: Mission, session: SessionDep) -> MissionDocument:
 @router.get("/{mission_id}", operation_id="getMission", responses=PROBLEM_RESPONSES)
 def get_mission(mission_id: str, session: SessionDep) -> MissionDocument:
     record = _get_record(session, mission_id)
-    return _to_document(record, Mission.model_validate(parse_yaml(record.yaml)))
+    # Stored files may predate the current schema: migrate on every read.
+    return _to_document(record, load_mission(parse_yaml(record.yaml)))
 
 
 @router.put("/{mission_id}", operation_id="updateMission", responses=PROBLEM_RESPONSES)
@@ -180,13 +185,26 @@ def delete_mission(mission_id: str, session: SessionDep) -> None:
     status_code=status.HTTP_201_CREATED,
     responses={**PROBLEM_RESPONSES, 415: {"model": Problem, "description": "Unsupported file."}},
 )
-async def import_mission(file: UploadFile, session: SessionDep) -> MissionDocument:
-    """Import a mission.yaml (any schema version). Bundles (.mission.zip) are not supported yet."""
+async def import_mission(
+    file: UploadFile, session: SessionDep, store: AssetStoreDep
+) -> MissionDocument:
+    """Import a mission.yaml or a .mission.zip bundle (any schema version).
+
+    A bundle's assets are hash-checked and added to the asset store, so the
+    mission can be flown straight away.
+    """
     name = file.filename or ""
-    if name.endswith(".zip"):
-        raise ApiProblem(415, "bundle_not_supported", "Mission bundles are not supported yet")
+    raw = await file.read(MAX_BUNDLE_BYTES + 1)
+    bundle_assets: dict[str, bytes] = {}
     try:
-        data = parse_yaml((await file.read()).decode())
+        if name.endswith(".zip"):
+            data, bundle_assets = read_bundle(raw)
+        else:
+            data = parse_yaml(raw.decode())
+    except BundleError as e:
+        raise ApiProblem(
+            415, "unreadable_bundle", "The file is not a usable mission bundle", str(e)
+        ) from e
     except Exception as e:
         raise ApiProblem(
             415, "unreadable_file", "The file is not a YAML or JSON mission", str(e)
@@ -207,6 +225,8 @@ async def import_mission(file: UploadFile, session: SessionDep) -> MissionDocume
             "A mission with this id already exists",
             f"'{mission.meta.name}' is already stored. Delete it or edit meta.id.",
         )
+    for content in bundle_assets.values():
+        store.put(content)
     return _to_document(_save(session, mission, None), mission)
 
 
@@ -215,20 +235,34 @@ async def import_mission(file: UploadFile, session: SessionDep) -> MissionDocume
     operation_id="exportMission",
     responses={
         **PROBLEM_RESPONSES,
-        200: {"content": {"application/yaml": {}}, "description": "The mission file."},
-        501: {"model": Problem, "description": "Format not implemented yet."},
+        200: {
+            "content": {"application/yaml": {}, "application/zip": {}},
+            "description": "The mission file, or a bundle with its assets.",
+        },
     },
     response_class=Response,
 )
 def export_mission(
     mission_id: str,
     session: SessionDep,
+    store: AssetStoreDep,
     format: Annotated[Literal["yaml", "zip"], Query()] = "yaml",
 ) -> Response:
     record = _get_record(session, mission_id)
-    if format == "zip":
-        raise ApiProblem(501, "bundle_not_supported", "Mission bundles are not supported yet")
     slug = re.sub(r"[^a-z0-9]+", "-", record.name.lower()).strip("-") or "mission"
+    if format == "zip":
+        mission = load_mission(parse_yaml(record.yaml))
+        try:
+            data = write_bundle(mission, store)
+        except AssetError as e:
+            raise ApiProblem(
+                409, "asset_missing", "A file this mission uses is missing from the store", str(e)
+            ) from e
+        return Response(
+            data,
+            media_type="application/zip",
+            headers={"Content-Disposition": f'attachment; filename="{slug}.mission.zip"'},
+        )
     return Response(
         record.yaml,
         media_type="application/yaml",

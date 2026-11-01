@@ -14,8 +14,179 @@ export const fields = {
       "minimum": 0
     }
   },
+  "AssetInfo": {
+    "filename": {
+      "description": "Original filename."
+    },
+    "kind": {
+      "description": "What the file is."
+    },
+    "sha256": {
+      "description": "Content hash; how missions refer to the file."
+    },
+    "size": {
+      "description": "File size.",
+      "units": "bytes"
+    },
+    "thrust_curve": {
+      "description": "Parsed motor data, for thrust curves."
+    }
+  },
+  "AtAltitude": {
+    "altitude_m": {
+      "description": "Deployment altitude above ground level.",
+      "units": "m",
+      "exclusiveMinimum": 0
+    },
+    "kind": {
+      "description": "Deploy at an altitude while descending."
+    }
+  },
+  "AtApogee": {
+    "kind": {
+      "description": "Deploy at apogee."
+    }
+  },
   "Body_importMission": {
     "file": {}
+  },
+  "Body_uploadAsset": {
+    "file": {},
+    "kind": {}
+  },
+  "ChannelInfo": {
+    "description": {
+      "description": "What the channel measures."
+    },
+    "name": {
+      "description": "Channel id, used in series requests."
+    },
+    "units": {
+      "description": "Units of the values."
+    }
+  },
+  "Drag": {
+    "multiplier": {
+      "description": "Scales both curves. 1 uses them as given; post-flight calibration fits this.",
+      "maximum": 5,
+      "exclusiveMinimum": 0
+    },
+    "power_off": {
+      "description": "Drag coefficient after burnout."
+    },
+    "power_on": {
+      "description": "Drag coefficient while the motor burns."
+    }
+  },
+  "DragCurve": {
+    "constant_cd": {
+      "description": "A constant drag coefficient, if there is no table.",
+      "exclusiveMinimum": 0
+    },
+    "table": {
+      "description": "CSV asset of (Mach, CD) rows. Takes precedence over constant_cd."
+    }
+  },
+  "Environment": {
+    "atmosphere": {
+      "description": "Atmosphere and wind the flight is simulated in."
+    }
+  },
+  "FlightRequest": {
+    "ascent_only": {
+      "description": "Stop at apogee: about 30% faster, no landing data."
+    },
+    "mission": {
+      "description": "The mission to fly, saved or not."
+    }
+  },
+  "FlightSummary": {
+    "apogee_agl_m": {
+      "description": "Highest altitude above the pad.",
+      "units": "m"
+    },
+    "apogee_time_s": {
+      "description": "Time from ignition to apogee.",
+      "units": "s"
+    },
+    "burnout_time_s": {
+      "description": "Motor burnout time.",
+      "units": "s"
+    },
+    "landing": {
+      "description": "Touchdown. None for an ascent-only flight, which stops at apogee."
+    },
+    "max_acceleration_ms2": {
+      "description": "Highest acceleration magnitude.",
+      "units": "m/s²"
+    },
+    "max_dynamic_pressure_pa": {
+      "description": "Highest dynamic pressure (max q).",
+      "units": "Pa"
+    },
+    "max_mach": {
+      "description": "Highest Mach number.",
+      "units": "1"
+    },
+    "max_speed_ms": {
+      "description": "Highest speed.",
+      "units": "m/s"
+    },
+    "max_stability_margin_cal": {
+      "description": "Highest static stability margin during powered and coasting flight.",
+      "units": "cal"
+    },
+    "min_stability_margin_cal": {
+      "description": "Lowest static stability margin during powered and coasting flight.",
+      "units": "cal"
+    },
+    "parachute_events": {
+      "description": "Recovery devices that deployed, in order."
+    },
+    "rail_exit_velocity_ms": {
+      "description": "Speed when the last rail button leaves.",
+      "units": "m/s"
+    },
+    "stability_margin_at_rail_exit_cal": {
+      "description": "Static stability margin at rail exit, in body calibers.",
+      "units": "cal"
+    }
+  },
+  "Grains": {
+    "cg_position_m": {
+      "description": "Centre of mass of the grain stack, forward of the nozzle exit.",
+      "units": "m"
+    },
+    "count": {
+      "description": "Number of propellant grains.",
+      "minimum": 1,
+      "maximum": 20
+    },
+    "density_kg_m3": {
+      "description": "Propellant density.",
+      "units": "kg/m³",
+      "exclusiveMinimum": 0
+    },
+    "initial_height_m": {
+      "description": "Height of one grain before burning.",
+      "units": "m",
+      "exclusiveMinimum": 0
+    },
+    "initial_inner_radius_m": {
+      "description": "Grain core radius before burning.",
+      "units": "m",
+      "minimum": 0
+    },
+    "outer_radius_m": {
+      "description": "Grain outer radius.",
+      "units": "m",
+      "exclusiveMinimum": 0
+    },
+    "separation_m": {
+      "description": "Gap between adjacent grains.",
+      "units": "m",
+      "minimum": 0
+    }
   },
   "HTTPValidationError": {
     "detail": {}
@@ -39,6 +210,54 @@ export const fields = {
       "description": "Errors block a run; warnings do not."
     }
   },
+  "JobState": {
+    "error": {
+      "description": "Why it failed, if it did."
+    },
+    "id": {
+      "description": "Job id."
+    },
+    "result_id": {
+      "description": "Result id once done."
+    },
+    "status": {
+      "description": "Where the job is."
+    }
+  },
+  "Landing": {
+    "drift_distance_m": {
+      "description": "Horizontal distance from pad to landing point.",
+      "units": "m"
+    },
+    "east_m": {
+      "description": "Landing point east of the pad.",
+      "units": "m"
+    },
+    "flight_time_s": {
+      "description": "Time from ignition to touchdown.",
+      "units": "s"
+    },
+    "kinetic_energy_j": {
+      "description": "Kinetic energy at touchdown, whole rocket as one body.",
+      "units": "J"
+    },
+    "latitude_deg": {
+      "description": "Landing point latitude, WGS84.",
+      "units": "deg"
+    },
+    "longitude_deg": {
+      "description": "Landing point longitude, WGS84.",
+      "units": "deg"
+    },
+    "north_m": {
+      "description": "Landing point north of the pad.",
+      "units": "m"
+    },
+    "speed_ms": {
+      "description": "Speed at touchdown.",
+      "units": "m/s"
+    }
+  },
   "Mission": {
     "assets": {
       "description": "Content-addressed files, keyed by sha256: thrust curves, drag tables, .ork originals."
@@ -50,7 +269,7 @@ export const fields = {
       "description": "Not modelled yet: accepted as-is so configs round-trip."
     },
     "environment": {
-      "description": "Not modelled yet: accepted as-is so configs round-trip."
+      "description": "Atmosphere and wind."
     },
     "extends": {
       "description": "Path of a base config this one overrides (not yet supported)."
@@ -62,13 +281,13 @@ export const fields = {
       "description": "Not modelled yet: accepted as-is so configs round-trip."
     },
     "motor": {
-      "description": "Not modelled yet: accepted as-is so configs round-trip."
+      "description": "Solid rocket motor."
     },
     "recovery": {
-      "description": "Not modelled yet: accepted as-is so configs round-trip."
+      "description": "Parachutes and other recovery devices."
     },
     "rocket": {
-      "description": "Not modelled yet: accepted as-is so configs round-trip."
+      "description": "Airframe, without the motor."
     },
     "schema_version": {
       "description": "Config schema version. Older configs are migrated on load."
@@ -125,6 +344,65 @@ export const fields = {
       "description": "Last saved, UTC."
     }
   },
+  "Motor": {
+    "burn_time_s": {
+      "description": "Burn time. Unset takes it from the thrust curve.",
+      "units": "s",
+      "exclusiveMinimum": 0
+    },
+    "dry_cg_position_m": {
+      "description": "Centre of dry mass, forward of the nozzle exit.",
+      "units": "m"
+    },
+    "dry_inertia": {
+      "description": "Principal moments of inertia (I11, I22, I33) in kg·m², about the centre of mass, with e3 along the rocket's axis.",
+      "units": "kg·m²"
+    },
+    "dry_mass_kg": {
+      "description": "Motor mass without propellant.",
+      "units": "kg",
+      "exclusiveMinimum": 0
+    },
+    "grains": {
+      "description": "Propellant grain geometry."
+    },
+    "nozzle_radius_m": {
+      "description": "Nozzle exit radius.",
+      "units": "m",
+      "exclusiveMinimum": 0
+    },
+    "throat_radius_m": {
+      "description": "Nozzle throat radius.",
+      "units": "m",
+      "exclusiveMinimum": 0
+    },
+    "thrust_curve": {
+      "description": "Thrust curve asset (.eng or .rse)."
+    }
+  },
+  "NoseCone": {
+    "kind": {
+      "description": "Nose cone profile."
+    },
+    "length_m": {
+      "description": "Nose cone length, tip to shoulder.",
+      "units": "m",
+      "exclusiveMinimum": 0
+    }
+  },
+  "ParachuteEvent": {
+    "name": {
+      "description": "Recovery device name, from the mission."
+    },
+    "triggered_agl_m": {
+      "description": "Altitude above ground when the trigger fired.",
+      "units": "m"
+    },
+    "triggered_s": {
+      "description": "Time the trigger fired.",
+      "units": "s"
+    }
+  },
   "Problem": {
     "code": {
       "description": "Machine-readable problem code."
@@ -143,6 +421,221 @@ export const fields = {
     },
     "type": {
       "description": "URI identifying the problem type."
+    }
+  },
+  "ProfileLevel": {
+    "altitude_m": {
+      "description": "Geometric altitude above mean sea level.",
+      "units": "m"
+    },
+    "pressure_pa": {
+      "description": "Static pressure.",
+      "units": "Pa",
+      "exclusiveMinimum": 0
+    },
+    "temperature_k": {
+      "description": "Air temperature.",
+      "units": "K",
+      "exclusiveMinimum": 0
+    },
+    "wind_u_ms": {
+      "description": "Wind component towards east.",
+      "units": "m/s"
+    },
+    "wind_v_ms": {
+      "description": "Wind component towards north.",
+      "units": "m/s"
+    }
+  },
+  "Provenance": {
+    "atmosphere": {
+      "description": "Atmosphere source, and its time for a profile."
+    },
+    "computed_utc": {
+      "description": "When the simulation ran."
+    },
+    "drag": {
+      "description": "Drag source and multiplier."
+    },
+    "git_sha": {
+      "description": "Commit of the running build."
+    },
+    "mission_hash": {
+      "description": "sha256 of the canonical mission config."
+    },
+    "mission_id": {
+      "description": "Mission the result was run from."
+    },
+    "mission_name": {
+      "description": "Mission name at run time."
+    },
+    "rocketpy_version": {
+      "description": "RocketPy version that simulated it."
+    },
+    "seed": {
+      "description": "Random seed; None for a deterministic flight."
+    },
+    "simcore_version": {
+      "description": "simcore version that built the simulation."
+    },
+    "thrust_curve": {
+      "description": "sha256 of the thrust curve used."
+    }
+  },
+  "RailButtons": {
+    "angular_position_deg": {
+      "description": "Angle of the buttons around the body, relative to the fins.",
+      "units": "deg"
+    },
+    "lower_position_m": {
+      "description": "Aft rail button, aft of the nose tip.",
+      "units": "m",
+      "minimum": 0
+    },
+    "upper_position_m": {
+      "description": "Forward rail button, aft of the nose tip.",
+      "units": "m",
+      "minimum": 0
+    }
+  },
+  "Recovery": {
+    "devices": {
+      "description": "Recovery devices. None means a ballistic descent."
+    }
+  },
+  "RecoveryDevice": {
+    "cd_s_m2": {
+      "description": "Drag coefficient times reference area (CdS) of the open canopy.",
+      "units": "m²",
+      "exclusiveMinimum": 0
+    },
+    "lag_s": {
+      "description": "Time from trigger to fully open canopy.",
+      "units": "s",
+      "minimum": 0
+    },
+    "name": {
+      "description": "Device name, e.g. 'Drogue' or 'Main'."
+    },
+    "sampling_rate_hz": {
+      "description": "Rate the flight computer checks the trigger.",
+      "units": "Hz",
+      "exclusiveMinimum": 0
+    },
+    "trigger": {
+      "description": "When the device deploys."
+    }
+  },
+  "ResolvedProfile": {
+    "kind": {
+      "description": "A resolved atmosphere table, stored so runs are reproducible offline."
+    },
+    "levels": {
+      "description": "Levels, ordered by increasing altitude."
+    },
+    "source": {
+      "description": "Where the profile came from, e.g. 'manual' or a model."
+    },
+    "valid_utc": {
+      "description": "Time the profile describes, UTC."
+    }
+  },
+  "ResultRecord": {
+    "ascent_only": {
+      "description": "True if the flight stopped at apogee."
+    },
+    "channels": {
+      "description": "Trajectory channels available as series."
+    },
+    "id": {
+      "description": "Result id; also its cache key."
+    },
+    "kind": {
+      "description": "Result type. Only 'flight' so far."
+    },
+    "points": {
+      "description": "Full-resolution samples per channel."
+    },
+    "provenance": {
+      "description": "Where the result came from."
+    },
+    "summary": {
+      "description": "Summary scalars."
+    },
+    "warnings": {
+      "description": "Warnings RocketPy raised during the run."
+    }
+  },
+  "Rocket": {
+    "drag": {
+      "description": "Aerodynamic drag."
+    },
+    "dry_cg_m": {
+      "description": "Centre of mass without the motor, aft of the nose tip.",
+      "units": "m"
+    },
+    "dry_inertia": {
+      "description": "Principal moments of inertia (I11, I22, I33) in kg·m², about the centre of mass, with e3 along the rocket's axis.",
+      "units": "kg·m²"
+    },
+    "dry_mass_kg": {
+      "description": "Mass without the motor.",
+      "units": "kg",
+      "exclusiveMinimum": 0
+    },
+    "fins": {
+      "description": "Fin sets."
+    },
+    "motor_position_m": {
+      "description": "Position of the motor's nozzle exit, aft of the nose tip.",
+      "units": "m",
+      "exclusiveMinimum": 0
+    },
+    "nose": {
+      "description": "Nose cone."
+    },
+    "radius_m": {
+      "description": "Body tube outer radius.",
+      "units": "m",
+      "maximum": 1,
+      "exclusiveMinimum": 0
+    },
+    "rail_buttons": {
+      "description": "Rail buttons. Without them the rail is a single point."
+    },
+    "tail": {
+      "description": "Boat-tail, if any."
+    }
+  },
+  "RunState": {
+    "cached": {
+      "description": "True if an identical run's result was reused."
+    },
+    "error": {
+      "description": "Why the run failed."
+    },
+    "job_id": {
+      "description": "Job to poll while not done."
+    },
+    "result_id": {
+      "description": "Where the result is (or will be) stored."
+    },
+    "status": {
+      "description": "Run status."
+    }
+  },
+  "Series": {
+    "name": {
+      "description": "Channel id."
+    },
+    "t": {
+      "description": "Time since ignition, s."
+    },
+    "units": {
+      "description": "Units of y."
+    },
+    "y": {
+      "description": "Values, in units."
     }
   },
   "Site": {
@@ -192,6 +685,11 @@ export const fields = {
       "exclusiveMinimum": 0
     }
   },
+  "StandardAtmosphere": {
+    "kind": {
+      "description": "International Standard Atmosphere, no wind. For sanity runs."
+    }
+  },
   "SystemInfo": {
     "field_mode": {
       "description": "Whether the deployment is in field mode."
@@ -210,6 +708,82 @@ export const fields = {
     },
     "worker_count": {
       "description": "Workers currently sending heartbeats."
+    }
+  },
+  "Tail": {
+    "bottom_radius_m": {
+      "description": "Radius at the aft end of the tail.",
+      "units": "m",
+      "minimum": 0
+    },
+    "length_m": {
+      "description": "Tail (boat-tail) length.",
+      "units": "m",
+      "exclusiveMinimum": 0
+    },
+    "position_m": {
+      "description": "Position of the tail's forward end, aft of the nose tip.",
+      "units": "m",
+      "minimum": 0
+    },
+    "top_radius_m": {
+      "description": "Radius at the forward end of the tail.",
+      "units": "m",
+      "exclusiveMinimum": 0
+    }
+  },
+  "ThrustCurveInfo": {
+    "burn_time_s": {
+      "description": "Last thrust point.",
+      "units": "s"
+    },
+    "designation": {
+      "description": "Motor designation from the file header."
+    },
+    "propellant_mass_kg": {
+      "description": "From the file header.",
+      "units": "kg"
+    },
+    "total_impulse_ns": {
+      "description": "Area under the curve.",
+      "units": "N·s"
+    }
+  },
+  "TrapezoidalFins": {
+    "cant_angle_deg": {
+      "description": "Fin cant angle.",
+      "units": "deg",
+      "minimum": -10,
+      "maximum": 10
+    },
+    "count": {
+      "description": "Number of fins in the set.",
+      "minimum": 2,
+      "maximum": 8
+    },
+    "position_m": {
+      "description": "Position of the root chord's leading edge, aft of the nose tip.",
+      "units": "m",
+      "minimum": 0
+    },
+    "root_chord_m": {
+      "description": "Chord length at the body tube.",
+      "units": "m",
+      "exclusiveMinimum": 0
+    },
+    "span_m": {
+      "description": "Distance from body tube to fin tip.",
+      "units": "m",
+      "exclusiveMinimum": 0
+    },
+    "sweep_length_m": {
+      "description": "Axial distance from root leading edge to tip leading edge. Unset means the tip chord is centred on the root chord.",
+      "units": "m"
+    },
+    "tip_chord_m": {
+      "description": "Chord length at the fin tip.",
+      "units": "m",
+      "minimum": 0
     }
   },
   "ValidationError": {

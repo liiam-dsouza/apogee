@@ -21,6 +21,7 @@ export type Quantity =
   | 'force'
   | 'impulse'
   | 'pressure'
+  | 'dynamic_pressure'
   | 'temperature'
   | 'angle'
   | 'energy'
@@ -54,6 +55,7 @@ const UNITS: Record<UnitSystem, Record<Quantity, Unit>> = {
     force: linear('N', 1),
     impulse: linear('N·s', 1),
     pressure: linear('hPa', 100),
+    dynamic_pressure: linear('kPa', 1000),
     temperature: linear('°C', 1, 273.15),
     angle: linear('°', 1),
     energy: linear('J', 1),
@@ -68,6 +70,7 @@ const UNITS: Record<UnitSystem, Record<Quantity, Unit>> = {
     force: linear('lbf', LBF),
     impulse: linear('lbf·s', LBF),
     pressure: linear('psi', 6894.757293168),
+    dynamic_pressure: linear('psi', 6894.757293168),
     temperature: {
       symbol: '°F',
       fromSI: (k) => ((k - 273.15) * 9) / 5 + 32,

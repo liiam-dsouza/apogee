@@ -1,0 +1,38 @@
+{
+  "rocketpy_version": "1.13.0",
+  "summary": {
+    "apogee_agl_m": 3305.4399659028504,
+    "apogee_time_s": 25.88630175256574,
+    "rail_exit_velocity_ms": 26.207310252722156,
+    "stability_margin_at_rail_exit_cal": 2.2716361623195955,
+    "min_stability_margin_cal": 2.19392359405544,
+    "max_stability_margin_cal": 3.6800712930989867,
+    "max_mach": 0.8601572369681438,
+    "max_speed_ms": 285.9566127554451,
+    "max_dynamic_pressure_pa": 41545.06480299039,
+    "max_acceleration_ms2": 105.27745709333198,
+    "burnout_time_s": 3.9,
+    "landing": {
+      "east_m": -5.973472087938575,
+      "north_m": 662.3350540750814,
+      "latitude_deg": 32.996209742278964,
+      "longitude_deg": -106.97506204348208,
+      "drift_distance_m": 662.3619903235891,
+      "speed_ms": 5.45626620381527,
+      "kinetic_energy_j": 241.75411345078993,
+      "flight_time_s": 298.1563518569918
+    },
+    "parachute_events": [
+      {
+        "name": "Drogue",
+        "triggered_s": 25.8952380952381,
+        "triggered_agl_m": 3305.4395822635643
+      },
+      {
+        "name": "Main",
+        "triggered_s": 158.25714285714287,
+        "triggered_agl_m": 800.0540760502904
+      }
+    ]
+  }
+}

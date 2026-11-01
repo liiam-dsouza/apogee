@@ -53,9 +53,107 @@ def _point_in_polygon(lon: float, lat: float, poly: Sequence[tuple[float, float]
     return inside
 
 
+def _error(path: str, message: str, code: str) -> Issue:
+    return Issue(path=path, message=message, code=code, severity="error")
+
+
+def _warning(path: str, message: str, code: str) -> Issue:
+    return Issue(path=path, message=message, code=code, severity="warning")
+
+
+def _rocket_checks(mission: Mission) -> list[Issue]:
+    r = mission.rocket
+    if r is None:
+        return []
+    issues: list[Issue] = []
+    length = r.length_m()
+    if r.dry_cg_m < 0:
+        issues.append(
+            _error(
+                "rocket.dry_cg_m",
+                "The centre of mass is forward of the nose tip.",
+                "cg_forward_of_nose",
+            )
+        )
+    elif r.dry_cg_m > length:
+        issues.append(
+            _error(
+                "rocket.dry_cg_m",
+                f"The centre of mass is aft of the rocket's end ({length:.3f} m).",
+                "cg_aft_of_rocket",
+            )
+        )
+    if r.rail_buttons and r.rail_buttons.upper_position_m >= r.rail_buttons.lower_position_m:
+        issues.append(
+            _error(
+                "rocket.rail_buttons",
+                "The upper rail button must be forward of the lower one.",
+                "rail_buttons_order",
+            )
+        )
+    if r.tail:
+        tail_end = r.tail.position_m + r.tail.length_m
+        for i, fins in enumerate(r.fins):
+            if fins.position_m + fins.root_chord_m > tail_end + 1e-6:
+                issues.append(
+                    _warning(
+                        f"rocket.fins[{i}].position_m",
+                        "These fins extend past the end of the tail.",
+                        "fins_past_tail",
+                    )
+                )
+        if r.tail.top_radius_m > r.radius_m * 1.01:
+            issues.append(
+                _warning(
+                    "rocket.tail.top_radius_m",
+                    "The tail is wider than the body tube at its forward end.",
+                    "tail_wider_than_body",
+                )
+            )
+    return issues
+
+
+def _asset_checks(mission: Mission) -> list[Issue]:
+    issues: list[Issue] = []
+    paths: list[tuple[str, str | None]] = []
+    if mission.motor:
+        paths.append(("motor.thrust_curve", mission.motor.thrust_curve))
+    if mission.rocket:
+        paths.append(("rocket.drag.power_off.table", mission.rocket.drag.power_off.table))
+        paths.append(("rocket.drag.power_on.table", mission.rocket.drag.power_on.table))
+    for path, sha in paths:
+        if sha is not None and sha not in mission.assets:
+            issues.append(
+                _error(
+                    path,
+                    "This file is not in the mission's assets. Upload it again.",
+                    "asset_missing",
+                )
+            )
+    return issues
+
+
+def _environment_checks(mission: Mission) -> list[Issue]:
+    atmosphere = mission.environment.atmosphere
+    if mission.site is None or atmosphere.kind != "profile":
+        return []
+    if atmosphere.levels[0].altitude_m > mission.site.elevation_m:
+        return [
+            _warning(
+                "environment.atmosphere.levels",
+                "The wind profile starts above the pad; "
+                "the lowest level is used down to the ground.",
+                "profile_above_pad",
+            )
+        ]
+    return []
+
+
 def physical_checks(mission: Mission) -> list[Issue]:
     """Checks that need the whole, well-typed config."""
-    issues: list[Issue] = []
+    issues: list[Issue] = (
+        _rocket_checks(mission) + _asset_checks(mission) + _environment_checks(mission)
+    )
     site = mission.site
     if (
         site

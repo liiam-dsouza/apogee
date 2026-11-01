@@ -29,6 +29,10 @@
   --go: #4cc38a;
   --caution: #e8b13a;
   --nogo: #ef5b5b;
+  /* Chart marks: the accent's hue stepped into the data-mark lightness band
+     (validated: dataviz validate_palette.js, dark surface). Gridlines recede. */
+  --chart-1: #7180ec;
+  --chart-grid: #1e2a37;
 }
 
 :root[data-theme='light'] {
@@ -44,7 +48,13 @@
   --go: #0a7a47;
   --caution: #8a5a00;
   --nogo: #b3121b;
+  --chart-1: #4252cd;
+  --chart-grid: #e4e8ee;
 }
+
+/* Short screens (laptops with browser chrome): the rail compacts in two steps. */
+@custom-variant short (@media (max-height: 860px));
+@custom-variant shorter (@media (max-height: 760px));
 
 /* Dark is the default; only an explicit light theme switches it off. */
 @custom-variant dark (&:where(:root:not([data-theme='light']), :root:not([data-theme='light']) *));
@@ -62,6 +72,8 @@
   --color-go: var(--go);
   --color-caution: var(--caution);
   --color-nogo: var(--nogo);
+  --color-chart-1: var(--chart-1);
+  --color-chart-grid: var(--chart-grid);
 
   /* shadcn semantic aliases onto the palette above */
   --color-card: var(--surface);
@@ -117,4 +129,9 @@
   .maplibregl-ctrl-attrib-button {
     @apply bg-transparent! dark:invert;
   }
+}
+
+/* uPlot's crosshair is dashed by default; hairlines here are solid. */
+.u-cursor-x {
+  border-right: 1px solid var(--muted-foreground) !important;
 }
