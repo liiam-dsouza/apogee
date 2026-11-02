@@ -3,7 +3,7 @@
 About ten minutes, with nothing installed except Docker.
 
 1. **Start the stack.** From the repository: `docker compose up --build`
-   (or `make up`). Open http://localhost:8080.
+   (or `make up`). Open http://localhost:4321.
 2. **Import the reference rocket.** In **Missions**, choose **Import mission
    file** and pick `missions/examples/calisto.mission.zip`. A bundle carries the
    mission and its thrust curve and drag table, so it flies straight away.

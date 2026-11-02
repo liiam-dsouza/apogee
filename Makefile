@@ -8,7 +8,7 @@ export GIT_SHA
 help:  ## List targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
 
-up:  ## Build and run the whole stack on http://localhost:8080
+up:  ## Build and run the whole stack on http://localhost:4321
 	docker compose up --build -d
 
 down:  ## Stop the stack (data volumes are kept)

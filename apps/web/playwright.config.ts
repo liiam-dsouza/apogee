@@ -6,7 +6,7 @@ import { defineConfig, devices } from '@playwright/test'
  *
  * By default they run against `vite preview` with no API, and journeys that
  * need the backend skip. Set E2E_BASE_URL to run everything against a live
- * stack, e.g. `E2E_BASE_URL=http://localhost:8080 pnpm test:e2e` after `make up`.
+ * stack, e.g. `E2E_BASE_URL=http://localhost:4321 pnpm test:e2e` after `make up`.
  */
 const stackUrl = process.env.E2E_BASE_URL
 

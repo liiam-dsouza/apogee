@@ -8,7 +8,8 @@
 </p>
 
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-0.1.0-FF0030?style=flat-square">
+  <a href="pyproject.toml"><img alt="Version" src="https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fraw.githubusercontent.com%2Fliiam-dsouza%2Fapogee%2Fmain%2Fpyproject.toml&query=%24.project.version&prefix=v&label=version&color=FF0030&style=flat-square"></a>
+  <a href="https://github.com/liiam-dsouza/apogee/commits/main"><img alt="Last commit" src="https://img.shields.io/github/last-commit/liiam-dsouza/apogee?color=FF4F00&style=flat-square"></a>
   <img alt="Python 3.13" src="https://img.shields.io/badge/python-3.13-3776AB?style=flat-square&logo=python&logoColor=white">
   <img alt="RocketPy 1.13" src="https://img.shields.io/badge/RocketPy-1.13-FF4F00?style=flat-square">
   <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white">
@@ -50,7 +51,7 @@ cp .env.example .env        # optional; defaults are fine
 docker compose up --build   # or: make up
 ```
 
-Open <http://localhost:8080>. The API reference is at <http://localhost:8080/api/docs>.
+Open <http://localhost:4321>. The API reference is at <http://localhost:4321/api/docs>.
 
 Add `--profile full` to also run the offline map tile server.
 
@@ -76,7 +77,7 @@ make dev-web      # Vite, http://localhost:5173, proxies /api to :8000
 | --- | --- |
 | `make test` | pytest + vitest |
 | `(cd apps/web && pnpm test:e2e)` | Playwright, against `vite preview` |
-| `(cd apps/web && E2E_BASE_URL=http://localhost:8080 pnpm test:e2e)` | Playwright including journeys, against `make up` |
+| `(cd apps/web && E2E_BASE_URL=http://localhost:4321 pnpm test:e2e)` | Playwright including journeys, against `make up` |
 | `make lint` | ruff, mypy, tsc, oxlint |
 | `make codegen` | Regenerate frontend types after changing any API route or Pydantic model |
 | `make notebook` | JupyterLab, for scripting `simcore` directly (`notebooks/scripting-simcore.ipynb`) |
