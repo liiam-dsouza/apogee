@@ -1,5 +1,5 @@
 import { Collapsible } from 'radix-ui'
-import { ChevronDown, Info } from 'lucide-react'
+import { Book, ChevronDown, Info } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router'
 
@@ -19,8 +19,8 @@ export function Explainer({ children, methodsHref }: { children: ReactNode; meth
       <Collapsible.Content className="space-y-2 px-3 pb-3 text-sm leading-relaxed text-foreground">
         {children}
         {methodsHref && (
-          <Link to={methodsHref} className="inline-block text-primary underline-offset-4 hover:underline">
-            Read the method
+          <Link to={methodsHref} className="flex flex-row gap-x-2 items-center my-1 text-primary underline-offset-4 hover:underline">
+            <Book className="size-4" aria-hidden /> Read the method
           </Link>
         )}
       </Collapsible.Content>

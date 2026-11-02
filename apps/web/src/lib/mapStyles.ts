@@ -38,10 +38,12 @@ export const basemapSource: BasemapSource = chooseSource()
 /**
  * Overlay colours for app layers (site, boundary, landing points). Literal
  * hex because MapLibre paints on canvas; mirrors the tokens in index.css.
+ * `primary` is the accent; hazard zones are gold (`hazard`) so they never read
+ * as the accent.
  */
 export const overlayColors = {
-  dark: { primary: '#a9b8ff', nogo: '#ef5b5b', caution: '#e8b13a', foreground: '#e6ecf2' },
-  light: { primary: '#2438b8', nogo: '#b3121b', caution: '#8a5a00', foreground: '#000000' },
+  dark: { primary: '#ff3b1a', hazard: '#f5c542', caution: '#e8b13a', foreground: '#ededed' },
+  light: { primary: '#e8002b', hazard: '#a07800', caution: '#8a5a00', foreground: '#0d0d0d' },
 } as const
 
 const blank: MapLibreGL.StyleSpecification = {
@@ -54,16 +56,16 @@ const blank: MapLibreGL.StyleSpecification = {
 // Keep in step with the tokens in index.css.
 const DARK_FLAVOR: Flavor = {
   ...namedFlavor('dark'),
-  background: '#0f1720',
-  earth: '#17212c',
-  water: '#0b1118',
+  background: '#0d0d0d',
+  earth: '#181818',
+  water: '#0a0c0f',
 }
 
 const LIGHT_FLAVOR: Flavor = {
   ...namedFlavor('light'),
-  background: '#ffffff',
-  earth: '#f1f3f6',
-  water: '#c4d3e6',
+  background: '#f5f5f5',
+  earth: '#e6e6e6',
+  water: '#c9d3dc',
 }
 
 function pmtilesStyle(url: string, flavor: Flavor): MapLibreGL.StyleSpecification {

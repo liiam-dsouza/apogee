@@ -12,7 +12,7 @@ export function Rail() {
     // Compacts on short screens, and scrolls as a last resort, so no section is ever out of reach.
     <nav
       aria-label="Sections"
-      className="flex h-full w-16 shrink-0 flex-col items-center overflow-x-hidden overflow-y-auto border-r border-border bg-surface py-3 [scrollbar-width:thin] shorter:py-2"
+      className="flex h-full w-16 shrink-0 flex-col items-center overflow-x-hidden overflow-y-auto border-r border-border bg-surface py-3 scrollbar-thin shorter:py-2"
     >
       <ApogeeMark />
       <div className="mt-4 flex flex-col items-center gap-1 short:mt-2 short:gap-0.5">
@@ -67,7 +67,7 @@ function RailItem({ section }: { section: SectionDef }) {
                 className="pointer-events-none absolute inset-0 rounded-md bg-primary/15"
                 transition={{ type: 'spring', stiffness: 500, damping: 38 }}
               >
-                <span className="absolute top-2 bottom-2 -left-3 w-[3px] rounded-r bg-primary" />
+                <span className="absolute top-2 bottom-2 -left-3 w-0.75 rounded-r bg-brand" />
               </motion.span>
             )}
             <Icon className="relative size-5" strokeWidth={1.75} aria-hidden />
@@ -78,12 +78,11 @@ function RailItem({ section }: { section: SectionDef }) {
   )
 }
 
-/** A ballistic arc with its apex marked. */
+/** A ballistic arc in the brand gradient, its apex marked. */
 function ApogeeMark() {
   return (
-    <svg viewBox="0 0 32 32" className="size-8 shrink-0 text-foreground shorter:size-7" role="img" aria-label="Apogee">
-      <path d="M4 27 Q16 -3 28 27" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      <circle cx="16" cy="12" r="2.75" className="fill-primary" />
-    </svg>
+    <div className="p-2 m-2">
+		<img src="/favicon.svg" alt="Apogee Logo" />
+	</div>
   )
 }

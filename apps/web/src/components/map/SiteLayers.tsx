@@ -29,8 +29,8 @@ export function SiteLayers({
     () => ({
       boundaryFill: { 'fill-color': c.primary, 'fill-opacity': 0.06 },
       boundaryLine: { 'line-color': c.primary, 'line-width': 2 },
-      hazardFill: { 'fill-color': c.nogo, 'fill-opacity': 0.25 },
-      hazardLine: { 'line-color': c.nogo, 'line-width': 1.5 },
+      hazardFill: { 'fill-color': c.hazard, 'fill-opacity': 0.25 },
+      hazardLine: { 'line-color': c.hazard, 'line-width': 1.5 },
       roadLine: { 'line-color': c.foreground, 'line-width': 2, 'line-dasharray': [2, 1.5] },
       headingLine: { 'line-color': c.primary, 'line-width': 2 },
     }),
