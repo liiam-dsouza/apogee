@@ -16,20 +16,22 @@ import math
 
 import numpy as np
 
-from simcore.mission.models import Environment, ProfileLevel, ResolvedProfile, SurfaceWind
+from simcore.mission.models import (
+    Environment,
+    ManualProfile,
+    ProfileLevel,
+    ResolvedProfile,
+    SurfaceWind,
+)
 from simcore.weather.isa import isa_levels
+from simcore.weather.manual import manual_levels
+from simcore.weather.wind import wind_components
 
 #: Heights above the pad (m) added inside the blend layer so it is resolved,
 #: whatever the spacing of the profile's own levels.
 _BLEND_GRID_M = (0, 5, 10, 20, 30, 50, 75, 100, 150, 200, 250, 300, 400, 500, 750, 1000, 1500)
 #: The power law is singular at the ground; below this height it is held constant.
 _MIN_HEIGHT_M = 1.0
-
-
-def wind_components(speed_ms: float, from_deg: float) -> tuple[float, float]:
-    """(u east, v north) of a wind blowing *from* ``from_deg``."""
-    rad = math.radians(from_deg)
-    return -speed_ms * math.sin(rad), -speed_ms * math.cos(rad)
 
 
 def _weight(h: float, wind: SurfaceWind) -> float:
@@ -104,6 +106,8 @@ def effective_levels(environment: Environment, pad_elevation_m: float) -> list[P
     wind = environment.surface_wind
     if isinstance(atmosphere, ResolvedProfile):
         levels = atmosphere.levels
+    elif isinstance(atmosphere, ManualProfile):
+        levels = manual_levels(atmosphere, pad_elevation_m)
     elif wind is not None:
         levels = isa_levels()
     else:

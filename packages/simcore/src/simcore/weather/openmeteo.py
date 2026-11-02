@@ -11,7 +11,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from simcore.mission.models import ProfileLevel, ResolvedProfile
-from simcore.weather.blend import wind_components
+from simcore.weather.wind import wind_components
 
 FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
 

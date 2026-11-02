@@ -9,7 +9,7 @@ The mission's `environment` has two parts:
 
 | Field | What it is |
 | --- | --- |
-| `atmosphere` | `standard` (ISA, no wind), or a `profile`: a table of altitude, pressure, temperature and wind (u east, v north), with its `source`, `valid_utc` and `fetched_utc` |
+| `atmosphere` | `standard` (ISA, no wind); a `profile`: a table of altitude, pressure, temperature and wind (u east, v north), with its `source`, `valid_utc` and `fetched_utc`; or `manual`: wind typed in by hand |
 | `surface_wind` | Optional. A measured wind (speed, direction it blows **from**, anemometer height) with a blend exponent `alpha` and `blend_depth_m` |
 
 The profile is stored **in the mission**, not looked up at run time, so a run
@@ -42,6 +42,27 @@ Picking an hour (`GET /api/weather/forecasts/{id}/profile`) resolves it into a p
   u = −speed·sin(direction), v = −speed·cos(direction).
 - The nearest forecast hour is used. A time more than an hour outside the
   forecast is refused.
+
+## Wind entered by hand
+
+For a range safety officer's briefing, or any table of wind against height.
+The mission stores what was typed: heights above the pad, speed and the
+direction the wind blows from, plus a free-text note of where it came from.
+It is resolved when the flight is built (`simcore.weather.manual`):
+
+- **Between entered heights** the wind is interpolated linearly in u and v (as
+  RocketPy does for every profile). Below the lowest entry, its wind reaches
+  down to the pad.
+- **Above the top entry** the wind is held constant up to 20 km. A rocket
+  that flies above the briefing's top does not meet an invented calm.
+- **Temperature and pressure** follow the standard atmosphere. If the pad's
+  temperature and **station** pressure (not the sea-level QNH a forecast quotes)
+  are entered, the whole column is shifted to match: temperature by a constant
+  offset, pressure by a constant ratio. On a hot day this matters: air at 40 °C
+  is about 8% thinner than at 15 °C, which raises apogee noticeably.
+
+A measured surface wind blends into a hand-entered profile exactly as it does
+into a forecast.
 
 ## Surface-wind blending
 
@@ -94,5 +115,4 @@ Validation warns about this: it is only right on a genuinely calm day aloft.
 
 ## Not built yet
 
-Manual profile entry (a range safety officer's table), radiosonde soundings
-(University of Wyoming), and RocketPy's own forecast models.
+Radiosonde soundings (University of Wyoming), and RocketPy's own forecast models.

@@ -9,7 +9,13 @@ import pytest
 from simcore.assets import MemoryAssetStore
 from simcore.engine import FlightResult, run_flight
 from simcore.mission import Mission
-from simcore.mission.models import Environment, ProfileLevel, ResolvedProfile, SurfaceWind
+from simcore.mission.models import (
+    Environment,
+    ManualProfile,
+    ProfileLevel,
+    ResolvedProfile,
+    SurfaceWind,
+)
 from simcore.weather import (
     ForecastCache,
     ForecastError,
@@ -19,6 +25,7 @@ from simcore.weather import (
     forecast_params,
     isa_levels,
     isa_pressure_temperature,
+    manual_levels,
     profile_at,
     wind_components,
 )
@@ -232,3 +239,80 @@ def test_blend_turns_one_way_through_the_layer() -> None:
     turns = [(_speed_dir(lv)[1] - 200 + 180) % 360 - 180 for lv in layer]
     steps = [b - a for a, b in itertools.pairwise(turns) if abs(b - a) < 180]
     assert all(st >= -1e-6 for st in steps) or all(st <= 1e-6 for st in steps)
+
+
+# --- Manual profile -------------------------------------------------------------
+
+
+def _manual(**kw: object) -> ManualProfile:
+    return ManualProfile.model_validate(
+        {
+            "kind": "manual",
+            "levels": [
+                {"height_m": 0, "speed_ms": 4, "direction_deg": 180},
+                {"height_m": 1000, "speed_ms": 12, "direction_deg": 270},
+            ],
+            **kw,
+        }
+    )
+
+
+def test_manual_profile_puts_the_entries_at_the_pad_and_holds_above() -> None:
+    levels = manual_levels(_manual(), PAD_M)
+    assert levels[0].altitude_m == PAD_M
+    assert _speed_dir(levels[0]) == pytest.approx((4, 180))
+    at_1000 = next(lv for lv in levels if lv.altitude_m == PAD_M + 1000)
+    assert _speed_dir(at_1000) == pytest.approx((12, 270))
+    assert levels[-1].altitude_m == 20_000
+    assert _speed_dir(levels[-1]) == pytest.approx((12, 270))  # held constant above the top
+    # Standard atmosphere when nothing was measured.
+    p, t = isa_pressure_temperature(PAD_M)
+    assert (levels[0].pressure_pa, levels[0].temperature_k) == pytest.approx((p, t))
+
+
+def test_manual_profile_uses_measured_pad_conditions() -> None:
+    hot = manual_levels(_manual(surface_temperature_k=313.15, surface_pressure_pa=97_000), PAD_M)
+    assert hot[0].temperature_k == pytest.approx(313.15)
+    assert hot[0].pressure_pa == pytest.approx(97_000)
+    # The offset and ratio carry up the column.
+    _, t_isa = isa_pressure_temperature(PAD_M + 1000)
+    at_1000 = next(lv for lv in hot if lv.altitude_m == PAD_M + 1000)
+    assert at_1000.temperature_k - t_isa == pytest.approx(
+        313.15 - isa_pressure_temperature(PAD_M)[1]
+    )
+
+
+def test_manual_profile_lowest_entry_reaches_down_to_the_pad() -> None:
+    m = ManualProfile.model_validate(
+        {"kind": "manual", "levels": [{"height_m": 300, "speed_ms": 7, "direction_deg": 90}]}
+    )
+    levels = manual_levels(m, PAD_M)
+    assert levels[0].altitude_m == PAD_M
+    assert _speed_dir(levels[0]) == pytest.approx((7, 90))
+
+
+def test_manual_profile_rejects_unsorted_heights() -> None:
+    with pytest.raises(ValueError, match="increasing height"):
+        ManualProfile.model_validate(
+            {
+                "kind": "manual",
+                "levels": [
+                    {"height_m": 500, "speed_ms": 1, "direction_deg": 0},
+                    {"height_m": 100, "speed_ms": 1, "direction_deg": 0},
+                ],
+            }
+        )
+
+
+def test_a_manual_profile_flies(calisto_run: tuple[Mission, FlightResult]) -> None:
+    mission, _ = calisto_run
+    store = MemoryAssetStore()
+    for name in ("Cesaroni_M1670.eng", "powerOffDragCurve.csv"):
+        store.put((CALISTO / name).read_bytes())
+    westerly = ManualProfile.model_validate(
+        {"kind": "manual", "levels": [{"height_m": 0, "speed_ms": 8, "direction_deg": 270}]}
+    )
+    flown = run_flight(
+        mission.model_copy(update={"environment": Environment(atmosphere=westerly)}), store
+    ).summary
+    assert flown.landing is not None and flown.landing.east_m > 500

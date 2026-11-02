@@ -1,5 +1,5 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { CloudDownload, Wind } from 'lucide-react'
+import { CloudDownload, Plus, Trash2, Wind } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router'
 import { Explainer } from '@/components/Explainer'
@@ -8,7 +8,8 @@ import { QuantityField } from '@/components/QuantityField'
 import { RequireMission } from '@/components/RequireMission'
 import { Button } from '@/components/ui/button'
 import { api, type Environment, type ForecastInfo, type ResolvedProfile, type SurfaceWind } from '@/lib/api'
-import { formatSI } from '@/lib/units'
+import { useIssuesAt } from '@/lib/mission/validation'
+import { formatSI, fromSI, toSI, unitFor } from '@/lib/units'
 import { cn } from '@/lib/utils'
 import { useMissionStore } from '@/stores/mission'
 import { usePrefs } from '@/stores/prefs'
@@ -109,7 +110,11 @@ function WeatherCentre() {
     const flown = effective.data?.levels
     if (!flown) return []
     const out: ProfileSeries[] = [
-      { label: wind ? 'Flown (blended)' : 'Forecast', points: toWindPoints(flown, elevation), role: 'flown' },
+      {
+        label: wind ? 'Flown (blended)' : atmosphere?.kind === 'manual' ? 'Entered' : 'Forecast',
+        points: toWindPoints(flown, elevation),
+        role: 'flown',
+      },
     ]
     if (wind && atmosphere?.kind === 'profile') {
       out.push({ label: 'Forecast', points: toWindPoints(atmosphere.levels, elevation), role: 'reference' })
@@ -131,6 +136,7 @@ function WeatherCentre() {
   }
 
   const profile = atmosphere?.kind === 'profile' ? atmosphere : null
+  const manual = atmosphere?.kind === 'manual' ? atmosphere : null
   return (
     <div className="space-y-6 p-6">
       <header className="space-y-1">
@@ -139,12 +145,15 @@ function WeatherCentre() {
             ? profile.valid_utc
               ? `Forecast for ${localTime(profile.valid_utc)}`
               : `Profile: ${profile.source}`
-            : wind
+            : manual
+              ? 'Wind entered by hand'
+              : wind
               ? 'Measured surface wind, calm aloft'
               : 'Standard atmosphere, no wind'}
         </h2>
         {profile?.fetched_utc && <AgeBadge fetched={profile.fetched_utc} />}
         {profile && <p className="text-xs text-muted-foreground">{profile.source}</p>}
+        {manual?.note && <p className="text-sm text-muted-foreground">{manual.note}</p>}
       </header>
 
       {series.length === 0 ? (
@@ -248,43 +257,314 @@ export function Pane() {
   )
 }
 
+type Source = 'standard' | 'profile' | 'manual'
+
+const SOURCES: { id: Source; label: string }[] = [
+  { id: 'standard', label: 'Standard' },
+  { id: 'profile', label: 'Forecast' },
+  { id: 'manual', label: 'By hand' },
+]
+
 function WeatherPane() {
   const site = useMissionStore((s) => s.draft?.site ?? null)
-  const environment = useEnvironment()
+  const atmosphere = useEnvironment()?.atmosphere
   const editEnvironment = useEditEnvironment()
+  const kind: Source = atmosphere?.kind ?? 'standard'
+  // Which editor is showing. Picking Forecast changes nothing until an hour is used.
+  const [shown, setShown] = useState<Source>(kind)
   if (!site) return <p className="p-4 text-sm text-muted-foreground">Add the launch site first.</p>
-  const atmosphere = environment?.atmosphere
-  const usingForecast = atmosphere?.kind === 'profile'
+
+  const choose = (source: Source) => {
+    setShown(source)
+    if (source === 'standard' && kind !== 'standard') {
+      editEnvironment((env) => {
+        env.atmosphere = { kind: 'standard' }
+      })
+    }
+  }
 
   return (
     <div className="space-y-6 p-4">
       <section className="space-y-3">
         <h2 className="text-sm font-semibold">Wind aloft</h2>
-        {usingForecast ? (
-          <div className="space-y-2 rounded-md border border-border px-3 py-2">
-            <p className="text-sm">
-              {atmosphere.valid_utc ? `Forecast for ${localTime(atmosphere.valid_utc)}` : atmosphere.source}
-            </p>
-            {atmosphere.fetched_utc && <AgeBadge fetched={atmosphere.fetched_utc} />}
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() =>
-                editEnvironment((env) => {
-                  env.atmosphere = { kind: 'standard' }
-                })
-              }
+        <div role="radiogroup" aria-label="Wind aloft from" className="flex rounded-md border border-border p-0.5">
+          {SOURCES.map((src) => (
+            <button
+              key={src.id}
+              type="button"
+              role="radio"
+              aria-checked={shown === src.id}
+              onClick={() => choose(src.id)}
+              className={cn(
+                'flex-1 rounded px-2 py-1 text-sm',
+                shown === src.id ? 'bg-surface text-foreground' : 'text-muted-foreground hover:text-foreground',
+              )}
             >
-              Use the standard atmosphere instead
-            </Button>
-          </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">Standard atmosphere: no wind aloft.</p>
+              {src.label}
+              {kind === src.id && shown !== src.id && <span className="sr-only"> (in use)</span>}
+            </button>
+          ))}
+        </div>
+
+        {shown === 'standard' && <p className="text-sm text-muted-foreground">Standard atmosphere: no wind aloft.</p>}
+        {shown === 'profile' && (
+          <>
+            {atmosphere?.kind === 'profile' ? (
+              <div className="space-y-1 rounded-md border border-border px-3 py-2">
+                <p className="text-sm">
+                  In use: {atmosphere.valid_utc ? `forecast for ${localTime(atmosphere.valid_utc)}` : atmosphere.source}
+                </p>
+                {atmosphere.fetched_utc && <AgeBadge fetched={atmosphere.fetched_utc} />}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Pick a forecast hour to fly in it.</p>
+            )}
+            <ForecastPicker latitude={site.latitude_deg} longitude={site.longitude_deg} elevation={site.elevation_m} />
+          </>
         )}
-        <ForecastPicker latitude={site.latitude_deg} longitude={site.longitude_deg} elevation={site.elevation_m} />
+        {shown === 'manual' && <ManualProfileEditor />}
       </section>
       <SurfaceWindEditor />
     </div>
+  )
+}
+
+/** Heights (m above the pad) a new manual table starts with when copying a forecast. */
+const COPY_HEIGHTS = [0, 300, 1000, 2000, 3000, 5000]
+
+function ManualProfileEditor() {
+  const atmosphere = useEnvironment()?.atmosphere
+  const elevation = useMissionStore((s) => s.draft?.site?.elevation_m ?? 0)
+  const editEnvironment = useEditEnvironment()
+  const units = usePrefs((s) => s.units)
+  const issues = useIssuesAt('environment.atmosphere', { nested: true })
+
+  if (atmosphere?.kind !== 'manual') {
+    const forecast = atmosphere?.kind === 'profile' ? atmosphere : null
+    const start = () =>
+      editEnvironment((env) => {
+        const points = forecast ? toWindPoints(forecast.levels, elevation) : []
+        const levels = forecast
+          ? COPY_HEIGHTS.map((h) => {
+              const p = points.reduce((best, q) => (Math.abs(q.h - h) < Math.abs(best.h - h) ? q : best))
+              return { height_m: h, speed_ms: Number(p.speed.toFixed(1)), direction_deg: Math.round(p.from) % 360 }
+            })
+          : [{ height_m: 0, speed_ms: 0, direction_deg: 0 }]
+        env.atmosphere = { kind: 'manual', note: forecast ? 'Started from a forecast' : '', levels }
+      })
+    return (
+      <div className="space-y-2">
+        <p className="text-sm text-muted-foreground">
+          Type in a wind table, e.g. from the range safety officer's briefing. Heights are above the pad.
+        </p>
+        <Button size="sm" onClick={start}>
+          {forecast ? 'Start from the forecast in use' : 'Start a table'}
+        </Button>
+      </div>
+    )
+  }
+
+  const levels = atmosphere.levels
+  const setLevel = (i: number, key: 'height_m' | 'speed_ms' | 'direction_deg', si: number) =>
+    editEnvironment((env) => {
+      if (env.atmosphere?.kind === 'manual') env.atmosphere.levels[i][key] = si
+    })
+  const sortByHeight = () =>
+    editEnvironment((env) => {
+      if (env.atmosphere?.kind === 'manual') env.atmosphere.levels.sort((a, b) => a.height_m - b.height_m)
+    })
+  const hUnit = unitFor('altitude', units)
+  const sUnit = unitFor('speed', units)
+
+  return (
+    <div className="space-y-3">
+      <label className="block space-y-1 text-sm">
+        <span>Where the numbers came from</span>
+        <input
+          value={atmosphere.note ?? ''}
+          onChange={(e) =>
+            editEnvironment((env) => {
+              if (env.atmosphere?.kind === 'manual') env.atmosphere.note = e.target.value
+            })
+          }
+          placeholder="e.g. RSO briefing, 09:00"
+          className="h-9 w-full rounded-md border border-border bg-background px-3"
+        />
+      </label>
+      <table className="w-full text-sm">
+        <thead className="text-left text-xs text-muted-foreground">
+          <tr>
+            <th className="pb-1 font-normal">Height ({hUnit.symbol})</th>
+            <th className="pb-1 font-normal">Speed ({sUnit.symbol})</th>
+            <th className="pb-1 font-normal">From (°)</th>
+            <th className="pb-1" />
+          </tr>
+        </thead>
+        <tbody>
+          {levels.map((lv, i) => (
+            <tr key={i}>
+              <td className="pr-1 pb-1">
+                <NumberCell
+                  label={`Height of level ${i + 1}`}
+                  value={fromSI(lv.height_m, 'altitude', units)}
+                  onChange={(v) => setLevel(i, 'height_m', toSI(v, 'altitude', units))}
+                  onBlur={sortByHeight}
+                />
+              </td>
+              <td className="pr-1 pb-1">
+                <NumberCell
+                  label={`Speed at level ${i + 1}`}
+                  value={fromSI(lv.speed_ms, 'speed', units)}
+                  decimals={1}
+                  onChange={(v) => setLevel(i, 'speed_ms', toSI(v, 'speed', units))}
+                />
+              </td>
+              <td className="pr-1 pb-1">
+                <NumberCell
+                  label={`Direction at level ${i + 1}`}
+                  value={lv.direction_deg}
+                  onChange={(v) => setLevel(i, 'direction_deg', v)}
+                />
+              </td>
+              <td className="pb-1">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  aria-label={`Remove level ${i + 1}`}
+                  disabled={levels.length === 1}
+                  onClick={() =>
+                    editEnvironment((env) => {
+                      if (env.atmosphere?.kind === 'manual') env.atmosphere.levels.splice(i, 1)
+                    })
+                  }
+                >
+                  <Trash2 />
+                </Button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <Button
+        size="sm"
+        onClick={() =>
+          editEnvironment((env) => {
+            if (env.atmosphere?.kind !== 'manual') return
+            const last = env.atmosphere.levels[env.atmosphere.levels.length - 1]
+            env.atmosphere.levels.push({ ...last, height_m: last.height_m + 500 })
+          })
+        }
+      >
+        <Plus /> Add level
+      </Button>
+      {issues.map((i) => (
+        <p key={`${i.path}-${i.code}`} className="text-xs text-nogo">
+          {i.message}
+        </p>
+      ))}
+      <div className="grid grid-cols-2 gap-3">
+        <OptionalQuantity
+          label="Pad temperature"
+          quantity="temperature"
+          value={atmosphere.surface_temperature_k ?? null}
+          onChange={(k) =>
+            editEnvironment((env) => {
+              if (env.atmosphere?.kind === 'manual') env.atmosphere.surface_temperature_k = k
+            })
+          }
+        />
+        <OptionalQuantity
+          label="Station pressure"
+          quantity="pressure"
+          value={atmosphere.surface_pressure_pa ?? null}
+          onChange={(pa) =>
+            editEnvironment((env) => {
+              if (env.atmosphere?.kind === 'manual') env.atmosphere.surface_pressure_pa = pa
+            })
+          }
+        />
+      </div>
+      <p className="text-xs text-muted-foreground">
+        The wind is held constant above the top level. Temperature and pressure follow the standard atmosphere,
+        shifted to the pad's if you enter them (station pressure, not sea-level). A hot day thins the air and
+        raises apogee.
+      </p>
+    </div>
+  )
+}
+
+/** A measured value that may be left blank (blank means "use the standard atmosphere"). */
+function OptionalQuantity({
+  label,
+  quantity,
+  value,
+  onChange,
+}: {
+  label: string
+  quantity: 'temperature' | 'pressure'
+  value: number | null
+  onChange: (si: number | null) => void
+}) {
+  const units = usePrefs((s) => s.units)
+  const [editing, setEditing] = useState<string | null>(null)
+  const text = editing ?? (value == null ? '' : Number(fromSI(value, quantity, units).toFixed(1)).toString())
+  return (
+    <label className="block space-y-1 text-sm">
+      <span>{label}</span>
+      <span className="flex h-9 items-center rounded-md border border-border bg-background focus-within:border-primary">
+        <input
+          inputMode="decimal"
+          value={text}
+          placeholder="standard"
+          onFocus={() => setEditing(text)}
+          onBlur={() => setEditing(null)}
+          onChange={(e) => {
+            setEditing(e.target.value)
+            const raw = e.target.value.trim()
+            if (raw === '') onChange(null)
+            else if (Number.isFinite(Number(raw))) onChange(toSI(Number(raw), quantity, units))
+          }}
+          className="h-full min-w-0 flex-1 bg-transparent px-3 tabular-nums outline-none"
+        />
+        <span className="pr-3 text-muted-foreground">{unitFor(quantity, units).symbol}</span>
+      </span>
+    </label>
+  )
+}
+
+/** A compact numeric input for table cells; keeps partial typing ("1.") until blur. */
+function NumberCell({
+  label,
+  value,
+  onChange,
+  onBlur,
+  decimals = 0,
+}: {
+  label: string
+  value: number
+  onChange: (v: number) => void
+  onBlur?: () => void
+  decimals?: number
+}) {
+  const [editing, setEditing] = useState<string | null>(null)
+  const text = editing ?? Number(value.toFixed(decimals)).toString()
+  return (
+    <input
+      aria-label={label}
+      inputMode="decimal"
+      value={text}
+      onFocus={() => setEditing(text)}
+      onBlur={() => {
+        setEditing(null)
+        onBlur?.()
+      }}
+      onChange={(e) => {
+        setEditing(e.target.value)
+        const n = Number(e.target.value)
+        if (e.target.value.trim() !== '' && Number.isFinite(n)) onChange(n)
+      }}
+      className="h-8 w-full min-w-0 rounded-md border border-border bg-background px-2 tabular-nums"
+    />
   )
 }
 
