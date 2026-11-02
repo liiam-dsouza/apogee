@@ -3,23 +3,37 @@ import type * as MapLibreGL from 'maplibre-gl'
 import { Protocol } from 'pmtiles'
 
 /**
- * Basemap styles for every map in the app. Nothing here touches the network
- * beyond the stack itself, so maps work on a field laptop with no internet.
+ * Basemap styles for every map in the app, chosen once at load:
  *
- * - With `VITE_MAP_PMTILES` set (a URL the stack serves, e.g.
- *   `/tiles/basemap.pmtiles`), draws a vector basemap from that file, coloured
- *   to match the app theme.
- * - Without it, a blank style: the themed container shows through and only
- *   the app's own layers (site, boundary, landing points) are drawn.
+ * - `local`: `VITE_MAP_PMTILES` is set (a file the stack serves, e.g.
+ *   `/tiles/basemap.pmtiles`). Works with no internet; this is the field setup.
+ *   Coloured to match the app theme; no labels yet (they need a glyph server).
+ * - `online`: no local tiles, but the browser is online. OpenFreeMap's styles
+ *   (OpenStreetMap data, free, no key). Basemap tiles are not part of the
+ *   simulation path, so fetching them is allowed; simulations never wait on them.
+ * - `none`: no local tiles and offline. A blank style; only the app's own
+ *   layers (site, boundary, landing points) draw.
  *
- * Label layers are omitted for now because they need a glyph server; add them
- * once glyphs are self-hosted alongside the tiles.
+ * Satellite imagery (`satelliteStyle`) is an opt-in alternative for the site
+ * map whenever the browser is online, whatever the basemap source.
  */
 
 const PMTILES_URL = import.meta.env.VITE_MAP_PMTILES
 
-/** Whether a real basemap is configured (otherwise maps draw only app layers). */
-export const hasBasemap = Boolean(PMTILES_URL)
+const ONLINE_STYLES = {
+  dark: 'https://tiles.openfreemap.org/styles/dark',
+  light: 'https://tiles.openfreemap.org/styles/positron',
+} as const
+
+export type BasemapSource = 'local' | 'online' | 'none'
+
+function chooseSource(): BasemapSource {
+  if (PMTILES_URL) return 'local'
+  if (typeof navigator !== 'undefined' && navigator.onLine) return 'online'
+  return 'none'
+}
+
+export const basemapSource: BasemapSource = chooseSource()
 
 /**
  * Overlay colours for app layers (site, boundary, landing points). Literal
@@ -52,7 +66,7 @@ const LIGHT_FLAVOR: Flavor = {
   water: '#c4d3e6',
 }
 
-function basemap(url: string, flavor: Flavor): MapLibreGL.StyleSpecification {
+function pmtilesStyle(url: string, flavor: Flavor): MapLibreGL.StyleSpecification {
   return {
     version: 8,
     sources: {
@@ -62,16 +76,39 @@ function basemap(url: string, flavor: Flavor): MapLibreGL.StyleSpecification {
         attribution: '© OpenStreetMap contributors',
       },
     },
-    layers: layers('basemap', flavor).filter(
-      (l) => l.type !== 'symbol',
-    ) as MapLibreGL.LayerSpecification[],
+    layers: layers('basemap', flavor).filter((l) => l.type !== 'symbol') as MapLibreGL.LayerSpecification[],
   }
 }
 
-export const mapStyles: { dark: MapLibreGL.StyleSpecification; light: MapLibreGL.StyleSpecification } =
-  PMTILES_URL
-    ? { dark: basemap(PMTILES_URL, DARK_FLAVOR), light: basemap(PMTILES_URL, LIGHT_FLAVOR) }
-    : { dark: blank, light: blank }
+type StyleOption = MapLibreGL.StyleSpecification | string
+
+function chooseStyles(): { dark: StyleOption; light: StyleOption } {
+  if (basemapSource === 'local' && PMTILES_URL) {
+    return { dark: pmtilesStyle(PMTILES_URL, DARK_FLAVOR), light: pmtilesStyle(PMTILES_URL, LIGHT_FLAVOR) }
+  }
+  if (basemapSource === 'online') return ONLINE_STYLES
+  return { dark: blank, light: blank }
+}
+
+export const mapStyles = chooseStyles()
+
+/** Whether satellite imagery can be fetched (it is never stored locally). */
+export const satelliteAvailable = typeof navigator !== 'undefined' && navigator.onLine
+
+/** Esri World Imagery raster tiles (free with attribution, no key). Same style for both themes. */
+export const satelliteStyle: MapLibreGL.StyleSpecification = {
+  version: 8,
+  sources: {
+    satellite: {
+      type: 'raster',
+      tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+      tileSize: 256,
+      maxzoom: 19,
+      attribution: 'Powered by Esri · Esri, Maxar, Earthstar Geographics, and the GIS User Community',
+    },
+  },
+  layers: [{ id: 'satellite', type: 'raster', source: 'satellite' }],
+}
 
 let protocolsRegistered = false
 

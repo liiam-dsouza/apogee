@@ -1,7 +1,7 @@
 # Calisto: RocketPy's reference rocket, as an Apogee mission.
 # Positions are metres aft of the nose tip (ADR 0002), converted from
 # RocketPy's example (tail_to_nose, origin at the dry CG 1.278 m aft of the tip).
-schema_version: 2
+schema_version: 3
 meta:
   name: Calisto (reference)
   id: 01JCALISTO0000000000000000
@@ -23,6 +23,7 @@ rocket:
     power_off: {table: 94760a42d5f5fad4fb815f448db72201fafd2b2a3c6ec2d2c83618b2953207e0}
     power_on: {table: 94760a42d5f5fad4fb815f448db72201fafd2b2a3c6ec2d2c83618b2953207e0}
 motor:
+  kind: solid
   thrust_curve: a18a3ae712108760c5fdbf5c5ddaefe50bb6a429d75bc5ab4bcf7ce7716548d8
   burn_time_s: 3.9
   dry_mass_kg: 1.815

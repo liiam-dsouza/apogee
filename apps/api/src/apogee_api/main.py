@@ -9,7 +9,7 @@ from fastapi.routing import APIRoute
 from apogee_api import problems
 from apogee_api.db import init_engine
 from apogee_api.queue import ArqQueue, InlineQueue, JobQueue
-from apogee_api.routers import assets, missions, results, sim, system
+from apogee_api.routers import assets, imports, missions, results, sim, system
 from apogee_api.settings import get_settings
 
 
@@ -48,6 +48,7 @@ def create_app() -> FastAPI:
     app.include_router(assets.router)
     app.include_router(sim.router)
     app.include_router(results.router)
+    app.include_router(imports.router)
     return app
 
 

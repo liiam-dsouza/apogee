@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 
 from apogee_api.main import create_app
 from apogee_api.settings import get_settings
-from simcore.mission import load_mission, parse_yaml
+from simcore.mission import CURRENT_SCHEMA_VERSION, load_mission, parse_yaml
 
 CALISTO = Path(__file__).parents[3] / "tests" / "fixtures" / "calisto"
 GOLDEN = json.loads((Path(__file__).parents[3] / "tests" / "golden" / "calisto.json").read_text())
@@ -153,5 +153,5 @@ def test_v1_stored_mission_is_migrated_on_read(client: TestClient) -> None:
         )
         session.commit()
     doc = client.get("/api/missions/01OLDV1").json()
-    assert doc["mission"]["schema_version"] == 2
+    assert doc["mission"]["schema_version"] == CURRENT_SCHEMA_VERSION
     assert doc["mission"]["rocket"] is None

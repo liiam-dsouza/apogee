@@ -6,6 +6,7 @@ from hypothesis import given
 from hypothesis import strategies as st
 
 from simcore.mission import (
+    CURRENT_SCHEMA_VERSION,
     Mission,
     canonical_json,
     dump_yaml,
@@ -149,7 +150,7 @@ def test_v1_empty_sections_migrate_to_v2() -> None:
         "environment": {},
     }
     mission = load_mission(data)
-    assert mission.schema_version == 2
+    assert mission.schema_version == CURRENT_SCHEMA_VERSION
     assert mission.rocket is None
     assert mission.recovery.devices == []
 
@@ -194,3 +195,12 @@ def test_drag_curve_needs_exactly_one_source() -> None:
     data["rocket"]["drag"]["power_off"] = {"table": None, "constant_cd": None}
     _, report = validate_mission(data)
     assert any(i.path.startswith("rocket.drag.power_off") for i in report.issues)
+
+
+def test_v2_motor_migrates_to_tagged_solid_motor() -> None:
+    data = calisto()
+    data["schema_version"] = 2
+    del data["motor"]["kind"]
+    mission = load_mission(data)
+    assert mission.motor is not None
+    assert mission.motor.kind == "solid"

@@ -8,8 +8,11 @@ export type Theme = 'dark' | 'light'
 interface PrefsState {
   theme: Theme
   units: UnitSystem
+  /** Site map shows satellite imagery instead of the basemap. */
+  satellite: boolean
   setTheme: (theme: Theme) => void
   setUnits: (units: UnitSystem) => void
+  setSatellite: (satellite: boolean) => void
 }
 
 export const usePrefs = create<PrefsState>()(
@@ -17,8 +20,10 @@ export const usePrefs = create<PrefsState>()(
     (set) => ({
       theme: 'dark',
       units: 'metric',
+      satellite: false,
       setTheme: (theme) => set({ theme }),
       setUnits: (units) => set({ units }),
+      setSatellite: (satellite) => set({ satellite }),
     }),
     { name: 'apogee.prefs' },
   ),

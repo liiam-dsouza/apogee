@@ -14,7 +14,7 @@ from simcore.assets import AssetStore
 from simcore.engine.result import FlightResult, FlightSummary, Landing, ParachuteEvent
 from simcore.importers.drag import parse_drag_csv
 from simcore.importers.thrust import parse_eng
-from simcore.mission.models import DragCurve, Mission, ResolvedProfile
+from simcore.mission.models import DragCurve, GenericMotor, Mission, ResolvedProfile
 
 #: Our nose names -> RocketPy's (it lower-cases and strips spaces).
 _NOSE_KIND = {
@@ -89,10 +89,27 @@ def build_environment(mission: Mission) -> rocketpy.Environment:
     return env
 
 
-def build_motor(mission: Mission, assets: AssetStore) -> rocketpy.SolidMotor:
+def build_motor(
+    mission: Mission, assets: AssetStore
+) -> rocketpy.SolidMotor | rocketpy.GenericMotor:
     assert mission.motor is not None
     m = mission.motor
     curve = parse_eng(assets.read(m.thrust_curve).decode("utf-8", errors="replace"))
+    if isinstance(m, GenericMotor):
+        return rocketpy.GenericMotor(
+            thrust_source=[list(p) for p in curve.points],
+            burn_time=m.burn_time_s,
+            chamber_radius=m.chamber_radius_m,
+            chamber_height=m.chamber_height_m,
+            chamber_position=m.chamber_position_m,
+            propellant_initial_mass=m.propellant_mass_kg,
+            nozzle_radius=m.nozzle_radius_m,
+            dry_mass=m.dry_mass_kg,
+            center_of_dry_mass_position=m.dry_cg_position_m,
+            dry_inertia=m.dry_inertia,
+            nozzle_position=0,
+            coordinate_system_orientation="nozzle_to_combustion_chamber",
+        )
     g = m.grains
     return rocketpy.SolidMotor(
         thrust_source=[list(p) for p in curve.points],
@@ -274,3 +291,10 @@ def run_flight(
         computed_utc=datetime.now(UTC),
         warnings=caught,
     )
+
+
+def center_of_pressure_m(mission: Mission, assets: AssetStore, mach: float) -> float:
+    """Static (Barrowman) centre of pressure at ``mach``, metres aft of the nose tip."""
+    check_runnable(mission)
+    rocket = build_rocket(mission, assets)
+    return float(rocket.cp_position(mach))

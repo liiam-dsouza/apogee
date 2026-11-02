@@ -23,8 +23,9 @@ log = logging.getLogger(__name__)
 #: Workers refresh `{WORKER_HEARTBEAT_PREFIX}{worker id}` with a short TTL.
 WORKER_HEARTBEAT_PREFIX = "apogee:worker:"
 
-#: Must match the function name registered in apogee_worker.
+#: Must match the function names registered in apogee_worker (and simcore.jobs).
 FLIGHT_TASK = "simulate_flight"
+ORK_CROSS_CHECK_TASK = "openrocket_cross_check"
 
 
 class JobState(BaseModel):
@@ -44,6 +45,7 @@ class JobQueue(Protocol):
     async def submit(self, task: str, job_id: str, **kwargs: Any) -> str: ...
     async def state(self, job_id: str) -> JobState: ...
     async def wait(self, job_id: str, timeout_s: float) -> JobState: ...
+    async def result(self, job_id: str) -> Any: ...
     async def worker_count(self) -> int | None: ...
     async def close(self) -> None: ...
 
@@ -96,7 +98,9 @@ class ArqQueue:
         if info is None:
             return JobState(id=job_id, status="not_found")
         if info.success:
-            return JobState(id=job_id, status="done", result_id=str(info.result))
+            # Flight jobs return a result id; others (cross-checks) return data via result().
+            rid = info.result if isinstance(info.result, str) else None
+            return JobState(id=job_id, status="done", result_id=rid)
         return JobState(id=job_id, status="failed", error=str(info.result))
 
     async def wait(self, job_id: str, timeout_s: float) -> JobState:
@@ -108,6 +112,11 @@ class ArqQueue:
             if asyncio.get_running_loop().time() >= deadline:
                 return state
             await asyncio.sleep(0.05)
+
+    async def result(self, job_id: str) -> Any:
+        """The finished job's return value (call after wait() reports done)."""
+        info = await Job(job_id, self._require()).result_info()
+        return None if info is None else info.result
 
     async def worker_count(self) -> int | None:
         if self._pool is None:
@@ -146,13 +155,20 @@ class InlineQueue:
             return JobState(id=job_id, status="running")
         if task.exception() is not None:
             return JobState(id=job_id, status="failed", error=str(task.exception()))
-        return JobState(id=job_id, status="done", result_id=task.result())
+        result = task.result()
+        return JobState(
+            id=job_id, status="done", result_id=result if isinstance(result, str) else None
+        )
 
     async def wait(self, job_id: str, timeout_s: float) -> JobState:
         task = self._tasks.get(job_id)
         if task is not None:
             await asyncio.wait({task}, timeout=timeout_s)
         return await self.state(job_id)
+
+    async def result(self, job_id: str) -> Any:
+        task = self._tasks.get(job_id)
+        return task.result() if task is not None and task.done() and not task.exception() else None
 
     async def worker_count(self) -> int | None:
         return 1

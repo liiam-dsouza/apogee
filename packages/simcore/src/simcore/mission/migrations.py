@@ -7,7 +7,7 @@ register it in MIGRATIONS. Each migration takes and returns a plain dict.
 from collections.abc import Callable
 from typing import Any, Final
 
-CURRENT_SCHEMA_VERSION: Final = 2
+CURRENT_SCHEMA_VERSION: Final = 3
 
 Migration = Callable[[dict[str, Any]], dict[str, Any]]
 
@@ -25,8 +25,16 @@ def v1_to_v2(data: dict[str, Any]) -> dict[str, Any]:
     return data
 
 
+def v2_to_v3(data: dict[str, Any]) -> dict[str, Any]:
+    """Motors become a tagged union; every v2 motor was a solid motor."""
+    motor = data.get("motor")
+    if isinstance(motor, dict) and "kind" not in motor:
+        data["motor"] = {"kind": "solid", **motor}
+    return data
+
+
 #: from-version -> function producing the next version
-MIGRATIONS: dict[int, Migration] = {1: v1_to_v2}
+MIGRATIONS: dict[int, Migration] = {1: v1_to_v2, 2: v2_to_v3}
 
 
 class MigrationError(ValueError):

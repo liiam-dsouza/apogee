@@ -12,6 +12,7 @@ dependencies = [
   "python-ulid>=4.1",
   "numpy>=2",
   "pyarrow>=18",
+  "defusedxml>=0.7",  # .ork files are uploads: untrusted XML
 ]
 
 [project.scripts]

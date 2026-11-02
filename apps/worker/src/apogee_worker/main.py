@@ -47,6 +47,12 @@ async def simulate_flight(ctx: dict[str, Any], **kwargs: Any) -> str:
     return await loop.run_in_executor(ctx["pool"], partial(jobs.simulate_flight, **kwargs))
 
 
+async def openrocket_cross_check(ctx: dict[str, Any], **kwargs: Any) -> list[dict[str, Any]]:
+    """Fly an imported design under OpenRocket's conditions; returns report rows."""
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(ctx["pool"], partial(jobs.openrocket_cross_check, **kwargs))
+
+
 async def _heartbeat(ctx: dict[str, Any]) -> None:
     key = ctx["heartbeat_key"]
     while True:
@@ -69,7 +75,7 @@ async def shutdown(ctx: dict[str, Any]) -> None:
 
 
 class WorkerSettings:
-    functions: ClassVar = [ping, simulate_flight]
+    functions: ClassVar = [ping, simulate_flight, openrocket_cross_check]
     on_startup = startup
     on_shutdown = shutdown
     redis_settings = RedisSettings.from_dsn(settings.redis_url)

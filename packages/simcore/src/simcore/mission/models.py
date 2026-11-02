@@ -248,7 +248,10 @@ class Grains(_Strict):
         return self
 
 
-class Motor(_Strict):
+class SolidMotor(_Strict):
+    """A solid motor with known grain geometry (team-built, or a published spec)."""
+
+    kind: Literal["solid"] = Field(description="Solid motor with grain geometry.")
     thrust_curve: AssetRef = Field(description="Thrust curve asset (.eng or .rse).")
     burn_time_s: float | None = quantity(
         "s", "Burn time. Unset takes it from the thrust curve.", default=None, gt=0
@@ -261,10 +264,37 @@ class Motor(_Strict):
     grains: Grains = Field(description="Propellant grain geometry.")
 
     @model_validator(mode="after")
-    def _throat_inside_nozzle(self) -> "Motor":
+    def _throat_inside_nozzle(self) -> "SolidMotor":
         if self.throat_radius_m > self.nozzle_radius_m:
             raise ValueError("throat_radius_m cannot exceed nozzle_radius_m")
         return self
+
+
+class GenericMotor(_Strict):
+    """A motor known only by its thrust curve and masses, e.g. a commercial reload.
+
+    Propellant is a cylinder ("chamber") that loses mass with the impulse
+    delivered. Good for trajectory; inertia during the burn is approximate.
+    """
+
+    kind: Literal["generic"] = Field(description="Motor from thrust curve and masses only.")
+    thrust_curve: AssetRef = Field(description="Thrust curve asset (.eng).")
+    burn_time_s: float | None = quantity(
+        "s", "Burn time. Unset takes it from the thrust curve.", default=None, gt=0
+    )
+    propellant_mass_kg: float = quantity("kg", "Propellant mass at ignition.", gt=0)
+    dry_mass_kg: float = quantity("kg", "Motor mass without propellant.", gt=0)
+    dry_inertia: Inertia
+    dry_cg_position_m: float = quantity("m", "Centre of dry mass, forward of the nozzle exit.")
+    chamber_radius_m: float = quantity("m", "Radius of the propellant cylinder.", gt=0)
+    chamber_height_m: float = quantity("m", "Length of the propellant cylinder.", gt=0)
+    chamber_position_m: float = quantity(
+        "m", "Centre of the propellant cylinder, forward of the nozzle exit."
+    )
+    nozzle_radius_m: float = quantity("m", "Nozzle exit radius.", gt=0)
+
+
+Motor = Annotated[SolidMotor | GenericMotor, Field(discriminator="kind")]
 
 
 # --- Recovery -----------------------------------------------------------------
@@ -346,7 +376,7 @@ class Environment(_Strict):
 class Mission(_Strict):
     """A complete mission config. Serialised as YAML (or JSON)."""
 
-    schema_version: Literal[2] = Field(
+    schema_version: Literal[3] = Field(
         default=CURRENT_SCHEMA_VERSION,
         description="Config schema version. Older configs are migrated on load.",
     )

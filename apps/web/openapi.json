@@ -138,6 +138,45 @@
         "title": "Body_importMission",
         "type": "object"
       },
+      "Body_importOpenRocket": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          },
+          "thrust_curve": {
+            "anyOf": [
+              {
+                "contentMediaType": "application/octet-stream",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional .eng for the motor.",
+            "title": "Thrust Curve"
+          },
+          "thrust_curve_sha": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Or an already-stored thrust curve, e.g. fetched from ThrustCurve.org.",
+            "title": "Thrust Curve Sha"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_importOpenRocket",
+        "type": "object"
+      },
       "Body_uploadAsset": {
         "properties": {
           "file": {
@@ -185,6 +224,76 @@
           "description"
         ],
         "title": "ChannelInfo",
+        "type": "object"
+      },
+      "CrossCheck": {
+        "properties": {
+          "note": {
+            "description": "How the comparison was made, or why it could not be.",
+            "title": "Note",
+            "type": "string"
+          },
+          "openrocket": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "OpenRocket's value from its saved simulation.",
+            "title": "Openrocket"
+          },
+          "ours": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Apogee's value.",
+            "title": "Ours"
+          },
+          "quantity": {
+            "description": "What is compared.",
+            "title": "Quantity",
+            "type": "string"
+          },
+          "status": {
+            "description": "Agreement. 'explained': the tools define the quantity differently; see the note.",
+            "enum": [
+              "ok",
+              "flag",
+              "explained",
+              "unavailable"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "tolerance": {
+            "description": "When a difference is flagged.",
+            "title": "Tolerance",
+            "type": "string"
+          },
+          "units": {
+            "description": "Units of both values.",
+            "title": "Units",
+            "type": "string"
+          }
+        },
+        "required": [
+          "quantity",
+          "units",
+          "ours",
+          "openrocket",
+          "tolerance",
+          "status",
+          "note"
+        ],
+        "title": "CrossCheck",
         "type": "object"
       },
       "Drag": {
@@ -401,6 +510,118 @@
         "title": "FlightSummary",
         "type": "object"
       },
+      "GenericMotor": {
+        "additionalProperties": false,
+        "description": "A motor known only by its thrust curve and masses, e.g. a commercial reload.\n\nPropellant is a cylinder (\"chamber\") that loses mass with the impulse\ndelivered. Good for trajectory; inertia during the burn is approximate.",
+        "properties": {
+          "burn_time_s": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Burn time. Unset takes it from the thrust curve.",
+            "title": "Burn Time S",
+            "units": "s"
+          },
+          "chamber_height_m": {
+            "description": "Length of the propellant cylinder.",
+            "exclusiveMinimum": 0.0,
+            "title": "Chamber Height M",
+            "type": "number",
+            "units": "m"
+          },
+          "chamber_position_m": {
+            "description": "Centre of the propellant cylinder, forward of the nozzle exit.",
+            "title": "Chamber Position M",
+            "type": "number",
+            "units": "m"
+          },
+          "chamber_radius_m": {
+            "description": "Radius of the propellant cylinder.",
+            "exclusiveMinimum": 0.0,
+            "title": "Chamber Radius M",
+            "type": "number",
+            "units": "m"
+          },
+          "dry_cg_position_m": {
+            "description": "Centre of dry mass, forward of the nozzle exit.",
+            "title": "Dry Cg Position M",
+            "type": "number",
+            "units": "m"
+          },
+          "dry_inertia": {
+            "description": "Principal moments of inertia (I11, I22, I33) in kg\u00b7m\u00b2, about the centre of mass, with e3 along the rocket's axis.",
+            "maxItems": 3,
+            "minItems": 3,
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "title": "Dry Inertia",
+            "type": "array",
+            "units": "kg\u00b7m\u00b2"
+          },
+          "dry_mass_kg": {
+            "description": "Motor mass without propellant.",
+            "exclusiveMinimum": 0.0,
+            "title": "Dry Mass Kg",
+            "type": "number",
+            "units": "kg"
+          },
+          "kind": {
+            "const": "generic",
+            "description": "Motor from thrust curve and masses only.",
+            "title": "Kind",
+            "type": "string"
+          },
+          "nozzle_radius_m": {
+            "description": "Nozzle exit radius.",
+            "exclusiveMinimum": 0.0,
+            "title": "Nozzle Radius M",
+            "type": "number",
+            "units": "m"
+          },
+          "propellant_mass_kg": {
+            "description": "Propellant mass at ignition.",
+            "exclusiveMinimum": 0.0,
+            "title": "Propellant Mass Kg",
+            "type": "number",
+            "units": "kg"
+          },
+          "thrust_curve": {
+            "description": "Thrust curve asset (.eng).",
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Thrust Curve",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "thrust_curve",
+          "propellant_mass_kg",
+          "dry_mass_kg",
+          "dry_inertia",
+          "dry_cg_position_m",
+          "chamber_radius_m",
+          "chamber_height_m",
+          "chamber_position_m",
+          "nozzle_radius_m"
+        ],
+        "title": "GenericMotor",
+        "type": "object"
+      },
       "Grains": {
         "additionalProperties": false,
         "properties": {
@@ -490,6 +711,93 @@
           "status"
         ],
         "title": "Health",
+        "type": "object"
+      },
+      "ImportReport": {
+        "properties": {
+          "approximated": {
+            "description": "Came across, changed in a stated way.",
+            "items": {
+              "$ref": "#/components/schemas/ReportItem"
+            },
+            "title": "Approximated",
+            "type": "array"
+          },
+          "cross_checks": {
+            "description": "Apogee against OpenRocket.",
+            "items": {
+              "$ref": "#/components/schemas/CrossCheck"
+            },
+            "title": "Cross Checks",
+            "type": "array"
+          },
+          "mapped": {
+            "description": "Came across as-is.",
+            "items": {
+              "$ref": "#/components/schemas/ReportItem"
+            },
+            "title": "Mapped",
+            "type": "array"
+          },
+          "openrocket_version": {
+            "description": "OpenRocket that wrote the file.",
+            "title": "Openrocket Version",
+            "type": "string"
+          },
+          "reference_simulation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The simulation used for drag data and cross-checks.",
+            "title": "Reference Simulation"
+          },
+          "rocket_name": {
+            "description": "Design name in the file.",
+            "title": "Rocket Name",
+            "type": "string"
+          },
+          "simulations": {
+            "description": "Simulations saved in the file.",
+            "items": {
+              "$ref": "#/components/schemas/OrkSimulation"
+            },
+            "title": "Simulations",
+            "type": "array"
+          },
+          "unsupported": {
+            "description": "No equivalent; mass still counted in the dry mass.",
+            "items": {
+              "$ref": "#/components/schemas/ReportItem"
+            },
+            "title": "Unsupported",
+            "type": "array"
+          },
+          "warnings": {
+            "description": "Things to check before trusting the import.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "openrocket_version",
+          "rocket_name",
+          "mapped",
+          "approximated",
+          "unsupported",
+          "cross_checks",
+          "simulations",
+          "reference_simulation",
+          "warnings"
+        ],
+        "title": "ImportReport",
         "type": "object"
       },
       "Issue": {
@@ -696,13 +1004,28 @@
           "motor": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/Motor"
+                "discriminator": {
+                  "mapping": {
+                    "generic": "#/components/schemas/GenericMotor",
+                    "solid": "#/components/schemas/SolidMotor"
+                  },
+                  "propertyName": "kind"
+                },
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/SolidMotor"
+                  },
+                  {
+                    "$ref": "#/components/schemas/GenericMotor"
+                  }
+                ]
               },
               {
                 "type": "null"
               }
             ],
-            "description": "Solid rocket motor."
+            "description": "Solid rocket motor.",
+            "title": "Motor"
           },
           "recovery": {
             "$ref": "#/components/schemas/Recovery",
@@ -720,8 +1043,8 @@
             "description": "Airframe, without the motor."
           },
           "schema_version": {
-            "const": 2,
-            "default": 2,
+            "const": 3,
+            "default": 3,
             "description": "Config schema version. Older configs are migrated on load.",
             "title": "Schema Version",
             "type": "integer"
@@ -859,90 +1182,38 @@
         "title": "MissionSummary",
         "type": "object"
       },
-      "Motor": {
-        "additionalProperties": false,
+      "MotorReference": {
         "properties": {
-          "burn_time_s": {
-            "anyOf": [
-              {
-                "exclusiveMinimum": 0.0,
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Burn time. Unset takes it from the thrust curve.",
-            "title": "Burn Time S",
-            "units": "s"
+          "designation": {
+            "description": "Motor designation, e.g. 'M1340W'.",
+            "title": "Designation",
+            "type": "string"
           },
-          "dry_cg_position_m": {
-            "description": "Centre of dry mass, forward of the nozzle exit.",
-            "title": "Dry Cg Position M",
+          "diameter_m": {
+            "description": "Case diameter.",
+            "title": "Diameter M",
             "type": "number",
             "units": "m"
           },
-          "dry_inertia": {
-            "description": "Principal moments of inertia (I11, I22, I33) in kg\u00b7m\u00b2, about the centre of mass, with e3 along the rocket's axis.",
-            "maxItems": 3,
-            "minItems": 3,
-            "prefixItems": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "number"
-              },
-              {
-                "type": "number"
-              }
-            ],
-            "title": "Dry Inertia",
-            "type": "array",
-            "units": "kg\u00b7m\u00b2"
-          },
-          "dry_mass_kg": {
-            "description": "Motor mass without propellant.",
-            "exclusiveMinimum": 0.0,
-            "title": "Dry Mass Kg",
-            "type": "number",
-            "units": "kg"
-          },
-          "grains": {
-            "$ref": "#/components/schemas/Grains",
-            "description": "Propellant grain geometry."
-          },
-          "nozzle_radius_m": {
-            "description": "Nozzle exit radius.",
-            "exclusiveMinimum": 0.0,
-            "title": "Nozzle Radius M",
+          "length_m": {
+            "description": "Case length.",
+            "title": "Length M",
             "type": "number",
             "units": "m"
           },
-          "throat_radius_m": {
-            "description": "Nozzle throat radius.",
-            "exclusiveMinimum": 0.0,
-            "title": "Throat Radius M",
-            "type": "number",
-            "units": "m"
-          },
-          "thrust_curve": {
-            "description": "Thrust curve asset (.eng or .rse).",
-            "pattern": "^[0-9a-f]{64}$",
-            "title": "Thrust Curve",
+          "manufacturer": {
+            "description": "Motor manufacturer.",
+            "title": "Manufacturer",
             "type": "string"
           }
         },
         "required": [
-          "thrust_curve",
-          "dry_mass_kg",
-          "dry_inertia",
-          "dry_cg_position_m",
-          "nozzle_radius_m",
-          "throat_radius_m",
-          "grains"
+          "manufacturer",
+          "designation",
+          "diameter_m",
+          "length_m"
         ],
-        "title": "Motor",
+        "title": "MotorReference",
         "type": "object"
       },
       "NoseCone": {
@@ -974,6 +1245,198 @@
           "length_m"
         ],
         "title": "NoseCone",
+        "type": "object"
+      },
+      "OpenRocketImport": {
+        "description": "A draft to review: nothing is saved until the user applies it to a mission.",
+        "properties": {
+          "assets": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Asset"
+            },
+            "description": "Entries to add to the mission's assets (already stored).",
+            "title": "Assets",
+            "type": "object"
+          },
+          "motor": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GenericMotor"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Draft motor, if a thrust curve was supplied with the design."
+          },
+          "motor_reference": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MotorReference"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The motor OpenRocket's default configuration names."
+          },
+          "rail": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RailSettings"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Rod settings from the reference simulation, to apply to the site if wanted."
+          },
+          "recovery": {
+            "$ref": "#/components/schemas/Recovery",
+            "description": "Draft recovery section."
+          },
+          "report": {
+            "$ref": "#/components/schemas/ImportReport",
+            "description": "What came across, and how it compares."
+          },
+          "rocket": {
+            "$ref": "#/components/schemas/Rocket",
+            "description": "Draft rocket section."
+          }
+        },
+        "required": [
+          "rocket",
+          "recovery",
+          "motor",
+          "motor_reference",
+          "rail",
+          "assets",
+          "report"
+        ],
+        "title": "OpenRocketImport",
+        "type": "object"
+      },
+      "OrkSimulation": {
+        "properties": {
+          "apogee_m": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Apogee above the launch site.",
+            "title": "Apogee M",
+            "units": "m"
+          },
+          "max_mach": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Highest Mach number.",
+            "title": "Max Mach",
+            "units": "1"
+          },
+          "motor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Motor flown in that simulation.",
+            "title": "Motor"
+          },
+          "name": {
+            "description": "Simulation name in OpenRocket.",
+            "title": "Name",
+            "type": "string"
+          },
+          "rail_exit_velocity_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Speed leaving the rod.",
+            "title": "Rail Exit Velocity Ms",
+            "units": "m/s"
+          },
+          "rod_angle_deg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Rod angle from vertical.",
+            "title": "Rod Angle Deg",
+            "units": "deg"
+          },
+          "rod_length_m": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Launch rod length.",
+            "title": "Rod Length M",
+            "units": "m"
+          },
+          "site": {
+            "description": "Launch site the simulation used.",
+            "title": "Site",
+            "type": "string"
+          },
+          "up_to_date": {
+            "description": "False if the design changed after it ran; its numbers then describe an older rocket.",
+            "title": "Up To Date",
+            "type": "boolean"
+          },
+          "wind_average_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Average wind.",
+            "title": "Wind Average Ms",
+            "units": "m/s"
+          }
+        },
+        "required": [
+          "name",
+          "up_to_date",
+          "motor",
+          "apogee_m",
+          "max_mach",
+          "rail_exit_velocity_ms",
+          "wind_average_ms",
+          "rod_length_m",
+          "rod_angle_deg",
+          "site"
+        ],
+        "title": "OrkSimulation",
         "type": "object"
       },
       "ParachuteEvent": {
@@ -1224,6 +1687,35 @@
         "title": "RailButtons",
         "type": "object"
       },
+      "RailSettings": {
+        "properties": {
+          "heading_deg": {
+            "description": "Rod direction.",
+            "title": "Heading Deg",
+            "type": "number",
+            "units": "deg"
+          },
+          "inclination_deg": {
+            "description": "90 is vertical.",
+            "title": "Inclination Deg",
+            "type": "number",
+            "units": "deg"
+          },
+          "rail_length_m": {
+            "description": "From the reference simulation.",
+            "title": "Rail Length M",
+            "type": "number",
+            "units": "m"
+          }
+        },
+        "required": [
+          "rail_length_m",
+          "inclination_deg",
+          "heading_deg"
+        ],
+        "title": "RailSettings",
+        "type": "object"
+      },
       "Recovery": {
         "additionalProperties": false,
         "properties": {
@@ -1297,6 +1789,39 @@
           "trigger"
         ],
         "title": "RecoveryDevice",
+        "type": "object"
+      },
+      "ReportItem": {
+        "properties": {
+          "component": {
+            "description": "Part name in OpenRocket.",
+            "title": "Component",
+            "type": "string"
+          },
+          "detail": {
+            "description": "The value, approximation or reason, in plain language.",
+            "title": "Detail",
+            "type": "string"
+          },
+          "target": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Where it went in the mission config, if anywhere.",
+            "title": "Target"
+          }
+        },
+        "required": [
+          "component",
+          "target",
+          "detail"
+        ],
+        "title": "ReportItem",
         "type": "object"
       },
       "ResolvedProfile": {
@@ -1735,6 +2260,100 @@
         "title": "Site",
         "type": "object"
       },
+      "SolidMotor": {
+        "additionalProperties": false,
+        "description": "A solid motor with known grain geometry (team-built, or a published spec).",
+        "properties": {
+          "burn_time_s": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Burn time. Unset takes it from the thrust curve.",
+            "title": "Burn Time S",
+            "units": "s"
+          },
+          "dry_cg_position_m": {
+            "description": "Centre of dry mass, forward of the nozzle exit.",
+            "title": "Dry Cg Position M",
+            "type": "number",
+            "units": "m"
+          },
+          "dry_inertia": {
+            "description": "Principal moments of inertia (I11, I22, I33) in kg\u00b7m\u00b2, about the centre of mass, with e3 along the rocket's axis.",
+            "maxItems": 3,
+            "minItems": 3,
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "title": "Dry Inertia",
+            "type": "array",
+            "units": "kg\u00b7m\u00b2"
+          },
+          "dry_mass_kg": {
+            "description": "Motor mass without propellant.",
+            "exclusiveMinimum": 0.0,
+            "title": "Dry Mass Kg",
+            "type": "number",
+            "units": "kg"
+          },
+          "grains": {
+            "$ref": "#/components/schemas/Grains",
+            "description": "Propellant grain geometry."
+          },
+          "kind": {
+            "const": "solid",
+            "description": "Solid motor with grain geometry.",
+            "title": "Kind",
+            "type": "string"
+          },
+          "nozzle_radius_m": {
+            "description": "Nozzle exit radius.",
+            "exclusiveMinimum": 0.0,
+            "title": "Nozzle Radius M",
+            "type": "number",
+            "units": "m"
+          },
+          "throat_radius_m": {
+            "description": "Nozzle throat radius.",
+            "exclusiveMinimum": 0.0,
+            "title": "Throat Radius M",
+            "type": "number",
+            "units": "m"
+          },
+          "thrust_curve": {
+            "description": "Thrust curve asset (.eng or .rse).",
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Thrust Curve",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "thrust_curve",
+          "dry_mass_kg",
+          "dry_inertia",
+          "dry_cg_position_m",
+          "nozzle_radius_m",
+          "throat_radius_m",
+          "grains"
+        ],
+        "title": "SolidMotor",
+        "type": "object"
+      },
       "StandardAtmosphere": {
         "additionalProperties": false,
         "properties": {
@@ -1836,6 +2455,30 @@
         "title": "Tail",
         "type": "object"
       },
+      "ThrustCurveImport": {
+        "properties": {
+          "asset": {
+            "$ref": "#/components/schemas/AssetInfo",
+            "description": "The stored thrust curve."
+          },
+          "motor": {
+            "$ref": "#/components/schemas/GenericMotor",
+            "description": "A motor section estimated from the curve's header."
+          },
+          "source": {
+            "description": "Where the curve came from.",
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "asset",
+          "motor",
+          "source"
+        ],
+        "title": "ThrustCurveImport",
+        "type": "object"
+      },
       "ThrustCurveInfo": {
         "properties": {
           "burn_time_s": {
@@ -1869,6 +2512,26 @@
           "propellant_mass_kg"
         ],
         "title": "ThrustCurveInfo",
+        "type": "object"
+      },
+      "ThrustCurveRequest": {
+        "properties": {
+          "designation": {
+            "description": "e.g. 'M1340W'.",
+            "title": "Designation",
+            "type": "string"
+          },
+          "manufacturer": {
+            "description": "e.g. 'AeroTech'.",
+            "title": "Manufacturer",
+            "type": "string"
+          }
+        },
+        "required": [
+          "manufacturer",
+          "designation"
+        ],
+        "title": "ThrustCurveRequest",
         "type": "object"
       },
       "TrapezoidalFins": {
@@ -2119,6 +2782,130 @@
         "summary": "Health",
         "tags": [
           "system"
+        ]
+      }
+    },
+    "/api/imports/openrocket": {
+      "post": {
+        "description": "Parse an .ork into draft rocket and recovery sections, with an import report.\n\nWith a thrust curve, the draft also gets a motor and the report gets\nflight cross-checks (apogee, max Mach, rail exit, centre of pressure)\nagainst OpenRocket's own saved simulation.",
+        "operationId": "importOpenRocket",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_importOpenRocket"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenRocketImport"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "File too large."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not a readable OpenRocket design."
+          }
+        },
+        "summary": "Import Ork",
+        "tags": [
+          "imports"
+        ]
+      }
+    },
+    "/api/imports/thrustcurve": {
+      "post": {
+        "description": "Fetch a motor's RASP (.eng) curve from ThrustCurve.org and store it.\n\nNeeds internet. Fetched curves are stored like uploads, so they work\noffline afterwards.",
+        "operationId": "fetchThrustCurve",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ThrustCurveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ThrustCurveImport"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No such motor on ThrustCurve.org."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "ThrustCurve.org refused the request."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "ThrustCurve.org is not reachable (offline?)."
+          }
+        },
+        "summary": "Fetch Thrust Curve",
+        "tags": [
+          "imports"
         ]
       }
     },

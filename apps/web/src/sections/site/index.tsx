@@ -1,4 +1,4 @@
-import { Check, MapPin, Plus, Trash2, Undo2, X } from 'lucide-react'
+import { Check, MapPin, Plus, Satellite, Trash2, Undo2, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Explainer } from '@/components/Explainer'
 import { collection, line, polygon, type LonLat } from '@/components/map/geo'
@@ -8,7 +8,7 @@ import { RequireMission } from '@/components/RequireMission'
 import { Button } from '@/components/ui/button'
 import { Map, MapControls, MapGeoJSON, MapMarker, MarkerContent, useMap } from '@/components/ui/map'
 import type { Issue, Site } from '@/lib/api'
-import { hasBasemap, overlayColors } from '@/lib/mapStyles'
+import { basemapSource, overlayColors, satelliteAvailable, satelliteStyle } from '@/lib/mapStyles'
 import { useIssuesAt } from '@/lib/mission/validation'
 import { useMissionStore } from '@/stores/mission'
 import { usePrefs } from '@/stores/prefs'
@@ -19,6 +19,8 @@ import { DRAW_LABEL, MIN_POINTS, useDrawing } from './drawing'
  * against their own rail; position comes from the user.
  */
 const NEW_RAIL = { elevation_m: 0, rail_length_m: 6, inclination_deg: 85, heading_deg: 0 }
+
+const SATELLITE_STYLES = { dark: satelliteStyle, light: satelliteStyle }
 
 function useSite() {
   return useMissionStore((s) => s.draft?.site ?? null)
@@ -67,6 +69,8 @@ function SiteMap() {
   const units = usePrefs((s) => s.units)
   const editSite = useEditSite()
   const drawing = useDrawing((s) => s.target !== null)
+  const satellite = usePrefs((s) => s.satellite) && satelliteAvailable
+  const setSatellite = usePrefs((s) => s.setSatellite)
   // Leaving the section abandons a half-drawn shape.
   useEffect(() => () => useDrawing.getState().cancel(), [])
 
@@ -78,6 +82,9 @@ function SiteMap() {
         className="absolute inset-0 bg-background"
         center={site ? [site.longitude_deg, site.latitude_deg] : [0, 20]}
         zoom={site ? 13 : 1.5}
+        styles={satellite ? SATELLITE_STYLES : undefined}
+        // Imagery is dark whatever the app theme, so overlays use their dark-theme colours.
+        theme={satellite ? 'dark' : undefined}
       >
         <MapControls position="bottom-right" showCompass />
         <MapScale unit={units} />
@@ -97,9 +104,20 @@ function SiteMap() {
         <DrawingPreview />
       </Map>
       <DrawingToolbar />
-      {!hasBasemap && !drawing && (
+      {satelliteAvailable && (
+        <button
+          type="button"
+          aria-pressed={satellite}
+          onClick={() => setSatellite(!satellite)}
+          className={`absolute top-4 right-4 flex h-8 items-center gap-1.5 rounded-md border border-border px-2.5 text-sm shadow-sm transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${satellite ? 'bg-primary text-primary-foreground' : 'bg-background hover:bg-accent'}`}
+        >
+          <Satellite className="size-4" /> Satellite
+        </button>
+      )}
+      {basemapSource === 'none' && !drawing && (
         <p className="pointer-events-none absolute right-4 bottom-4 left-4 mx-auto max-w-md rounded-md bg-surface/90 px-3 py-2 text-center text-xs text-muted-foreground md:right-auto md:left-4 md:mx-0">
-          No basemap is configured, so the map shows only your site. Use the scale bar to draw the range around the pad.
+          No basemap: you're offline and no map tiles are downloaded, so the map shows only your site. Use the scale
+          bar to draw the range around the pad.
         </p>
       )}
     </div>
@@ -298,7 +316,7 @@ function NewSite() {
       }}
     >
       <p className="text-sm">
-        Enter the pad's coordinates{hasBasemap ? ', or click the map where the pad is' : ''}. You can drag the pad on the
+        Enter the pad's coordinates{basemapSource !== 'none' ? ', or click the map where the pad is' : ''}. You can drag the pad on the
         map afterwards.
       </p>
       <div className="grid grid-cols-2 gap-3">

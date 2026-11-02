@@ -101,3 +101,28 @@ def parse_thrust_curve(filename: str, data: bytes) -> ThrustCurve:
     if filename.lower().endswith(".rse"):
         raise ThrustCurveError(".rse files are not supported yet; convert to .eng")
     raise ThrustCurveError(f"{filename}: expected a .eng file")
+
+
+def generic_motor_estimate(curve: ThrustCurve) -> dict[str, float | tuple[float, float, float]]:
+    """GenericMotor fields estimated from an .eng header alone.
+
+    Same estimates as RocketPy's ``GenericMotor.load_from_eng_file``, except
+    the chamber radius: RocketPy 1.13 assigns the header's *diameter* to it,
+    doubling the radius. Here it is half the case diameter. The dry case is a
+    thin-walled cylinder for inertia (RocketPy defaults it to zero).
+    """
+    radius = curve.diameter_m / 2
+    length = curve.length_m
+    dry = curve.total_mass_kg - curve.propellant_mass_kg
+    i_axial = dry * radius**2
+    i_trans = dry * (radius**2 / 2 + length**2 / 12)
+    return {
+        "propellant_mass_kg": curve.propellant_mass_kg,
+        "dry_mass_kg": dry,
+        "dry_inertia": (i_trans, i_trans, i_axial),
+        "dry_cg_position_m": length / 2,
+        "chamber_radius_m": radius,
+        "chamber_height_m": length,
+        "chamber_position_m": length / 2,
+        "nozzle_radius_m": 0.85 * radius,
+    }

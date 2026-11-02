@@ -6,6 +6,8 @@ import { collection, destination, line, polygon, type LonLat } from './geo'
 
 /** Length of the rail-heading indicator drawn from the pad. */
 const HEADING_LINE_M = 300
+/** A rail this close to vertical has no meaningful heading to draw. */
+const VERTICAL_DEG = 89.5
 
 /**
  * The launch site on a map: range boundary, hazard zones, access roads, the
@@ -45,9 +47,12 @@ export function SiteLayers({
   )
   const roads = useMemo(() => collection((site.access_roads ?? []).map((r) => line(r as LonLat[]))), [site.access_roads])
   const heading = useMemo(
-    () => collection([line([pad, destination(pad, site.heading_deg, HEADING_LINE_M)])]),
+    () =>
+      site.inclination_deg >= VERTICAL_DEG
+        ? collection([])
+        : collection([line([pad, destination(pad, site.heading_deg, HEADING_LINE_M)])]),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [site.longitude_deg, site.latitude_deg, site.heading_deg],
+    [site.longitude_deg, site.latitude_deg, site.heading_deg, site.inclination_deg],
   )
 
   return (

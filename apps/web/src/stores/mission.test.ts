@@ -3,7 +3,7 @@ import type { Mission } from '@/lib/api'
 import { useMissionStore } from './mission'
 
 const mission: Mission = {
-  schema_version: 2,
+  schema_version: 3,
   meta: { name: 'Lanius', id: '01JC', created_utc: '2026-11-01T09:14:00Z', authors: [], notes: '' },
   rocket: null, motor: null, recovery: { devices: [] }, ballast: {}, site: null,
   environment: { atmosphere: { kind: 'standard' } },

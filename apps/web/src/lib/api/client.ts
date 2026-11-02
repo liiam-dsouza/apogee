@@ -18,7 +18,8 @@ export type Issue = Schemas['Issue']
 export type Problem = Schemas['Problem']
 export type SystemInfo = Schemas['SystemInfo']
 export type Rocket = Schemas['Rocket']
-export type Motor = Schemas['Motor']
+export type Motor = NonNullable<Mission['motor']>
+export type GenericMotor = Schemas['GenericMotor']
 export type RunState = Schemas['RunState']
 export type JobState = Schemas['JobState']
 export type ResultRecord = Schemas['ResultRecord']
@@ -26,6 +27,10 @@ export type FlightSummary = Schemas['FlightSummary']
 export type Provenance = Schemas['Provenance']
 export type Series = Schemas['Series']
 export type AssetInfo = Schemas['AssetInfo']
+export type OpenRocketImport = Schemas['OpenRocketImport']
+export type ImportReport = Schemas['ImportReport']
+export type CrossCheck = Schemas['CrossCheck']
+export type ThrustCurveImport = Schemas['ThrustCurveImport']
 
 export const client = createClient<paths>({ baseUrl: '' })
 
@@ -129,6 +134,21 @@ export const api = {
         },
       }),
     ),
+  importOpenRocket: (ork: File, thrust?: { file?: File; sha?: string }) =>
+    unwrap<OpenRocketImport>(
+      client.POST('/api/imports/openrocket', {
+        body: { file: ork as unknown as string },
+        bodySerializer: () => {
+          const form = new FormData()
+          form.append('file', ork)
+          if (thrust?.file) form.append('thrust_curve', thrust.file)
+          else if (thrust?.sha) form.append('thrust_curve_sha', thrust.sha)
+          return form
+        },
+      }),
+    ),
+  fetchThrustCurve: (manufacturer: string, designation: string) =>
+    unwrap<ThrustCurveImport>(client.POST('/api/imports/thrustcurve', { body: { manufacturer, designation } })),
   /** A plain URL, for <a download>. */
   exportMissionUrl: (id: string, format: 'yaml' | 'zip' = 'yaml') =>
     `/api/missions/${encodeURIComponent(id)}/export?format=${format}`,

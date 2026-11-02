@@ -50,6 +50,15 @@ export const fields = {
   "Body_importMission": {
     "file": {}
   },
+  "Body_importOpenRocket": {
+    "file": {},
+    "thrust_curve": {
+      "description": "Optional .eng for the motor."
+    },
+    "thrust_curve_sha": {
+      "description": "Or an already-stored thrust curve, e.g. fetched from ThrustCurve.org."
+    }
+  },
   "Body_uploadAsset": {
     "file": {},
     "kind": {}
@@ -63,6 +72,29 @@ export const fields = {
     },
     "units": {
       "description": "Units of the values."
+    }
+  },
+  "CrossCheck": {
+    "note": {
+      "description": "How the comparison was made, or why it could not be."
+    },
+    "openrocket": {
+      "description": "OpenRocket's value from its saved simulation."
+    },
+    "ours": {
+      "description": "Apogee's value."
+    },
+    "quantity": {
+      "description": "What is compared."
+    },
+    "status": {
+      "description": "Agreement. 'explained': the tools define the quantity differently; see the note."
+    },
+    "tolerance": {
+      "description": "When a difference is flagged."
+    },
+    "units": {
+      "description": "Units of both values."
     }
   },
   "Drag": {
@@ -152,6 +184,56 @@ export const fields = {
       "units": "cal"
     }
   },
+  "GenericMotor": {
+    "burn_time_s": {
+      "description": "Burn time. Unset takes it from the thrust curve.",
+      "units": "s",
+      "exclusiveMinimum": 0
+    },
+    "chamber_height_m": {
+      "description": "Length of the propellant cylinder.",
+      "units": "m",
+      "exclusiveMinimum": 0
+    },
+    "chamber_position_m": {
+      "description": "Centre of the propellant cylinder, forward of the nozzle exit.",
+      "units": "m"
+    },
+    "chamber_radius_m": {
+      "description": "Radius of the propellant cylinder.",
+      "units": "m",
+      "exclusiveMinimum": 0
+    },
+    "dry_cg_position_m": {
+      "description": "Centre of dry mass, forward of the nozzle exit.",
+      "units": "m"
+    },
+    "dry_inertia": {
+      "description": "Principal moments of inertia (I11, I22, I33) in kg·m², about the centre of mass, with e3 along the rocket's axis.",
+      "units": "kg·m²"
+    },
+    "dry_mass_kg": {
+      "description": "Motor mass without propellant.",
+      "units": "kg",
+      "exclusiveMinimum": 0
+    },
+    "kind": {
+      "description": "Motor from thrust curve and masses only."
+    },
+    "nozzle_radius_m": {
+      "description": "Nozzle exit radius.",
+      "units": "m",
+      "exclusiveMinimum": 0
+    },
+    "propellant_mass_kg": {
+      "description": "Propellant mass at ignition.",
+      "units": "kg",
+      "exclusiveMinimum": 0
+    },
+    "thrust_curve": {
+      "description": "Thrust curve asset (.eng)."
+    }
+  },
   "Grains": {
     "cg_position_m": {
       "description": "Centre of mass of the grain stack, forward of the nozzle exit.",
@@ -194,6 +276,35 @@ export const fields = {
   "Health": {
     "status": {
       "description": "'ok' when the API process is serving."
+    }
+  },
+  "ImportReport": {
+    "approximated": {
+      "description": "Came across, changed in a stated way."
+    },
+    "cross_checks": {
+      "description": "Apogee against OpenRocket."
+    },
+    "mapped": {
+      "description": "Came across as-is."
+    },
+    "openrocket_version": {
+      "description": "OpenRocket that wrote the file."
+    },
+    "reference_simulation": {
+      "description": "The simulation used for drag data and cross-checks."
+    },
+    "rocket_name": {
+      "description": "Design name in the file."
+    },
+    "simulations": {
+      "description": "Simulations saved in the file."
+    },
+    "unsupported": {
+      "description": "No equivalent; mass still counted in the dry mass."
+    },
+    "warnings": {
+      "description": "Things to check before trusting the import."
     }
   },
   "Issue": {
@@ -344,40 +455,20 @@ export const fields = {
       "description": "Last saved, UTC."
     }
   },
-  "Motor": {
-    "burn_time_s": {
-      "description": "Burn time. Unset takes it from the thrust curve.",
-      "units": "s",
-      "exclusiveMinimum": 0
+  "MotorReference": {
+    "designation": {
+      "description": "Motor designation, e.g. 'M1340W'."
     },
-    "dry_cg_position_m": {
-      "description": "Centre of dry mass, forward of the nozzle exit.",
+    "diameter_m": {
+      "description": "Case diameter.",
       "units": "m"
     },
-    "dry_inertia": {
-      "description": "Principal moments of inertia (I11, I22, I33) in kg·m², about the centre of mass, with e3 along the rocket's axis.",
-      "units": "kg·m²"
+    "length_m": {
+      "description": "Case length.",
+      "units": "m"
     },
-    "dry_mass_kg": {
-      "description": "Motor mass without propellant.",
-      "units": "kg",
-      "exclusiveMinimum": 0
-    },
-    "grains": {
-      "description": "Propellant grain geometry."
-    },
-    "nozzle_radius_m": {
-      "description": "Nozzle exit radius.",
-      "units": "m",
-      "exclusiveMinimum": 0
-    },
-    "throat_radius_m": {
-      "description": "Nozzle throat radius.",
-      "units": "m",
-      "exclusiveMinimum": 0
-    },
-    "thrust_curve": {
-      "description": "Thrust curve asset (.eng or .rse)."
+    "manufacturer": {
+      "description": "Motor manufacturer."
     }
   },
   "NoseCone": {
@@ -388,6 +479,67 @@ export const fields = {
       "description": "Nose cone length, tip to shoulder.",
       "units": "m",
       "exclusiveMinimum": 0
+    }
+  },
+  "OpenRocketImport": {
+    "assets": {
+      "description": "Entries to add to the mission's assets (already stored)."
+    },
+    "motor": {
+      "description": "Draft motor, if a thrust curve was supplied with the design."
+    },
+    "motor_reference": {
+      "description": "The motor OpenRocket's default configuration names."
+    },
+    "rail": {
+      "description": "Rod settings from the reference simulation, to apply to the site if wanted."
+    },
+    "recovery": {
+      "description": "Draft recovery section."
+    },
+    "report": {
+      "description": "What came across, and how it compares."
+    },
+    "rocket": {
+      "description": "Draft rocket section."
+    }
+  },
+  "OrkSimulation": {
+    "apogee_m": {
+      "description": "Apogee above the launch site.",
+      "units": "m"
+    },
+    "max_mach": {
+      "description": "Highest Mach number.",
+      "units": "1"
+    },
+    "motor": {
+      "description": "Motor flown in that simulation."
+    },
+    "name": {
+      "description": "Simulation name in OpenRocket."
+    },
+    "rail_exit_velocity_ms": {
+      "description": "Speed leaving the rod.",
+      "units": "m/s"
+    },
+    "rod_angle_deg": {
+      "description": "Rod angle from vertical.",
+      "units": "deg"
+    },
+    "rod_length_m": {
+      "description": "Launch rod length.",
+      "units": "m"
+    },
+    "site": {
+      "description": "Launch site the simulation used."
+    },
+    "up_to_date": {
+      "description": "False if the design changed after it ran; its numbers then describe an older rocket."
+    },
+    "wind_average_ms": {
+      "description": "Average wind.",
+      "units": "m/s"
     }
   },
   "ParachuteEvent": {
@@ -498,6 +650,20 @@ export const fields = {
       "minimum": 0
     }
   },
+  "RailSettings": {
+    "heading_deg": {
+      "description": "Rod direction.",
+      "units": "deg"
+    },
+    "inclination_deg": {
+      "description": "90 is vertical.",
+      "units": "deg"
+    },
+    "rail_length_m": {
+      "description": "From the reference simulation.",
+      "units": "m"
+    }
+  },
   "Recovery": {
     "devices": {
       "description": "Recovery devices. None means a ballistic descent."
@@ -524,6 +690,17 @@ export const fields = {
     },
     "trigger": {
       "description": "When the device deploys."
+    }
+  },
+  "ReportItem": {
+    "component": {
+      "description": "Part name in OpenRocket."
+    },
+    "detail": {
+      "description": "The value, approximation or reason, in plain language."
+    },
+    "target": {
+      "description": "Where it went in the mission config, if anywhere."
     }
   },
   "ResolvedProfile": {
@@ -685,6 +862,45 @@ export const fields = {
       "exclusiveMinimum": 0
     }
   },
+  "SolidMotor": {
+    "burn_time_s": {
+      "description": "Burn time. Unset takes it from the thrust curve.",
+      "units": "s",
+      "exclusiveMinimum": 0
+    },
+    "dry_cg_position_m": {
+      "description": "Centre of dry mass, forward of the nozzle exit.",
+      "units": "m"
+    },
+    "dry_inertia": {
+      "description": "Principal moments of inertia (I11, I22, I33) in kg·m², about the centre of mass, with e3 along the rocket's axis.",
+      "units": "kg·m²"
+    },
+    "dry_mass_kg": {
+      "description": "Motor mass without propellant.",
+      "units": "kg",
+      "exclusiveMinimum": 0
+    },
+    "grains": {
+      "description": "Propellant grain geometry."
+    },
+    "kind": {
+      "description": "Solid motor with grain geometry."
+    },
+    "nozzle_radius_m": {
+      "description": "Nozzle exit radius.",
+      "units": "m",
+      "exclusiveMinimum": 0
+    },
+    "throat_radius_m": {
+      "description": "Nozzle throat radius.",
+      "units": "m",
+      "exclusiveMinimum": 0
+    },
+    "thrust_curve": {
+      "description": "Thrust curve asset (.eng or .rse)."
+    }
+  },
   "StandardAtmosphere": {
     "kind": {
       "description": "International Standard Atmosphere, no wind. For sanity runs."
@@ -732,6 +948,17 @@ export const fields = {
       "exclusiveMinimum": 0
     }
   },
+  "ThrustCurveImport": {
+    "asset": {
+      "description": "The stored thrust curve."
+    },
+    "motor": {
+      "description": "A motor section estimated from the curve's header."
+    },
+    "source": {
+      "description": "Where the curve came from."
+    }
+  },
   "ThrustCurveInfo": {
     "burn_time_s": {
       "description": "Last thrust point.",
@@ -747,6 +974,14 @@ export const fields = {
     "total_impulse_ns": {
       "description": "Area under the curve.",
       "units": "N·s"
+    }
+  },
+  "ThrustCurveRequest": {
+    "designation": {
+      "description": "e.g. 'M1340W'."
+    },
+    "manufacturer": {
+      "description": "e.g. 'AeroTech'."
     }
   },
   "TrapezoidalFins": {

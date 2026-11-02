@@ -3,6 +3,88 @@
 Running log of what's built against the project brief. Newest first.
 Frontend paths are relative to `apps/web/`.
 
+## 2026-11-02: OpenRocket import, Lanius test mission
+
+**Done**
+- **OpenRocket importer** (`simcore/importers/openrocket.py`, `ork_geometry.py`):
+  - Reads `.ork` files with defusedxml, so a hostile XML upload is refused safely.
+  - Resolves every part's absolute position.
+  - Masses: measured overrides are kept exactly; the rest use OpenRocket's own geometry
+    formulas (nose shell from its exact profile, tubes, rings, parachutes from canopy and
+    lines).
+  - Dry mass, CG and inertia; nose, fins, tail, rail buttons and motor position; recovery
+    from parachutes.
+  - **Drag tables (power on and off) from the up-to-date simulation's ascent data.**
+- **Import report:** mapped, approximated and unsupported parts, warnings, saved
+  simulations, and **cross-checks against OpenRocket**:
+  - Static (dry mass, CG, inertia) in the importer.
+  - Flight (apogee, max Mach, rail exit, CP at near-zero angle of attack) as a worker job
+    flown under OpenRocket's own conditions.
+- **Motors:** mission **schema v3** (`motor.kind`: `solid` | `generic`); `v2_to_v3` tags
+  old motors `solid`. A generic motor is estimated from an `.eng` header, the way RocketPy
+  does, but fixing its chamber radius bug (it uses the diameter).
+- **API:**
+  - `POST /api/imports/openrocket` (with an optional `.eng`, or the hash of a stored curve).
+  - `POST /api/imports/thrustcurve` (fetches from ThrustCurve.org; offline → 503,
+    refused → 502).
+- **Rocket section:** import, review (cross-check table, warnings, part lists, saved
+  simulations), "Use this rocket" (optionally applying the rod settings), and a
+  to-scale side view.
+- **`simcore.weather.isa_levels`**, the start of the weather module.
+- **Lanius test mission:** `make lanius` → `data/lanius-white-cliffs.mission.zip`. The
+  team's rocket and M1340W at White Cliffs (−30.664810, 143.196302).
+- **Docs:** `docs/methods/openrocket-import.md`.
+- **e2e:** an OpenRocket import journey, and the map worker's content type.
+
+**Lanius against OpenRocket** (its "0 m/s Wind" simulation, which is actually 2 m/s):
+
+| | Apogee import | OpenRocket |
+| --- | --- | --- |
+| Dry mass | 15.039 kg | 15.039 kg |
+| CG at liftoff | 2.1223 m | 2.1220 m |
+| Apogee | 3,128.4 m | 3,128.5 m |
+| Max Mach | 0.807 | 0.807 |
+| CP at Mach 0.20 | 2.558 m | 2.553 m |
+| Rail exit | 21.0 m/s | 24.4 m/s (defined differently) |
+
+At White Cliffs (220 m, no wind, vertical 4.89 m rail): apogee **3,145 m**, drift 6 m,
+touchdown 6.5 m/s.
+
+**Bugs found while doing this (fixed)**
+- **No map layers ever rendered on the Docker stack.** nginx served the MapLibre worker
+  (`.mjs`) as `application/octet-stream`, so the worker never started and only DOM
+  markers drew: no boundaries or hazards. The Vite dev server types `.mjs` correctly, so
+  development hid it. nginx now maps `.mjs` to JavaScript, with an e2e check of the
+  worker's content type.
+- **ThrustCurve.org returns 403 to Python's default User-Agent.** Apogee now identifies
+  itself. A refusal used to be reported as "you may be offline", because `HTTPError`
+  is a `URLError`.
+- **`JobState` assumed every job returns a result id;** list results broke it.
+- **The rail-heading line was drawn for vertical rails.**
+
+- **The map still looked empty in a real browser (user report), for two reasons.**
+  1. The browser had cached the mistyped `.mjs` worker for a year: `/assets/` is
+     `immutable`, and the worker's content hash didn't change with the nginx fix.
+     Playwright starts each run with an empty cache, so tests passed. The worker is now
+     emitted as `.js`, a new URL that is JavaScript on any server.
+  2. With no tile file the basemap was deliberately blank, which reads as broken.
+     `mapStyles` now chooses: **local** PMTiles if configured, else **online**
+     OpenFreeMap (OSM, no key) when the browser is online, else **none** (blank, with a
+     message). Basemap tiles are outside the simulation path, so fetching them is allowed.
+
+**Data you should check**
+- **White Cliffs elevation 220 m** is from Open-Meteo's 90 m model. Your `.ork` used
+  150.9 m. Survey the pad.
+- **The boundary in the Lanius test mission is an illustrative 3 km square,** not the real
+  range. Send the real polygon and I'll put it in.
+- **`data/` is not committed** (the team's design). Tests that need `Lanius.ork` skip
+  without it, including in CI.
+
+**Known gaps**
+- Rocket fields aren't editable yet (import only). There's no Motor or Recovery editor.
+- CP and stability aren't shown on the side view (they need the engine and a Mach).
+- Re-import diff (keeping manual overrides) isn't built.
+
 ## 2026-11-02: First real flight (milestone 1)
 
 **Done**

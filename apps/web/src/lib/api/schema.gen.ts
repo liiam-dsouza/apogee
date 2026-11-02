@@ -55,6 +55,53 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/imports/openrocket": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Import Ork
+         * @description Parse an .ork into draft rocket and recovery sections, with an import report.
+         *
+         *     With a thrust curve, the draft also gets a motor and the report gets
+         *     flight cross-checks (apogee, max Mach, rail exit, centre of pressure)
+         *     against OpenRocket's own saved simulation.
+         */
+        post: operations["importOpenRocket"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/imports/thrustcurve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Fetch Thrust Curve
+         * @description Fetch a motor's RASP (.eng) curve from ThrustCurve.org and store it.
+         *
+         *     Needs internet. Fetched curves are stored like uploads, so they work
+         *     offline afterwards.
+         */
+        post: operations["fetchThrustCurve"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/jobs/{job_id}": {
         parameters: {
             query?: never;
@@ -328,6 +375,21 @@ export interface components {
             /** File */
             file: string;
         };
+        /** Body_importOpenRocket */
+        Body_importOpenRocket: {
+            /** File */
+            file: string;
+            /**
+             * Thrust Curve
+             * @description Optional .eng for the motor.
+             */
+            thrust_curve?: string | null;
+            /**
+             * Thrust Curve Sha
+             * @description Or an already-stored thrust curve, e.g. fetched from ThrustCurve.org.
+             */
+            thrust_curve_sha?: string | null;
+        };
         /** Body_uploadAsset */
         Body_uploadAsset: {
             /** File */
@@ -353,6 +415,45 @@ export interface components {
             /**
              * Units
              * @description Units of the values.
+             */
+            units: string;
+        };
+        /** CrossCheck */
+        CrossCheck: {
+            /**
+             * Note
+             * @description How the comparison was made, or why it could not be.
+             */
+            note: string;
+            /**
+             * Openrocket
+             * @description OpenRocket's value from its saved simulation.
+             */
+            openrocket: number | null;
+            /**
+             * Ours
+             * @description Apogee's value.
+             */
+            ours: number | null;
+            /**
+             * Quantity
+             * @description What is compared.
+             */
+            quantity: string;
+            /**
+             * Status
+             * @description Agreement. 'explained': the tools define the quantity differently; see the note.
+             * @enum {string}
+             */
+            status: "ok" | "flag" | "explained" | "unavailable";
+            /**
+             * Tolerance
+             * @description When a difference is flagged.
+             */
+            tolerance: string;
+            /**
+             * Units
+             * @description Units of both values.
              */
             units: string;
         };
@@ -472,6 +573,74 @@ export interface components {
              */
             stability_margin_at_rail_exit_cal: number;
         };
+        /**
+         * GenericMotor
+         * @description A motor known only by its thrust curve and masses, e.g. a commercial reload.
+         *
+         *     Propellant is a cylinder ("chamber") that loses mass with the impulse
+         *     delivered. Good for trajectory; inertia during the burn is approximate.
+         */
+        GenericMotor: {
+            /**
+             * Burn Time S
+             * @description Burn time. Unset takes it from the thrust curve.
+             */
+            burn_time_s?: number | null;
+            /**
+             * Chamber Height M
+             * @description Length of the propellant cylinder.
+             */
+            chamber_height_m: number;
+            /**
+             * Chamber Position M
+             * @description Centre of the propellant cylinder, forward of the nozzle exit.
+             */
+            chamber_position_m: number;
+            /**
+             * Chamber Radius M
+             * @description Radius of the propellant cylinder.
+             */
+            chamber_radius_m: number;
+            /**
+             * Dry Cg Position M
+             * @description Centre of dry mass, forward of the nozzle exit.
+             */
+            dry_cg_position_m: number;
+            /**
+             * Dry Inertia
+             * @description Principal moments of inertia (I11, I22, I33) in kg·m², about the centre of mass, with e3 along the rocket's axis.
+             */
+            dry_inertia: [
+                number,
+                number,
+                number
+            ];
+            /**
+             * Dry Mass Kg
+             * @description Motor mass without propellant.
+             */
+            dry_mass_kg: number;
+            /**
+             * @description Motor from thrust curve and masses only. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            kind: "generic";
+            /**
+             * Nozzle Radius M
+             * @description Nozzle exit radius.
+             */
+            nozzle_radius_m: number;
+            /**
+             * Propellant Mass Kg
+             * @description Propellant mass at ignition.
+             */
+            propellant_mass_kg: number;
+            /**
+             * Thrust Curve
+             * @description Thrust curve asset (.eng).
+             */
+            thrust_curve: string;
+        };
         /** Grains */
         Grains: {
             /**
@@ -522,6 +691,54 @@ export interface components {
              * @description 'ok' when the API process is serving.
              */
             status: string;
+        };
+        /** ImportReport */
+        ImportReport: {
+            /**
+             * Approximated
+             * @description Came across, changed in a stated way.
+             */
+            approximated: components["schemas"]["ReportItem"][];
+            /**
+             * Cross Checks
+             * @description Apogee against OpenRocket.
+             */
+            cross_checks: components["schemas"]["CrossCheck"][];
+            /**
+             * Mapped
+             * @description Came across as-is.
+             */
+            mapped: components["schemas"]["ReportItem"][];
+            /**
+             * Openrocket Version
+             * @description OpenRocket that wrote the file.
+             */
+            openrocket_version: string;
+            /**
+             * Reference Simulation
+             * @description The simulation used for drag data and cross-checks.
+             */
+            reference_simulation: string | null;
+            /**
+             * Rocket Name
+             * @description Design name in the file.
+             */
+            rocket_name: string;
+            /**
+             * Simulations
+             * @description Simulations saved in the file.
+             */
+            simulations: components["schemas"]["OrkSimulation"][];
+            /**
+             * Unsupported
+             * @description No equivalent; mass still counted in the dry mass.
+             */
+            unsupported: components["schemas"]["ReportItem"][];
+            /**
+             * Warnings
+             * @description Things to check before trusting the import.
+             */
+            warnings: string[];
         };
         /** Issue */
         Issue: {
@@ -656,8 +873,11 @@ export interface components {
             monte_carlo?: {
                 [key: string]: unknown;
             };
-            /** @description Solid rocket motor. */
-            motor?: components["schemas"]["Motor"] | null;
+            /**
+             * Motor
+             * @description Solid rocket motor.
+             */
+            motor?: (components["schemas"]["SolidMotor"] | components["schemas"]["GenericMotor"]) | null;
             /** @description Parachutes and other recovery devices. */
             recovery?: components["schemas"]["Recovery"];
             /** @description Airframe, without the motor. */
@@ -665,10 +885,10 @@ export interface components {
             /**
              * Schema Version
              * @description Config schema version. Older configs are migrated on load.
-             * @default 2
+             * @default 3
              * @constant
              */
-            schema_version: 2;
+            schema_version: 3;
             /** @description Launch site and range geometry. */
             site?: components["schemas"]["Site"] | null;
             /**
@@ -754,49 +974,28 @@ export interface components {
              */
             updated_utc: string;
         };
-        /** Motor */
-        Motor: {
+        /** MotorReference */
+        MotorReference: {
             /**
-             * Burn Time S
-             * @description Burn time. Unset takes it from the thrust curve.
+             * Designation
+             * @description Motor designation, e.g. 'M1340W'.
              */
-            burn_time_s?: number | null;
+            designation: string;
             /**
-             * Dry Cg Position M
-             * @description Centre of dry mass, forward of the nozzle exit.
+             * Diameter M
+             * @description Case diameter.
              */
-            dry_cg_position_m: number;
+            diameter_m: number;
             /**
-             * Dry Inertia
-             * @description Principal moments of inertia (I11, I22, I33) in kg·m², about the centre of mass, with e3 along the rocket's axis.
+             * Length M
+             * @description Case length.
              */
-            dry_inertia: [
-                number,
-                number,
-                number
-            ];
+            length_m: number;
             /**
-             * Dry Mass Kg
-             * @description Motor mass without propellant.
+             * Manufacturer
+             * @description Motor manufacturer.
              */
-            dry_mass_kg: number;
-            /** @description Propellant grain geometry. */
-            grains: components["schemas"]["Grains"];
-            /**
-             * Nozzle Radius M
-             * @description Nozzle exit radius.
-             */
-            nozzle_radius_m: number;
-            /**
-             * Throat Radius M
-             * @description Nozzle throat radius.
-             */
-            throat_radius_m: number;
-            /**
-             * Thrust Curve
-             * @description Thrust curve asset (.eng or .rse).
-             */
-            thrust_curve: string;
+            manufacturer: string;
         };
         /** NoseCone */
         NoseCone: {
@@ -811,6 +1010,84 @@ export interface components {
              * @description Nose cone length, tip to shoulder.
              */
             length_m: number;
+        };
+        /**
+         * OpenRocketImport
+         * @description A draft to review: nothing is saved until the user applies it to a mission.
+         */
+        OpenRocketImport: {
+            /**
+             * Assets
+             * @description Entries to add to the mission's assets (already stored).
+             */
+            assets: {
+                [key: string]: components["schemas"]["Asset"];
+            };
+            /** @description Draft motor, if a thrust curve was supplied with the design. */
+            motor: components["schemas"]["GenericMotor"] | null;
+            /** @description The motor OpenRocket's default configuration names. */
+            motor_reference: components["schemas"]["MotorReference"] | null;
+            /** @description Rod settings from the reference simulation, to apply to the site if wanted. */
+            rail: components["schemas"]["RailSettings"] | null;
+            /** @description Draft recovery section. */
+            recovery: components["schemas"]["Recovery"];
+            /** @description What came across, and how it compares. */
+            report: components["schemas"]["ImportReport"];
+            /** @description Draft rocket section. */
+            rocket: components["schemas"]["Rocket"];
+        };
+        /** OrkSimulation */
+        OrkSimulation: {
+            /**
+             * Apogee M
+             * @description Apogee above the launch site.
+             */
+            apogee_m: number | null;
+            /**
+             * Max Mach
+             * @description Highest Mach number.
+             */
+            max_mach: number | null;
+            /**
+             * Motor
+             * @description Motor flown in that simulation.
+             */
+            motor: string | null;
+            /**
+             * Name
+             * @description Simulation name in OpenRocket.
+             */
+            name: string;
+            /**
+             * Rail Exit Velocity Ms
+             * @description Speed leaving the rod.
+             */
+            rail_exit_velocity_ms: number | null;
+            /**
+             * Rod Angle Deg
+             * @description Rod angle from vertical.
+             */
+            rod_angle_deg: number | null;
+            /**
+             * Rod Length M
+             * @description Launch rod length.
+             */
+            rod_length_m: number | null;
+            /**
+             * Site
+             * @description Launch site the simulation used.
+             */
+            site: string;
+            /**
+             * Up To Date
+             * @description False if the design changed after it ran; its numbers then describe an older rocket.
+             */
+            up_to_date: boolean;
+            /**
+             * Wind Average Ms
+             * @description Average wind.
+             */
+            wind_average_ms: number | null;
         };
         /** ParachuteEvent */
         ParachuteEvent: {
@@ -973,6 +1250,24 @@ export interface components {
              */
             upper_position_m: number;
         };
+        /** RailSettings */
+        RailSettings: {
+            /**
+             * Heading Deg
+             * @description Rod direction.
+             */
+            heading_deg: number;
+            /**
+             * Inclination Deg
+             * @description 90 is vertical.
+             */
+            inclination_deg: number;
+            /**
+             * Rail Length M
+             * @description From the reference simulation.
+             */
+            rail_length_m: number;
+        };
         /** Recovery */
         Recovery: {
             /**
@@ -1010,6 +1305,24 @@ export interface components {
              * @description When the device deploys.
              */
             trigger: components["schemas"]["AtApogee"] | components["schemas"]["AtAltitude"];
+        };
+        /** ReportItem */
+        ReportItem: {
+            /**
+             * Component
+             * @description Part name in OpenRocket.
+             */
+            component: string;
+            /**
+             * Detail
+             * @description The value, approximation or reason, in plain language.
+             */
+            detail: string;
+            /**
+             * Target
+             * @description Where it went in the mission config, if anywhere.
+             */
+            target: string | null;
         };
         /** ResolvedProfile */
         ResolvedProfile: {
@@ -1225,6 +1538,58 @@ export interface components {
              */
             rail_length_m: number;
         };
+        /**
+         * SolidMotor
+         * @description A solid motor with known grain geometry (team-built, or a published spec).
+         */
+        SolidMotor: {
+            /**
+             * Burn Time S
+             * @description Burn time. Unset takes it from the thrust curve.
+             */
+            burn_time_s?: number | null;
+            /**
+             * Dry Cg Position M
+             * @description Centre of dry mass, forward of the nozzle exit.
+             */
+            dry_cg_position_m: number;
+            /**
+             * Dry Inertia
+             * @description Principal moments of inertia (I11, I22, I33) in kg·m², about the centre of mass, with e3 along the rocket's axis.
+             */
+            dry_inertia: [
+                number,
+                number,
+                number
+            ];
+            /**
+             * Dry Mass Kg
+             * @description Motor mass without propellant.
+             */
+            dry_mass_kg: number;
+            /** @description Propellant grain geometry. */
+            grains: components["schemas"]["Grains"];
+            /**
+             * @description Solid motor with grain geometry. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            kind: "solid";
+            /**
+             * Nozzle Radius M
+             * @description Nozzle exit radius.
+             */
+            nozzle_radius_m: number;
+            /**
+             * Throat Radius M
+             * @description Nozzle throat radius.
+             */
+            throat_radius_m: number;
+            /**
+             * Thrust Curve
+             * @description Thrust curve asset (.eng or .rse).
+             */
+            thrust_curve: string;
+        };
         /** StandardAtmosphere */
         StandardAtmosphere: {
             /**
@@ -1289,6 +1654,18 @@ export interface components {
              */
             top_radius_m: number;
         };
+        /** ThrustCurveImport */
+        ThrustCurveImport: {
+            /** @description The stored thrust curve. */
+            asset: components["schemas"]["AssetInfo"];
+            /** @description A motor section estimated from the curve's header. */
+            motor: components["schemas"]["GenericMotor"];
+            /**
+             * Source
+             * @description Where the curve came from.
+             */
+            source: string;
+        };
         /** ThrustCurveInfo */
         ThrustCurveInfo: {
             /**
@@ -1311,6 +1688,19 @@ export interface components {
              * @description Area under the curve.
              */
             total_impulse_ns: number;
+        };
+        /** ThrustCurveRequest */
+        ThrustCurveRequest: {
+            /**
+             * Designation
+             * @description e.g. 'M1340W'.
+             */
+            designation: string;
+            /**
+             * Manufacturer
+             * @description e.g. 'AeroTech'.
+             */
+            manufacturer: string;
         };
         /** TrapezoidalFins */
         TrapezoidalFins: {
@@ -1475,6 +1865,108 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Health"];
+                };
+            };
+        };
+    };
+    importOpenRocket: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_importOpenRocket"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenRocketImport"];
+                };
+            };
+            /** @description File too large. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not a readable OpenRocket design. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    fetchThrustCurve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ThrustCurveRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ThrustCurveImport"];
+                };
+            };
+            /** @description No such motor on ThrustCurve.org. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description ThrustCurve.org refused the request. */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description ThrustCurve.org is not reachable (offline?). */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
                 };
             };
         };
