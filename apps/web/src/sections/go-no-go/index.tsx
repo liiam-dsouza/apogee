@@ -119,8 +119,8 @@ function BoardCentre() {
         <>
           <header className="flex flex-wrap items-end gap-x-8 gap-y-3">
             <div>
-              <p className={cn('flex items-center gap-3 font-display text-6xl font-bold tracking-tight', v.className)}>
-                <v.icon className="size-12" aria-hidden />
+              <p className={cn('flex items-center gap-3 font-display text-5xl font-bold tracking-tight sm:text-6xl', v.className)}>
+                <v.icon className="size-10 sm:size-12" aria-hidden />
                 {v.label}
               </p>
               <p className="mt-1 text-sm text-muted-foreground">{v.detail}</p>

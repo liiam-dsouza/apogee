@@ -11,8 +11,8 @@ import { usePrefs } from '@/stores/prefs'
 /** Bottom of the centre column: job, mission state, connectivity, versions. */
 export function StatusBar() {
   return (
-    <footer className="flex h-8 shrink-0 items-center gap-5 border-t border-border bg-surface px-3 text-xs text-muted-foreground">
-      <span>No job running</span>
+    <footer className="flex h-8 shrink-0 items-center gap-5 overflow-hidden border-t border-border bg-surface px-3 text-xs whitespace-nowrap text-muted-foreground max-sm:gap-3">
+      <span className="max-sm:hidden">No job running</span>
       <MissionState />
       <span className="ml-auto" />
       <Connectivity />
@@ -64,7 +64,7 @@ function Connectivity() {
   const online = useSyncExternalStore(subscribeOnline, () => navigator.onLine)
   if (online) return null
   return (
-    <Tooltip content="No network. Simulations still run; weather fetches use the cache.">
+    <Tooltip content="No network. Simulations still run; weather fetches use the cache." tappable>
       <span className="flex items-center gap-1.5 font-medium text-caution">
         <WifiOff className="size-3.5" aria-hidden />
         Offline
@@ -79,7 +79,7 @@ function Versions() {
   if (!data) return <span>Connecting to API</span>
   return (
     <Tooltip content={`simcore ${data.simcore_version} · ${data.git_sha.slice(0, 8)} · ${data.worker_count} workers`}>
-      <span>RocketPy {data.rocketpy_version}</span>
+      <span className="max-sm:hidden">RocketPy {data.rocketpy_version}</span>
     </Tooltip>
   )
 }
@@ -93,7 +93,7 @@ function ThemeToggle() {
       type="button"
       onClick={() => setTheme(next)}
       aria-label={next === 'light' ? 'Switch to high-contrast light theme' : 'Switch to dark theme'}
-      className="rounded p-1 hover:bg-surface-2 hover:text-foreground"
+      className="-m-1 rounded p-2 hover:bg-surface-2 hover:text-foreground"
     >
       {theme === 'dark' ? <Sun className="size-3.5" /> : <Moon className="size-3.5" />}
     </button>

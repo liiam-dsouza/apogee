@@ -12,6 +12,7 @@ import { formatSI, systemOf } from '@/lib/units'
 import { cn } from '@/lib/utils'
 import { useMissionStore } from '@/stores/mission'
 import { usePrefs } from '@/stores/prefs'
+import { useSectionLayout } from '@/app/sectionLayout'
 
 /** An import awaiting review. Nothing touches the mission until it is applied. */
 interface PendingImport {
@@ -201,26 +202,28 @@ function SimulationList({ report }: { report: ImportReport }) {
       <summary className="cursor-pointer text-sm font-semibold">
         Simulations saved in the file <span className="font-normal text-muted-foreground">({report.simulations.length})</span>
       </summary>
-      <table className="mt-2 w-full text-sm">
-        <thead className="text-left text-xs text-muted-foreground">
-          <tr>
-            <th className="py-1 font-normal">Name</th>
-            <th className="py-1 font-normal">State</th>
-            <th className="py-1 text-right font-normal">Apogee (m)</th>
-            <th className="py-1 text-right font-normal">Wind (m/s)</th>
-          </tr>
-        </thead>
-        <tbody className="tabular-nums">
-          {report.simulations.map((s) => (
-            <tr key={s.name} className="border-t border-border">
-              <td className="py-1">{s.name}</td>
-              <td className={cn('py-1', s.up_to_date ? '' : 'text-caution')}>{s.up_to_date ? 'Up to date' : 'Out of date'}</td>
-              <td className="py-1 text-right">{fmt(s.apogee_m)}</td>
-              <td className="py-1 text-right">{fmt(s.wind_average_ms)}</td>
+      <div className="mt-2 overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="text-left text-xs text-muted-foreground">
+            <tr>
+              <th className="py-1 font-normal">Name</th>
+              <th className="py-1 font-normal">State</th>
+              <th className="py-1 text-right font-normal">Apogee (m)</th>
+              <th className="py-1 text-right font-normal">Wind (m/s)</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="tabular-nums">
+            {report.simulations.map((s) => (
+              <tr key={s.name} className="border-t border-border">
+                <td className="py-1">{s.name}</td>
+                <td className={cn('py-1', s.up_to_date ? '' : 'text-caution')}>{s.up_to_date ? 'Up to date' : 'Out of date'}</td>
+                <td className="py-1 text-right">{fmt(s.apogee_m)}</td>
+                <td className="py-1 text-right">{fmt(s.wind_average_ms)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </details>
   )
 }
@@ -234,6 +237,7 @@ export function Pane() {
 }
 
 function ImportPane() {
+  const layout = useSectionLayout()
   const pending = usePending()
   const edit = useMissionStore((s) => s.edit)
   const hasSite = useMissionStore((s) => Boolean(s.draft?.site))
@@ -338,7 +342,11 @@ function ImportPane() {
           variant="primary"
           className="w-full"
           disabled={!ork || runImport.isPending}
-          onClick={() => ork && runImport.mutate({ ork, thrust: eng ? { file: eng } : undefined })}
+          onClick={() => {
+            if (!ork) return
+            runImport.mutate({ ork, thrust: eng ? { file: eng } : undefined })
+            layout.showCentre()
+          }}
         >
           <FileUp />
           {runImport.isPending ? 'Reading the design' : 'Import and review'}

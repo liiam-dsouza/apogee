@@ -391,60 +391,62 @@ function ManualProfileEditor() {
           className="h-9 w-full rounded-md border border-border bg-background px-3"
         />
       </label>
-      <table className="w-full text-sm">
-        <thead className="text-left text-xs text-muted-foreground">
-          <tr>
-            <th className="pb-1 font-normal">Height ({hUnit.symbol})</th>
-            <th className="pb-1 font-normal">Speed ({sUnit.symbol})</th>
-            <th className="pb-1 font-normal">From (°)</th>
-            <th className="pb-1" />
-          </tr>
-        </thead>
-        <tbody>
-          {levels.map((lv, i) => (
-            <tr key={i}>
-              <td className="pr-1 pb-1">
-                <NumberCell
-                  label={`Height of level ${i + 1}`}
-                  value={fromSI(lv.height_m, 'altitude', units)}
-                  onChange={(v) => setLevel(i, 'height_m', toSI(v, 'altitude', units))}
-                  onBlur={sortByHeight}
-                />
-              </td>
-              <td className="pr-1 pb-1">
-                <NumberCell
-                  label={`Speed at level ${i + 1}`}
-                  value={fromSI(lv.speed_ms, 'speed', units)}
-                  decimals={1}
-                  onChange={(v) => setLevel(i, 'speed_ms', toSI(v, 'speed', units))}
-                />
-              </td>
-              <td className="pr-1 pb-1">
-                <NumberCell
-                  label={`Direction at level ${i + 1}`}
-                  value={lv.direction_deg}
-                  onChange={(v) => setLevel(i, 'direction_deg', v)}
-                />
-              </td>
-              <td className="pb-1">
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  aria-label={`Remove level ${i + 1}`}
-                  disabled={levels.length === 1}
-                  onClick={() =>
-                    editEnvironment((env) => {
-                      if (env.atmosphere?.kind === 'manual') env.atmosphere.levels.splice(i, 1)
-                    })
-                  }
-                >
-                  <Trash2 />
-                </Button>
-              </td>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="text-left text-xs text-muted-foreground">
+            <tr>
+              <th className="pb-1 font-normal">Height ({hUnit.symbol})</th>
+              <th className="pb-1 font-normal">Speed ({sUnit.symbol})</th>
+              <th className="pb-1 font-normal">From (°)</th>
+              <th className="pb-1" />
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {levels.map((lv, i) => (
+              <tr key={i}>
+                <td className="pr-1 pb-1">
+                  <NumberCell
+                    label={`Height of level ${i + 1}`}
+                    value={fromSI(lv.height_m, 'altitude', units)}
+                    onChange={(v) => setLevel(i, 'height_m', toSI(v, 'altitude', units))}
+                    onBlur={sortByHeight}
+                  />
+                </td>
+                <td className="pr-1 pb-1">
+                  <NumberCell
+                    label={`Speed at level ${i + 1}`}
+                    value={fromSI(lv.speed_ms, 'speed', units)}
+                    decimals={1}
+                    onChange={(v) => setLevel(i, 'speed_ms', toSI(v, 'speed', units))}
+                  />
+                </td>
+                <td className="pr-1 pb-1">
+                  <NumberCell
+                    label={`Direction at level ${i + 1}`}
+                    value={lv.direction_deg}
+                    onChange={(v) => setLevel(i, 'direction_deg', v)}
+                  />
+                </td>
+                <td className="pb-1">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    aria-label={`Remove level ${i + 1}`}
+                    disabled={levels.length === 1}
+                    onClick={() =>
+                      editEnvironment((env) => {
+                        if (env.atmosphere?.kind === 'manual') env.atmosphere.levels.splice(i, 1)
+                      })
+                    }
+                  >
+                    <Trash2 />
+                  </Button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
       <Button
         size="sm"
         onClick={() =>

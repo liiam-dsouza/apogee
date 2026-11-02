@@ -65,6 +65,7 @@ export function QuantityField({
         </label>
         {description && (
           <Tooltip
+            tappable
             content={
               <span className="flex flex-col gap-1">
                 <span>{description}</span>

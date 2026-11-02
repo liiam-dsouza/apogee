@@ -118,38 +118,40 @@ function KeyNumbers({ a, b }: { a: ResultRecord; b: ResultRecord }) {
   return (
     <section aria-label="Key numbers" className="space-y-2">
       <h2 className="text-sm font-semibold">Key numbers</h2>
-      <table className="w-full max-w-3xl text-sm tabular-nums">
-        <thead className="text-left text-xs text-muted-foreground">
-          <tr>
-            <th className="pb-1 font-normal" />
-            <th className="pb-1 font-normal">A</th>
-            <th className="pb-1 font-normal">B</th>
-            <th className="pb-1 font-normal">B − A</th>
-          </tr>
-        </thead>
-        <tbody>
-          {NUMBERS.map((n) => {
-            const va = n.get(a)
-            const vb = n.get(b)
-            if (va == null || vb == null) return null
-            const d = vb - va
-            const shownD = n.q ? fromSI(d, n.q, units) : d
-            const pct = va !== 0 ? (100 * d) / Math.abs(va) : 0
-            return (
-              <tr key={n.label} className="border-t border-border">
-                <td className="py-1.5 pr-4">{n.label}</td>
-                <td className="py-1.5 pr-4">{fmt(va, n.q, n.digits, n.unit)}</td>
-                <td className="py-1.5 pr-4">{fmt(vb, n.q, n.digits, n.unit)}</td>
-                <td className="py-1.5 text-muted-foreground">
-                  {Math.abs(shownD) < 10 ** -n.digits / 2
-                    ? 'same'
-                    : `${shownD > 0 ? '+' : '−'}${Math.abs(shownD).toFixed(n.digits)}${n.q ? ` ${unitFor(n.q, units).symbol}` : ''} (${pct > 0 ? '+' : '−'}${Math.abs(pct).toFixed(1)}%)`}
-                </td>
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
+      <div className="max-w-3xl overflow-x-auto">
+        <table className="w-full text-sm tabular-nums">
+          <thead className="text-left text-xs text-muted-foreground">
+            <tr>
+              <th className="pb-1 font-normal" />
+              <th className="pb-1 font-normal">A</th>
+              <th className="pb-1 font-normal">B</th>
+              <th className="pb-1 font-normal">B − A</th>
+            </tr>
+          </thead>
+          <tbody>
+            {NUMBERS.map((n) => {
+              const va = n.get(a)
+              const vb = n.get(b)
+              if (va == null || vb == null) return null
+              const d = vb - va
+              const shownD = n.q ? fromSI(d, n.q, units) : d
+              const pct = va !== 0 ? (100 * d) / Math.abs(va) : 0
+              return (
+                <tr key={n.label} className="border-t border-border">
+                  <td className="py-1.5 pr-4">{n.label}</td>
+                  <td className="py-1.5 pr-4 whitespace-nowrap">{fmt(va, n.q, n.digits, n.unit)}</td>
+                  <td className="py-1.5 pr-4 whitespace-nowrap">{fmt(vb, n.q, n.digits, n.unit)}</td>
+                  <td className="py-1.5 whitespace-nowrap text-muted-foreground">
+                    {Math.abs(shownD) < 10 ** -n.digits / 2
+                      ? 'same'
+                      : `${shownD > 0 ? '+' : '−'}${Math.abs(shownD).toFixed(n.digits)}${n.q ? ` ${unitFor(n.q, units).symbol}` : ''} (${pct > 0 ? '+' : '−'}${Math.abs(pct).toFixed(1)}%)`}
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
     </section>
   )
 }
@@ -172,21 +174,23 @@ function Differences({ cmp }: { cmp: Comparison }) {
       ) : cmp.differences.length === 0 ? (
         <p className="text-sm text-muted-foreground">The same mission settings: any difference is from the versions.</p>
       ) : (
-        <table className="w-full max-w-4xl text-sm">
-          <tbody>
-            {cmp.differences.map((d) => (
-              <tr key={d.path} className="border-t border-border align-top">
-                <td className="py-1.5 pr-4 font-mono text-xs">{d.path}</td>
-                <td className="max-w-64 truncate py-1.5 pr-4 tabular-nums" title={show(d.a)}>
-                  {show(d.a)}
-                </td>
-                <td className="max-w-64 truncate py-1.5 tabular-nums" title={show(d.b)}>
-                  {show(d.b)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="max-w-4xl overflow-x-auto">
+          <table className="w-full text-sm">
+            <tbody>
+              {cmp.differences.map((d) => (
+                <tr key={d.path} className="border-t border-border align-top">
+                  <td className="py-1.5 pr-4 font-mono text-xs">{d.path}</td>
+                  <td className="max-w-64 truncate py-1.5 pr-4 tabular-nums" title={show(d.a)}>
+                    {show(d.a)}
+                  </td>
+                  <td className="max-w-64 truncate py-1.5 tabular-nums" title={show(d.b)}>
+                    {show(d.b)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </section>
   )

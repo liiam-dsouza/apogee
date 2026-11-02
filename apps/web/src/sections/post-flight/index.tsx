@@ -12,6 +12,7 @@ import { formatSI, fromSI, unitFor } from '@/lib/units'
 import { cn } from '@/lib/utils'
 import { useMissionStore } from '@/stores/mission'
 import { usePrefs } from '@/stores/prefs'
+import { useSectionLayout } from '@/app/sectionLayout'
 
 /** The uploaded log, its column mapping, and the latest fit. */
 const usePostflight = create<{
@@ -283,6 +284,7 @@ export function Pane() {
 }
 
 function PostflightPane() {
+  const layout = useSectionLayout()
   const draft = useMissionStore((s) => s.draft!)
   const { log, timeColumn, altitudeColumn, altitudeUnits, fitImpulse, setLog, set } = usePostflight()
   const input = useRef<HTMLInputElement>(null)
@@ -381,7 +383,10 @@ function PostflightPane() {
               </span>
             </span>
           </label>
-          <Button variant="primary" className="w-full" disabled={run.isPending} onClick={() => run.mutate()}>
+          <Button variant="primary" className="w-full" disabled={run.isPending} onClick={() => {
+            run.mutate()
+            layout.showCentre()
+          }}>
             <Sigma /> {run.isPending ? 'Fitting: about 30 flights' : 'Fit the prediction to this log'}
           </Button>
           <ProblemNotice error={run.error} />

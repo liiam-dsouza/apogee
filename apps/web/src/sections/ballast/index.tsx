@@ -13,6 +13,7 @@ import { api, type BallastSolution, type Mission } from '@/lib/api'
 import { formatSI, fromSI, toSI, unitFor, type Units } from '@/lib/units'
 import { useMissionStore } from '@/stores/mission'
 import { usePrefs } from '@/stores/prefs'
+import { useSectionLayout } from '@/app/sectionLayout'
 
 /** The latest solve per mission, and the draft it was for (to say when it no longer matches). */
 const useSolves = create<{
@@ -285,6 +286,7 @@ export function Pane() {
 const DEFAULT_BALLAST: NonNullable<Mission['ballast']> = { installed_kg: 0, increment_kg: 0.05, max_kg: 2 }
 
 function BallastPane() {
+  const layout = useSectionLayout()
   const draft = useMissionStore((s) => s.draft!)
   const edit = useMissionStore((s) => s.edit)
   const b = draft.ballast ?? DEFAULT_BALLAST
@@ -362,7 +364,10 @@ function BallastPane() {
           />
         </div>
       </section>
-      <Button variant="primary" className="w-full" disabled={solve.isPending} onClick={() => solve.mutate(draft)}>
+      <Button variant="primary" className="w-full" disabled={solve.isPending} onClick={() => {
+          solve.mutate(draft)
+          layout.showCentre()
+        }}>
         <Calculator /> {solve.isPending ? 'Solving' : 'Solve'}
       </Button>
       <ProblemNotice error={solve.error} />

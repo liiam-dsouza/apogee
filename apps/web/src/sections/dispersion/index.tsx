@@ -16,6 +16,7 @@ import { formatSI, systemOf, unitFor } from '@/lib/units'
 import { cn } from '@/lib/utils'
 import { useMissionStore } from '@/stores/mission'
 import { usePrefs } from '@/stores/prefs'
+import { useSectionLayout } from '@/app/sectionLayout'
 
 
 /** The map shows even with no mission open (it is the range overview), with a prompt. */
@@ -293,6 +294,7 @@ export function Pane() {
 }
 
 function CampaignPane() {
+  const layout = useSectionLayout()
   const draft = useMissionStore((s) => s.draft!)
   const edit = useMissionStore((s) => s.edit)
   const run = useRunCampaign()
@@ -324,7 +326,10 @@ function CampaignPane() {
           variant="primary"
           className="w-full"
           disabled={run.isPending}
-          onClick={() => run.mutate(draft)}
+          onClick={() => {
+            run.mutate(draft)
+            layout.showCentre()
+          }}
         >
           <Play /> {run.isPending ? 'Starting' : 'Run campaign'}
         </Button>

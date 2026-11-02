@@ -130,6 +130,15 @@
     -webkit-font-smoothing: antialiased;
   }
 
+  /* iOS zooms the page into any field under 16px when it takes focus; phones get 16px fields. */
+  @media (hover: none) and (max-width: 1023.98px) {
+    input,
+    select,
+    textarea {
+      font-size: max(16px, 1em) !important;
+    }
+  }
+
   :focus-visible {
     outline: 2px solid var(--primary);
     outline-offset: 2px;

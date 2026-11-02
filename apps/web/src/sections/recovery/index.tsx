@@ -80,65 +80,67 @@ function RecoveryCentre() {
       </header>
       <ProblemNotice error={descent.error} />
       {data && (
-        <table className="w-full max-w-5xl text-sm tabular-nums">
-          <thead className="text-left text-xs text-muted-foreground">
-            <tr>
-              <th className="pb-2 font-normal">Device</th>
-              <th className="pb-2 font-normal">Governs</th>
-              <th className="pb-2 font-normal">CdS</th>
-              <th className="pb-2 font-normal">Rate at the top</th>
-              <th className="pb-2 font-normal">Rate at the bottom</th>
-              <th className="pb-2 font-normal">Want at the bottom</th>
-              <th className="pb-2 font-normal">CdS for that</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.devices.map((d) => (
-              <tr key={d.name} className="border-t border-border align-top">
-                <td className="py-3 pr-4 font-medium">{d.name}</td>
-                <td className="py-3 pr-4">
-                  {height(d.top_agl_m)} to {d.bottom_agl_m === 0 ? 'the ground' : height(d.bottom_agl_m)}
-                </td>
-                <td className="py-3 pr-4">{formatSI(d.cd_s_m2, 'area', units, 2)}</td>
-                <td className="py-3 pr-4">{speed(d.rate_top_ms)}</td>
-                <td className="py-3 pr-4 font-medium">{speed(d.rate_bottom_ms)}</td>
-                <td className="py-3 pr-4">
-                  <TargetInput
-                    label={`Wanted descent rate under ${d.name}`}
-                    unit={speedUnit}
-                    onChange={(si) =>
-                      setTargets((t) => {
-                        const next = { ...t }
-                        if (si == null) delete next[d.name]
-                        else next[d.name] = si
-                        return next
-                      })
-                    }
-                  />
-                </td>
-                <td className="py-3">
-                  {d.cd_s_for_target_m2 != null && (
-                    <span className="flex flex-wrap items-center gap-2">
-                      {formatSI(d.cd_s_for_target_m2, 'area', units, 2)}
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() =>
-                          edit((m) => {
-                            const device = m.recovery?.devices?.find((x) => x.name === d.name)
-                            if (device) device.cd_s_m2 = Number(d.cd_s_for_target_m2!.toFixed(4))
-                          })
-                        }
-                      >
-                        Use this CdS
-                      </Button>
-                    </span>
-                  )}
-                </td>
+        <div className="max-w-5xl overflow-x-auto">
+          <table className="w-full text-sm tabular-nums">
+            <thead className="text-left text-xs text-muted-foreground">
+              <tr>
+                <th className="pb-2 font-normal">Device</th>
+                <th className="pb-2 font-normal">Governs</th>
+                <th className="pb-2 font-normal">CdS</th>
+                <th className="pb-2 font-normal">Rate at the top</th>
+                <th className="pb-2 font-normal">Rate at the bottom</th>
+                <th className="pb-2 font-normal">Want at the bottom</th>
+                <th className="pb-2 font-normal">CdS for that</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {data.devices.map((d) => (
+                <tr key={d.name} className="border-t border-border align-top">
+                  <td className="py-3 pr-4 font-medium">{d.name}</td>
+                  <td className="py-3 pr-4">
+                    {height(d.top_agl_m)} to {d.bottom_agl_m === 0 ? 'the ground' : height(d.bottom_agl_m)}
+                  </td>
+                  <td className="py-3 pr-4">{formatSI(d.cd_s_m2, 'area', units, 2)}</td>
+                  <td className="py-3 pr-4">{speed(d.rate_top_ms)}</td>
+                  <td className="py-3 pr-4 font-medium">{speed(d.rate_bottom_ms)}</td>
+                  <td className="py-3 pr-4">
+                    <TargetInput
+                      label={`Wanted descent rate under ${d.name}`}
+                      unit={speedUnit}
+                      onChange={(si) =>
+                        setTargets((t) => {
+                          const next = { ...t }
+                          if (si == null) delete next[d.name]
+                          else next[d.name] = si
+                          return next
+                        })
+                      }
+                    />
+                  </td>
+                  <td className="py-3">
+                    {d.cd_s_for_target_m2 != null && (
+                      <span className="flex flex-wrap items-center gap-2">
+                        {formatSI(d.cd_s_for_target_m2, 'area', units, 2)}
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() =>
+                            edit((m) => {
+                              const device = m.recovery?.devices?.find((x) => x.name === d.name)
+                              if (device) device.cd_s_m2 = Number(d.cd_s_for_target_m2!.toFixed(4))
+                            })
+                          }
+                        >
+                          Use this CdS
+                        </Button>
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
       <div className="max-w-xl">
         <Explainer methodsHref="/docs/methods/flight">
