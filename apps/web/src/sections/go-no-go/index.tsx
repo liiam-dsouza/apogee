@@ -1,33 +1,22 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
-import { CircleAlert, CircleCheck, CircleHelp, CircleMinus, CircleX, Plus, ShieldAlert, Trash2 } from 'lucide-react'
+import { CircleCheck, CircleHelp, CircleX, Plus, ShieldAlert, Trash2 } from 'lucide-react'
+import { RuleTable } from '@/components/RuleTable'
+import { JUDGED, METRIC_QUANTITY, useMetricFormat } from '@/lib/metrics'
 import { useState, type ReactNode } from 'react'
 import { Link } from 'react-router'
 import { Explainer } from '@/components/Explainer'
 import { ProblemNotice } from '@/components/ProblemNotice'
 import { RequireMission } from '@/components/RequireMission'
 import { Button } from '@/components/ui/button'
-import { api, type ConstraintSettings, type RuleResult } from '@/lib/api'
+import { api, type ConstraintSettings } from '@/lib/api'
 import { useCampaign } from '@/lib/campaign'
-import { fromSI, toSI, unitFor, type Quantity } from '@/lib/units'
+import { fromSI, toSI, unitFor } from '@/lib/units'
 import { cn } from '@/lib/utils'
 import { useMissionStore } from '@/stores/mission'
 import { usePrefs } from '@/stores/prefs'
 
 /** A team rule as the mission stores it. */
 type Constraint = NonNullable<ConstraintSettings['additional']>[number]
-
-/** How each metric converts to the user's units; null shows it as stored. */
-const METRIC_QUANTITY: Record<string, Quantity | null> = {
-  apogee_agl_m: 'altitude',
-  main_deploy_agl_m: 'altitude',
-  drift_m: 'distance',
-  rail_exit_velocity_ms: 'speed',
-  landing_speed_ms: 'speed',
-  drogue_descent_rate_ms: 'speed',
-  max_acceleration_ms2: 'acceleration',
-  max_dynamic_pressure_pa: 'dynamic_pressure',
-  landing_kinetic_energy_j: 'energy',
-}
 
 const METRIC_LABEL: Record<string, string> = {
   apogee_agl_m: 'Apogee above the pad',
@@ -72,25 +61,6 @@ const STARTING_LIMIT: Record<string, { min?: number; max?: number }> = {
   descent_time_s: { max: 180 },
   drift_m: { max: 1500 },
   flight_time_s: { max: 300 },
-}
-
-const JUDGED: Record<string, string> = {
-  nominal: 'Single flight',
-  p50: 'Half of flights',
-  p95: '95% of flights',
-  p99: '99% of flights',
-  worst: 'Every flight',
-}
-
-function useMetricFormat() {
-  const units = usePrefs((s) => s.units)
-  return (metric: string, si: number, storedUnits = '') => {
-    const q = METRIC_QUANTITY[metric]
-    const shown = q ? fromSI(si, q, units) : si
-    const symbol = q ? unitFor(q, units).symbol : storedUnits === '1' ? '' : storedUnits
-    const digits = Math.abs(shown) >= 100 ? 0 : Math.abs(shown) >= 10 ? 1 : 2
-    return `${shown.toLocaleString(undefined, { maximumFractionDigits: digits })}${symbol ? ` ${symbol}` : ''}`
-  }
 }
 
 function useBoard() {
@@ -170,23 +140,7 @@ function BoardCentre() {
 
           {data.board.score && <ScoreCard score={data.board.score} formatMetric={formatMetric} />}
 
-          <table className="w-full max-w-6xl text-base">
-            <thead className="text-left text-xs text-muted-foreground">
-              <tr>
-                <th className="pb-2 font-normal">Status</th>
-                <th className="pb-2 font-normal">Rule</th>
-                <th className="pb-2 font-normal">Value</th>
-                <th className="pb-2 font-normal">Limit</th>
-                <th className="pb-2 font-normal">Judged on</th>
-                <th className="pb-2 font-normal">Reference</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.board.rows.map((r) => (
-                <BoardRow key={r.id} row={r} formatMetric={formatMetric} />
-              ))}
-            </tbody>
-          </table>
+          <RuleTable rows={data.board.rows} />
         </>
       )}
       <div className="max-w-xl">
@@ -237,7 +191,7 @@ function ScoreCard({
 }) {
   const pts = (p: number | null | undefined) => (p == null ? '—' : Math.round(p).toString())
   return (
-    <section aria-label="Apogee score" className="flex flex-wrap gap-x-10 gap-y-3 rounded-md border border-border p-4">
+    <section aria-label="Apogee score" className="flex flex-wrap gap-x-10 gap-y-3 rounded-md border border-border bg-surface p-4">
       <div>
         <p className="text-xs text-muted-foreground">Expected apogee score</p>
         <p className="font-display text-3xl font-semibold tabular-nums">
@@ -261,68 +215,6 @@ function Stat({ label, value }: { label: string; value: ReactNode }) {
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className="font-display text-xl font-semibold tabular-nums">{value}</p>
     </div>
-  )
-}
-
-const OUTCOME = {
-  go: { label: 'Pass', icon: CircleCheck, className: 'text-go' },
-  warn: { label: 'Warn', icon: CircleAlert, className: 'text-caution' },
-  no_go: { label: 'Fail', icon: CircleX, className: 'text-nogo' },
-  missing: { label: 'No result', icon: CircleHelp, className: 'text-muted-foreground' },
-} as const
-
-const SOURCE: Record<RuleResult['source'], string> = {
-  profile: 'Profile',
-  override: 'Team override',
-  team: 'Team rule',
-}
-
-function BoardRow({ row, formatMetric }: { row: RuleResult; formatMetric: ReturnType<typeof useMetricFormat> }) {
-  const o =
-    row.status === 'not_applicable'
-      ? { label: 'Does not apply', icon: CircleMinus, className: 'text-muted-foreground' }
-      : OUTCOME[row.outcome]
-  const fmt = (v: number) => formatMetric(row.metric, v, row.units)
-  const limit =
-    row.lower != null && row.upper != null
-      ? `${fmt(row.lower)} to ${fmt(row.upper)}`
-      : row.lower != null
-        ? `at least ${fmt(row.lower)}`
-        : `at most ${fmt(row.upper!)}`
-  const values = [row.value_low, row.value_high].filter((x): x is number => x != null)
-  const value =
-    values.length === 2 && values[0] !== values[1]
-      ? `${fmt(values[0])} to ${fmt(values[1])}`
-      : values.length
-        ? fmt(values[0])
-        : '—'
-  return (
-    <tr className="border-t border-border align-top">
-      <td className="py-3 pr-4">
-        <span className={cn('flex items-center gap-1.5 font-medium whitespace-nowrap', o.className)}>
-          <o.icon className="size-5" aria-hidden />
-          {o.label}
-        </span>
-      </td>
-      <td className="py-3 pr-4">
-        <p>{row.label}</p>
-        <p className="text-xs text-muted-foreground">
-          {SOURCE[row.source]} · {row.severity}
-        </p>
-        {row.note && <p className="mt-1 text-xs text-muted-foreground">{row.note}</p>}
-      </td>
-      <td className="py-3 pr-4 tabular-nums">
-        {value}
-        {row.violation_share != null && row.violation_share > 0 && (
-          <p className="text-xs text-muted-foreground">
-            {(row.violation_share * 100).toFixed(row.violation_share < 0.1 ? 1 : 0)}% of flights outside
-          </p>
-        )}
-      </td>
-      <td className="py-3 pr-4 tabular-nums">{limit}</td>
-      <td className="py-3 pr-4 text-sm">{JUDGED[row.evaluate_on] ?? row.evaluate_on}</td>
-      <td className="py-3 text-sm text-muted-foreground">{row.reference || '—'}</td>
-    </tr>
   )
 }
 
@@ -475,7 +367,7 @@ function JudgedOnSelect({
 
 function TeamRules({ settings }: { settings: ConstraintSettings }) {
   const editConstraints = useEditConstraints()
-  const units = usePrefs((s) => s.units)
+  const units = usePrefs((s) => s.display)
   const rules = settings.additional ?? []
   const [metric, setMetric] = useState('drift_m')
 

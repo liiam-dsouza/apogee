@@ -12,6 +12,7 @@ import numpy as np
 import rocketpy
 
 from simcore.assets import AssetStore
+from simcore.ballast.mass import as_flown
 from simcore.engine.result import FlightResult, FlightSummary, Landing, ParachuteEvent
 from simcore.importers.drag import parse_drag_csv
 from simcore.importers.thrust import parse_eng
@@ -254,6 +255,7 @@ def run_flight(
         EngineInputError: The mission is missing a section a flight needs.
     """
     check_runnable(mission)
+    mission = as_flown(mission)  # installed ballast becomes part of the rocket
     assert mission.site is not None
     site = mission.site
     caught: list[str] = []
