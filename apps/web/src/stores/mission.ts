@@ -10,7 +10,11 @@ import type { Mission } from '@/lib/api'
 interface MissionState {
   draft: Mission | null
   isDirty: boolean
+  /** When unsaved changes restored after a reload were last written (ISO), until saved or discarded. */
+  restoredFrom: string | null
   load: (mission: Mission) => void
+  /** Reopen unsaved changes kept from before a reload. */
+  restore: (draft: Mission, savedAt: string) => void
   edit: (recipe: (draft: Mission) => void) => void
   markSaved: () => void
 }
@@ -20,10 +24,15 @@ export const useMissionStore = create<MissionState>()(
     immer((set) => ({
       draft: null,
       isDirty: false,
+      restoredFrom: null,
       load: (mission) => {
-        set({ draft: mission, isDirty: false })
+        set({ draft: mission, isDirty: false, restoredFrom: null })
         // A newly opened mission starts with no history: undo must never
         // step back into whichever mission was open before.
+        useMissionStore.temporal.getState().clear()
+      },
+      restore: (draft, savedAt) => {
+        set({ draft, isDirty: true, restoredFrom: savedAt })
         useMissionStore.temporal.getState().clear()
       },
       edit: (recipe) =>
@@ -32,7 +41,7 @@ export const useMissionStore = create<MissionState>()(
           recipe(state.draft)
           state.isDirty = true
         }),
-      markSaved: () => set({ isDirty: false }),
+      markSaved: () => set({ isDirty: false, restoredFrom: null }),
     })),
     {
       partialize: (state) => ({ draft: state.draft }),

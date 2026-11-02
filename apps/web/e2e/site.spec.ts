@@ -26,13 +26,10 @@ test('create a mission, place the site, draw the range and save it', async ({ pa
       localStorage.setItem('apogee.prefs', JSON.stringify(prefs))
     })
     await page.reload()
-    // A reload drops the unsaved draft: reopen and re-add, then continue in feet.
-    await page.goto(`/missions?id=${id}`)
-    await page.getByRole('button', { name: 'Open in editor' }).click()
-    await page.getByRole('link', { name: 'Site' }).click()
-    await page.getByLabel('Latitude (°)').fill('-31.05')
-    await page.getByLabel('Longitude (°)').fill('136.53')
-    await page.getByRole('button', { name: 'Add launch site' }).click()
+    // A reload keeps the unsaved draft (a tablet in the field must not lose edits):
+    // the site is still there, flagged as restored. Continue in feet.
+    await expect(page.getByText('Restored', { exact: true })).toBeVisible()
+    await expect(page.getByRole('textbox', { name: 'Latitude', exact: true })).toHaveValue('-31.05')
     await page.getByRole('textbox', { name: 'Rail length', exact: true }).fill('20')
 
     // Live server validation flags an out-of-range inclination on the field itself.
