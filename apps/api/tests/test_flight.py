@@ -70,8 +70,10 @@ def test_fly_calisto_and_read_the_result(client: TestClient) -> None:
     assert run["cached"] is False
 
     record = client.get(f"/api/results/{run['result_id']}").json()
+    # The golden numbers come from one platform; others differ by up to 6e-5
+    # relative. Same tolerance as tests/golden/test_calisto.py's RTOL.
     assert record["summary"]["apogee_agl_m"] == pytest.approx(
-        GOLDEN["summary"]["apogee_agl_m"], rel=1e-9
+        GOLDEN["summary"]["apogee_agl_m"], rel=2e-4
     )
     assert record["provenance"]["rocketpy_version"] == "1.13.0"
     assert record["provenance"]["thrust_curve"] == THRUST_SHA
