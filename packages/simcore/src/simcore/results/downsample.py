@@ -13,9 +13,17 @@ def lttb(
     x: NDArray[np.float64], y: NDArray[np.float64], max_points: int
 ) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
     """Downsample (x, y) to at most ``max_points``, keeping first and last."""
+    keep = lttb_indices(x, y, max_points)
+    return x[keep], y[keep]
+
+
+def lttb_indices(
+    x: NDArray[np.float64], y: NDArray[np.float64], max_points: int
+) -> NDArray[np.int64]:
+    """The indices LTTB keeps, so other channels can be sampled at the same times."""
     n = len(x)
     if max_points >= n or max_points < 3:
-        return x, y
+        return np.arange(n, dtype=np.int64)
     keep = np.empty(max_points, dtype=np.int64)
     keep[0], keep[-1] = 0, n - 1
     # Buckets over the interior points.
@@ -30,4 +38,4 @@ def lttb(
         area = np.abs((x[a] - avg_x) * (by - y[a]) - (x[a] - bx) * (avg_y - y[a]))
         a = start + int(np.argmax(area))
         keep[i + 1] = a
-    return x[keep], y[keep]
+    return keep
