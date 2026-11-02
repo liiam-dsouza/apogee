@@ -3,6 +3,82 @@
 Running log of what's built against the project brief. Newest first.
 Frontend paths are relative to `apps/web/`.
 
+## 2026-11-02: Monte Carlo campaigns, Dispersion map, results histograms
+
+**Done**
+- **`monte_carlo` is modelled** (it used to be an open mapping):
+  - sample count, seed and wind correlation height;
+  - 13 uncertain inputs, each with on/off and one standard deviation, defaulting to the
+    brief's table.
+  - Existing `monte_carlo: {}` files still load.
+- **`simcore.montecarlo`**, our own sampler
+  ([ADR 0005](docs/adr/0005-own-monte-carlo-sampler.md)):
+  - Latin Hypercube over every scalar input, reproducible by sample index.
+  - Wind perturbed as a coherent speed/direction error plus AR(1) height-correlated
+    noise, applied to the profile actually flown.
+  - The engine gained a `MotorScale` for impulse and burn time. Nominal flights are
+    unchanged; the golden tests pass.
+- **Statistics:** percentiles, landing ellipses holding 68/95/99.7% (χ²₂-scaled, tested
+  against the share of points actually inside), and P(outside boundary) and P(in hazard)
+  with Wilson 95% upper bounds. Also the standard error of mean apogee.
+- **Runs across workers:** a campaign is split into 20-sample chunk jobs and results are
+  read as chunks land. Starting it again resumes only the missing chunks. The campaign
+  id is a hash of the mission and versions.
+- **API:**
+  - `POST /api/sim/montecarlo` (start or resume).
+  - `GET /api/campaigns/{id}`: progress, summary and landing points.
+  - `GET /api/campaigns/{id}/distributions`.
+  - `GET /api/campaigns/{id}/samples.csv`: every sample's inputs and outputs.
+- **Dispersion section:** landing points (one MapLibre circle layer, with hover),
+  ellipses, progress, and probability tiles coloured by their upper bound. The pane edits
+  the campaign (samples, seed, every input's spread, in percent or the user's units).
+- **Monte Carlo results section:** eight histograms (median and 5/95% marked, hover per
+  bar) and a percentile table of every output.
+- **Single flights ignore campaign settings:** `monte_carlo` is no longer part of a
+  flight's cache key, so tuning a campaign never re-flies the single flight.
+- **Docs:** `docs/methods/monte-carlo.md`. **e2e:** the Calisto journey now runs a
+  20-sample campaign and checks the map, the CSV and the histograms.
+
+**Lanius at White Cliffs** with a hand-entered north-westerly (5 to 18 m/s): 80 samples
+land about 1.4 km ESE, 23% outside the illustrative 3 km boundary (upper bound 33%).
+
+**Known gaps**
+- No early stopping, no failure-mode campaigns (drogue only, ballistic), and no
+  ensemble-derived wind spreads.
+- No P(apogee > ceiling) yet: it needs the constraints section.
+- The in-process dev queue runs chunks in threads, about 2.5 s per windy Lanius sample.
+  The Docker workers use process pools; that speed is not measured yet.
+- The Dispersion "mission changed" note only knows about drafts from this session.
+
+## 2026-11-02: Docs in the app, drafts survive reloads, wind by hand
+
+**Done**
+- **Docs section** renders the repo's `docs/` in the app, bundled at build time (works
+  offline; [ADR 0004](docs/adr/0004-docs-bundled-into-the-app.md)).
+  - Contents by group, text search, and in-app links between pages.
+  - Every section's "Read the method" link now opens the page. Before, `/docs/...` wasn't
+    a route and those links bounced back to Missions.
+  - A unit test fails on any broken link between pages.
+- **Mission config reference generated from the models** (`python -m simcore reference`,
+  written by `make codegen`, checked by a test and by `codegen-check`). It found a stale
+  description: `motor` still said "Solid rocket motor".
+- **New pages:** Start here (onboarding), Architecture, guides for OpenRocket import and
+  launch-day weather, the Site method, ADRs 0003 (atmosphere stored in the mission) and
+  0004, and a Validation record (empty until the team flies).
+- **Unsaved drafts survive a reload** (`stores/draftPersistence.ts`):
+  - Unsaved changes go to localStorage and come back flagged **Restored**, with a confirm
+    step before discarding.
+  - A clean mission is remembered by id and reopened from the server.
+  - The site e2e now tests this; it used to assert the opposite.
+- **Wind entered by hand** (`atmosphere.kind: manual`):
+  - A height/speed/direction table, with an optional pad temperature and station pressure
+    that shift the standard atmosphere.
+  - The wind is held constant above the top entry, up to 20 km.
+  - The Weather pane has a source switch (Standard / Forecast / By hand). "Start from the
+    forecast in use" copies the forecast at six heights.
+- **Provenance** now names hand-entered profiles, the forecast's fetch time and any
+  surface-wind blend.
+
 ## 2026-11-02: Weather, first slice (forecasts, cache, surface-wind blend)
 
 **Done**

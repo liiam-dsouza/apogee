@@ -63,6 +63,74 @@ export const fields = {
     "file": {},
     "kind": {}
   },
+  "CampaignRequest": {
+    "mission": {
+      "description": "The mission, with its monte_carlo settings."
+    }
+  },
+  "CampaignResult": {
+    "points": {
+      "description": "Every landing so far."
+    },
+    "state": {
+      "description": "Progress."
+    },
+    "summary": {
+      "description": "Statistics over the samples so far."
+    }
+  },
+  "CampaignState": {
+    "chunk_errors": {
+      "description": "Why chunk jobs failed, if any did."
+    },
+    "created_utc": {
+      "description": "When the campaign was first started."
+    },
+    "id": {
+      "description": "Campaign id: a hash of the mission and versions."
+    },
+    "samples": {
+      "description": "Samples in the campaign."
+    },
+    "samples_done": {
+      "description": "Samples in finished chunks (flown or failed)."
+    },
+    "status": {
+      "description": "running: chunks are queued or flying. done: every chunk finished. failed: a chunk's job failed. stalled: unfinished chunks have no job (restart lost them); start the campaign again to resume."
+    }
+  },
+  "CampaignSummary": {
+    "apogee_mean_standard_error_m": {
+      "description": "Standard error of the mean apogee: how settled the mean is.",
+      "units": "m"
+    },
+    "done": {
+      "description": "Samples flown successfully."
+    },
+    "ellipses": {
+      "description": "Landing ellipses fitted from the covariance."
+    },
+    "failed": {
+      "description": "Samples whose simulation failed."
+    },
+    "in_hazard": {
+      "description": "Landing inside any hazard zone, if the site has any."
+    },
+    "landing_center_east_m": {
+      "description": "Mean landing point, east of the pad.",
+      "units": "m"
+    },
+    "landing_center_north_m": {
+      "description": "Mean landing point, north of the pad.",
+      "units": "m"
+    },
+    "outside_boundary": {
+      "description": "Landing outside the range boundary, if the site has one."
+    },
+    "stats": {
+      "description": "Distribution of each output."
+    }
+  },
   "ChannelInfo": {
     "description": {
       "description": "What the channel measures."
@@ -95,6 +163,20 @@ export const fields = {
     },
     "units": {
       "description": "Units of both values."
+    }
+  },
+  "Distribution": {
+    "label": {
+      "description": "What it is."
+    },
+    "name": {
+      "description": "Output name."
+    },
+    "units": {
+      "description": "Units."
+    },
+    "values": {
+      "description": "One value per successful sample, in sample order."
     }
   },
   "Drag": {
@@ -130,6 +212,26 @@ export const fields = {
     },
     "environment": {
       "description": "The mission's environment section."
+    }
+  },
+  "Ellipse": {
+    "bearing_deg": {
+      "description": "Direction of the major axis, clockwise from north.",
+      "units": "deg"
+    },
+    "polygon": {
+      "description": "The ellipse as [longitude, latitude] points, for drawing."
+    },
+    "probability": {
+      "description": "Share of landings expected inside, 0 to 1."
+    },
+    "semi_major_m": {
+      "description": "Semi-major axis.",
+      "units": "m"
+    },
+    "semi_minor_m": {
+      "description": "Semi-minor axis.",
+      "units": "m"
     }
   },
   "Environment": {
@@ -426,6 +528,63 @@ export const fields = {
       "units": "m/s"
     }
   },
+  "LandingPoint": {
+    "apogee_agl_m": {
+      "description": "That sample's apogee above the pad."
+    },
+    "index": {
+      "description": "Sample number."
+    },
+    "latitude_deg": {
+      "description": "Landing latitude, WGS84."
+    },
+    "longitude_deg": {
+      "description": "Landing longitude, WGS84."
+    }
+  },
+  "ManualProfile": {
+    "kind": {
+      "description": "Wind entered by hand, e.g. from a range safety officer's briefing."
+    },
+    "levels": {
+      "description": "Wind at heights above the pad, in increasing height. Held constant above the top."
+    },
+    "note": {
+      "description": "Where the numbers came from, and when."
+    },
+    "surface_pressure_pa": {
+      "description": "Station pressure at the pad (not sea-level). Unset uses the standard atmosphere.",
+      "units": "Pa",
+      "exclusiveMinimum": 30000,
+      "exclusiveMaximum": 110000
+    },
+    "surface_temperature_k": {
+      "description": "Air temperature at the pad. Unset uses the standard atmosphere.",
+      "units": "K",
+      "exclusiveMinimum": 200,
+      "exclusiveMaximum": 340
+    }
+  },
+  "ManualWindLevel": {
+    "direction_deg": {
+      "description": "Direction the wind blows from, degrees clockwise from true north.",
+      "units": "deg",
+      "minimum": 0,
+      "exclusiveMaximum": 360
+    },
+    "height_m": {
+      "description": "Height above the pad.",
+      "units": "m",
+      "minimum": 0,
+      "maximum": 30000
+    },
+    "speed_ms": {
+      "description": "Wind speed.",
+      "units": "m/s",
+      "minimum": 0,
+      "maximum": 150
+    }
+  },
   "Mission": {
     "assets": {
       "description": "Content-addressed files, keyed by sha256: thrust curves, drag tables, .ork originals."
@@ -446,10 +605,10 @@ export const fields = {
       "description": "Name, id, authorship."
     },
     "monte_carlo": {
-      "description": "Not modelled yet: accepted as-is so configs round-trip."
+      "description": "Monte Carlo campaign settings."
     },
     "motor": {
-      "description": "Solid rocket motor."
+      "description": "The motor: solid (with grain geometry) or generic (thrust curve and masses)."
     },
     "recovery": {
       "description": "Parachutes and other recovery devices."
@@ -510,6 +669,67 @@ export const fields = {
     },
     "updated_utc": {
       "description": "Last saved, UTC."
+    }
+  },
+  "MonteCarlo": {
+    "parameters": {
+      "description": "The uncertain inputs."
+    },
+    "samples": {
+      "description": "Number of flights to run.",
+      "minimum": 10,
+      "maximum": 5000
+    },
+    "seed": {
+      "description": "Sampling seed. The same seed gives the same samples.",
+      "minimum": 0
+    },
+    "wind_correlation_m": {
+      "description": "Height over which the layer noise stays correlated (500 to 1,000 m is typical).",
+      "units": "m",
+      "maximum": 5000,
+      "exclusiveMinimum": 0
+    }
+  },
+  "MonteCarloParameters": {
+    "burn_time": {
+      "description": "Burn time, relative. Impulse is kept, so thrust scales."
+    },
+    "deploy_altitude": {
+      "description": "Altitude-triggered deployments, metres (altimeter error)."
+    },
+    "deployment_lag": {
+      "description": "Added to each device's deployment lag, seconds; the total is truncated at zero."
+    },
+    "drag": {
+      "description": "Drag coefficient multiplier, relative."
+    },
+    "dry_cg": {
+      "description": "Rocket dry centre of mass, metres along the axis."
+    },
+    "dry_mass": {
+      "description": "Rocket dry mass, relative (0.005 if weighed, 0.02 if not)."
+    },
+    "parachute_cd_s": {
+      "description": "Each parachute's CdS, relative, independently."
+    },
+    "rail_heading": {
+      "description": "Rail heading, degrees."
+    },
+    "rail_inclination": {
+      "description": "Rail inclination, degrees."
+    },
+    "total_impulse": {
+      "description": "Total impulse, relative (0.03 = 3%; use 0.05 for student-made motors)."
+    },
+    "wind_direction": {
+      "description": "Whole-profile wind direction offset, degrees: the forecast's direction error."
+    },
+    "wind_layers": {
+      "description": "Smaller, height-correlated wind noise on top, m/s per component."
+    },
+    "wind_speed": {
+      "description": "Whole-profile wind speed multiplier, relative: the forecast's speed error."
     }
   },
   "MotorReference": {
@@ -610,6 +830,20 @@ export const fields = {
     "triggered_s": {
       "description": "Time the trigger fired.",
       "units": "s"
+    }
+  },
+  "Probability": {
+    "count": {
+      "description": "Samples where it happened."
+    },
+    "of": {
+      "description": "Samples it was judged over."
+    },
+    "p": {
+      "description": "Estimated probability, 0 to 1."
+    },
+    "upper_95": {
+      "description": "Upper end of the 95% confidence interval (Wilson). With few samples this is what to compare against a limit, not p."
     }
   },
   "Problem": {
@@ -961,9 +1195,50 @@ export const fields = {
       "description": "Thrust curve asset (.eng or .rse)."
     }
   },
+  "Spread": {
+    "enabled": {
+      "description": "Vary this input in a campaign."
+    },
+    "sigma": {
+      "description": "One standard deviation, in the input's units.",
+      "minimum": 0
+    }
+  },
   "StandardAtmosphere": {
     "kind": {
       "description": "International Standard Atmosphere, no wind. For sanity runs."
+    }
+  },
+  "Stat": {
+    "label": {
+      "description": "What it is."
+    },
+    "max": {
+      "description": "Largest."
+    },
+    "mean": {
+      "description": "Mean."
+    },
+    "min": {
+      "description": "Smallest."
+    },
+    "name": {
+      "description": "Output name."
+    },
+    "p5": {
+      "description": "5th percentile."
+    },
+    "p50": {
+      "description": "Median."
+    },
+    "p95": {
+      "description": "95th percentile."
+    },
+    "std": {
+      "description": "Standard deviation."
+    },
+    "units": {
+      "description": "Units."
     }
   },
   "SurfaceWind": {

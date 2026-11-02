@@ -38,6 +38,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/campaigns/{campaign_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Campaign
+         * @description Progress, statistics and landing points, over the samples finished so far.
+         */
+        get: operations["getCampaign"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/campaigns/{campaign_id}/distributions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Campaign Distributions
+         * @description Every sample's value of each output, for histograms.
+         */
+        get: operations["campaignDistributions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/campaigns/{campaign_id}/samples.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Campaign Csv
+         * @description Every sample's inputs and outputs side by side, for a spreadsheet.
+         */
+        get: operations["campaignSamplesCsv"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -283,6 +343,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/sim/montecarlo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run Monte Carlo
+         * @description Start a campaign, or resume one: chunks without a finished result or a live job
+         *     are (re)queued. The same mission and versions always give the same campaign.
+         */
+        post: operations["runMonteCarlo"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/system/info": {
         parameters: {
             query?: never;
@@ -464,6 +545,100 @@ export interface components {
              */
             kind: "thrust_curve" | "drag_table";
         };
+        /** CampaignRequest */
+        CampaignRequest: {
+            /** @description The mission, with its monte_carlo settings. */
+            mission: components["schemas"]["Mission"];
+        };
+        /** CampaignResult */
+        CampaignResult: {
+            /**
+             * Points
+             * @description Every landing so far.
+             */
+            points: components["schemas"]["LandingPoint"][];
+            /** @description Progress. */
+            state: components["schemas"]["CampaignState"];
+            /** @description Statistics over the samples so far. */
+            summary: components["schemas"]["CampaignSummary"];
+        };
+        /** CampaignState */
+        CampaignState: {
+            /**
+             * Chunk Errors
+             * @description Why chunk jobs failed, if any did.
+             */
+            chunk_errors: string[];
+            /**
+             * Created Utc
+             * Format: date-time
+             * @description When the campaign was first started.
+             */
+            created_utc: string;
+            /**
+             * Id
+             * @description Campaign id: a hash of the mission and versions.
+             */
+            id: string;
+            /**
+             * Samples
+             * @description Samples in the campaign.
+             */
+            samples: number;
+            /**
+             * Samples Done
+             * @description Samples in finished chunks (flown or failed).
+             */
+            samples_done: number;
+            /**
+             * Status
+             * @description running: chunks are queued or flying. done: every chunk finished. failed: a chunk's job failed. stalled: unfinished chunks have no job (restart lost them); start the campaign again to resume.
+             * @enum {string}
+             */
+            status: "running" | "done" | "failed" | "stalled";
+        };
+        /** CampaignSummary */
+        CampaignSummary: {
+            /**
+             * Apogee Mean Standard Error M
+             * @description Standard error of the mean apogee: how settled the mean is.
+             */
+            apogee_mean_standard_error_m: number | null;
+            /**
+             * Done
+             * @description Samples flown successfully.
+             */
+            done: number;
+            /**
+             * Ellipses
+             * @description Landing ellipses fitted from the covariance.
+             */
+            ellipses: components["schemas"]["Ellipse"][];
+            /**
+             * Failed
+             * @description Samples whose simulation failed.
+             */
+            failed: number;
+            /** @description Landing inside any hazard zone, if the site has any. */
+            in_hazard: components["schemas"]["Probability"] | null;
+            /**
+             * Landing Center East M
+             * @description Mean landing point, east of the pad.
+             */
+            landing_center_east_m: number | null;
+            /**
+             * Landing Center North M
+             * @description Mean landing point, north of the pad.
+             */
+            landing_center_north_m: number | null;
+            /** @description Landing outside the range boundary, if the site has one. */
+            outside_boundary: components["schemas"]["Probability"] | null;
+            /**
+             * Stats
+             * @description Distribution of each output.
+             */
+            stats: components["schemas"]["Stat"][];
+        };
         /** ChannelInfo */
         ChannelInfo: {
             /**
@@ -521,6 +696,29 @@ export interface components {
              */
             units: string;
         };
+        /** Distribution */
+        Distribution: {
+            /**
+             * Label
+             * @description What it is.
+             */
+            label: string;
+            /**
+             * Name
+             * @description Output name.
+             */
+            name: string;
+            /**
+             * Units
+             * @description Units.
+             */
+            units: string;
+            /**
+             * Values
+             * @description One value per successful sample, in sample order.
+             */
+            values: number[];
+        };
         /** Drag */
         Drag: {
             /**
@@ -568,13 +766,44 @@ export interface components {
             /** @description The mission's environment section. */
             environment: components["schemas"]["Environment"];
         };
+        /** Ellipse */
+        Ellipse: {
+            /**
+             * Bearing Deg
+             * @description Direction of the major axis, clockwise from north.
+             */
+            bearing_deg: number;
+            /**
+             * Polygon
+             * @description The ellipse as [longitude, latitude] points, for drawing.
+             */
+            polygon: [
+                number,
+                number
+            ][];
+            /**
+             * Probability
+             * @description Share of landings expected inside, 0 to 1.
+             */
+            probability: number;
+            /**
+             * Semi Major M
+             * @description Semi-major axis.
+             */
+            semi_major_m: number;
+            /**
+             * Semi Minor M
+             * @description Semi-minor axis.
+             */
+            semi_minor_m: number;
+        };
         /** Environment */
         Environment: {
             /**
              * Atmosphere
              * @description Atmosphere and wind the flight is simulated in.
              */
-            atmosphere?: components["schemas"]["StandardAtmosphere"] | components["schemas"]["ResolvedProfile"];
+            atmosphere?: components["schemas"]["StandardAtmosphere"] | components["schemas"]["ResolvedProfile"] | components["schemas"]["ManualProfile"];
             /** @description A measured surface wind to blend into the atmosphere near the ground. */
             surface_wind?: components["schemas"]["SurfaceWind"] | null;
         };
@@ -980,6 +1209,76 @@ export interface components {
              */
             speed_ms: number;
         };
+        /** LandingPoint */
+        LandingPoint: {
+            /**
+             * Apogee Agl M
+             * @description That sample's apogee above the pad.
+             */
+            apogee_agl_m: number;
+            /**
+             * Index
+             * @description Sample number.
+             */
+            index: number;
+            /**
+             * Latitude Deg
+             * @description Landing latitude, WGS84.
+             */
+            latitude_deg: number;
+            /**
+             * Longitude Deg
+             * @description Landing longitude, WGS84.
+             */
+            longitude_deg: number;
+        };
+        /** ManualProfile */
+        ManualProfile: {
+            /**
+             * @description Wind entered by hand, e.g. from a range safety officer's briefing. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            kind: "manual";
+            /**
+             * Levels
+             * @description Wind at heights above the pad, in increasing height. Held constant above the top.
+             */
+            levels: components["schemas"]["ManualWindLevel"][];
+            /**
+             * Note
+             * @description Where the numbers came from, and when.
+             * @default
+             */
+            note: string;
+            /**
+             * Surface Pressure Pa
+             * @description Station pressure at the pad (not sea-level). Unset uses the standard atmosphere.
+             */
+            surface_pressure_pa?: number | null;
+            /**
+             * Surface Temperature K
+             * @description Air temperature at the pad. Unset uses the standard atmosphere.
+             */
+            surface_temperature_k?: number | null;
+        };
+        /** ManualWindLevel */
+        ManualWindLevel: {
+            /**
+             * Direction Deg
+             * @description Direction the wind blows from, degrees clockwise from true north.
+             */
+            direction_deg: number;
+            /**
+             * Height M
+             * @description Height above the pad.
+             */
+            height_m: number;
+            /**
+             * Speed Ms
+             * @description Wind speed.
+             */
+            speed_ms: number;
+        };
         /**
          * Mission
          * @description A complete mission config. Serialised as YAML (or JSON).
@@ -1015,16 +1314,11 @@ export interface components {
             extends?: string | null;
             /** @description Name, id, authorship. */
             meta: components["schemas"]["MissionMeta"];
-            /**
-             * Monte Carlo
-             * @description Not modelled yet: accepted as-is so configs round-trip.
-             */
-            monte_carlo?: {
-                [key: string]: unknown;
-            };
+            /** @description Monte Carlo campaign settings. */
+            monte_carlo?: components["schemas"]["MonteCarlo"];
             /**
              * Motor
-             * @description Solid rocket motor.
+             * @description The motor: solid (with grain geometry) or generic (thrust curve and masses).
              */
             motor?: (components["schemas"]["SolidMotor"] | components["schemas"]["GenericMotor"]) | null;
             /** @description Parachutes and other recovery devices. */
@@ -1122,6 +1416,61 @@ export interface components {
              * @description Last saved, UTC.
              */
             updated_utc: string;
+        };
+        /** MonteCarlo */
+        MonteCarlo: {
+            /** @description The uncertain inputs. */
+            parameters?: components["schemas"]["MonteCarloParameters"];
+            /**
+             * Samples
+             * @description Number of flights to run.
+             * @default 200
+             */
+            samples: number;
+            /**
+             * Seed
+             * @description Sampling seed. The same seed gives the same samples.
+             * @default 1
+             */
+            seed: number;
+            /**
+             * Wind Correlation M
+             * @description Height over which the layer noise stays correlated (500 to 1,000 m is typical).
+             * @default 750
+             */
+            wind_correlation_m: number;
+        };
+        /**
+         * MonteCarloParameters
+         * @description What varies between samples, and by how much. Defaults follow the brief.
+         */
+        MonteCarloParameters: {
+            /** @description Burn time, relative. Impulse is kept, so thrust scales. */
+            burn_time?: components["schemas"]["Spread"];
+            /** @description Altitude-triggered deployments, metres (altimeter error). */
+            deploy_altitude?: components["schemas"]["Spread"];
+            /** @description Added to each device's deployment lag, seconds; the total is truncated at zero. */
+            deployment_lag?: components["schemas"]["Spread"];
+            /** @description Drag coefficient multiplier, relative. */
+            drag?: components["schemas"]["Spread"];
+            /** @description Rocket dry centre of mass, metres along the axis. */
+            dry_cg?: components["schemas"]["Spread"];
+            /** @description Rocket dry mass, relative (0.005 if weighed, 0.02 if not). */
+            dry_mass?: components["schemas"]["Spread"];
+            /** @description Each parachute's CdS, relative, independently. */
+            parachute_cd_s?: components["schemas"]["Spread"];
+            /** @description Rail heading, degrees. */
+            rail_heading?: components["schemas"]["Spread"];
+            /** @description Rail inclination, degrees. */
+            rail_inclination?: components["schemas"]["Spread"];
+            /** @description Total impulse, relative (0.03 = 3%; use 0.05 for student-made motors). */
+            total_impulse?: components["schemas"]["Spread"];
+            /** @description Whole-profile wind direction offset, degrees: the forecast's direction error. */
+            wind_direction?: components["schemas"]["Spread"];
+            /** @description Smaller, height-correlated wind noise on top, m/s per component. */
+            wind_layers?: components["schemas"]["Spread"];
+            /** @description Whole-profile wind speed multiplier, relative: the forecast's speed error. */
+            wind_speed?: components["schemas"]["Spread"];
         };
         /** MotorReference */
         MotorReference: {
@@ -1255,6 +1604,29 @@ export interface components {
              * @description Time the trigger fired.
              */
             triggered_s: number;
+        };
+        /** Probability */
+        Probability: {
+            /**
+             * Count
+             * @description Samples where it happened.
+             */
+            count: number;
+            /**
+             * Of
+             * @description Samples it was judged over.
+             */
+            of: number;
+            /**
+             * P
+             * @description Estimated probability, 0 to 1.
+             */
+            p: number;
+            /**
+             * Upper 95
+             * @description Upper end of the 95% confidence interval (Wilson). With few samples this is what to compare against a limit, not p.
+             */
+            upper_95: number;
         };
         /** Problem */
         Problem: {
@@ -1744,6 +2116,23 @@ export interface components {
              */
             thrust_curve: string;
         };
+        /**
+         * Spread
+         * @description One uncertain input: normally distributed about its nominal value.
+         */
+        Spread: {
+            /**
+             * Enabled
+             * @description Vary this input in a campaign.
+             * @default true
+             */
+            enabled: boolean;
+            /**
+             * Sigma
+             * @description One standard deviation, in the input's units.
+             */
+            sigma: number;
+        };
         /** StandardAtmosphere */
         StandardAtmosphere: {
             /**
@@ -1751,6 +2140,59 @@ export interface components {
              * @enum {string}
              */
             kind: "standard";
+        };
+        /** Stat */
+        Stat: {
+            /**
+             * Label
+             * @description What it is.
+             */
+            label: string;
+            /**
+             * Max
+             * @description Largest.
+             */
+            max: number;
+            /**
+             * Mean
+             * @description Mean.
+             */
+            mean: number;
+            /**
+             * Min
+             * @description Smallest.
+             */
+            min: number;
+            /**
+             * Name
+             * @description Output name.
+             */
+            name: string;
+            /**
+             * P5
+             * @description 5th percentile.
+             */
+            p5: number;
+            /**
+             * P50
+             * @description Median.
+             */
+            p50: number;
+            /**
+             * P95
+             * @description 95th percentile.
+             */
+            p95: number;
+            /**
+             * Std
+             * @description Standard deviation.
+             */
+            std: number;
+            /**
+             * Units
+             * @description Units.
+             */
+            units: string;
         };
         /**
          * SurfaceWind
@@ -2023,6 +2465,126 @@ export interface operations {
                 };
             };
             /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    getCampaign: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignResult"];
+                };
+            };
+            /** @description No such campaign. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    campaignDistributions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Distribution"][];
+                };
+            };
+            /** @description No such campaign. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    campaignSamplesCsv: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One row per sample. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": unknown;
+                };
+            };
+            /** @description No such campaign. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -2687,6 +3249,48 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RunState"];
+                };
+            };
+            /** @description The mission cannot be flown yet. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description No job queue. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    runMonteCarlo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CampaignRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignState"];
                 };
             };
             /** @description The mission cannot be flown yet. */

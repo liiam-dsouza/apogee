@@ -53,6 +53,12 @@ async def openrocket_cross_check(ctx: dict[str, Any], **kwargs: Any) -> list[dic
     return await loop.run_in_executor(ctx["pool"], partial(jobs.openrocket_cross_check, **kwargs))
 
 
+async def monte_carlo_chunk(ctx: dict[str, Any], **kwargs: Any) -> str:
+    """One chunk of a Monte Carlo campaign; returns the campaign id."""
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(ctx["pool"], partial(jobs.monte_carlo_chunk, **kwargs))
+
+
 async def _heartbeat(ctx: dict[str, Any]) -> None:
     key = ctx["heartbeat_key"]
     while True:
@@ -75,7 +81,7 @@ async def shutdown(ctx: dict[str, Any]) -> None:
 
 
 class WorkerSettings:
-    functions: ClassVar = [ping, simulate_flight, openrocket_cross_check]
+    functions: ClassVar = [ping, simulate_flight, openrocket_cross_check, monte_carlo_chunk]
     on_startup = startup
     on_shutdown = shutdown
     redis_settings = RedisSettings.from_dsn(settings.redis_url)

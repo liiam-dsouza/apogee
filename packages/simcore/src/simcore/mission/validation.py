@@ -40,8 +40,12 @@ def format_path(loc: Sequence[int | str]) -> str:
     return out
 
 
-def _point_in_polygon(lon: float, lat: float, poly: Sequence[tuple[float, float]]) -> bool:
-    # Ray casting in lon/lat; adequate at range scale (a few km).
+def point_in_polygon(lon: float, lat: float, poly: Sequence[tuple[float, float]]) -> bool:
+    """Whether a WGS84 point is inside a polygon of (lon, lat) points (open ring).
+
+    Ray casting in lon/lat: adequate at range scale (a few km), not near the poles
+    or across the antimeridian.
+    """
     inside = False
     j = len(poly) - 1
     for i in range(len(poly)):
@@ -171,7 +175,7 @@ def physical_checks(mission: Mission) -> list[Issue]:
     if (
         site
         and site.boundary
-        and not _point_in_polygon(site.longitude_deg, site.latitude_deg, site.boundary)
+        and not point_in_polygon(site.longitude_deg, site.latitude_deg, site.boundary)
     ):
         issues.append(
             Issue(
@@ -183,7 +187,7 @@ def physical_checks(mission: Mission) -> list[Issue]:
         )
     if site:
         for i, hazard in enumerate(site.hazards):
-            if _point_in_polygon(site.longitude_deg, site.latitude_deg, hazard):
+            if point_in_polygon(site.longitude_deg, site.latitude_deg, hazard):
                 issues.append(
                     Issue(
                         path=f"site.hazards[{i}]",

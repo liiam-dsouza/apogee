@@ -26,6 +26,7 @@ WORKER_HEARTBEAT_PREFIX = "apogee:worker:"
 #: Must match the function names registered in apogee_worker (and simcore.jobs).
 FLIGHT_TASK = "simulate_flight"
 ORK_CROSS_CHECK_TASK = "openrocket_cross_check"
+MONTE_CARLO_CHUNK_TASK = "monte_carlo_chunk"
 
 
 class JobState(BaseModel):

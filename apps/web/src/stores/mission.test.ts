@@ -7,7 +7,7 @@ const mission: Mission = {
   meta: { name: 'Lanius', id: '01JC', created_utc: '2026-11-01T09:14:00Z', authors: [], notes: '' },
   rocket: null, motor: null, recovery: { devices: [] }, ballast: {}, site: null,
   environment: { atmosphere: { kind: 'standard' } },
-  monte_carlo: {}, constraints: {}, solver: {}, assets: {},
+  monte_carlo: { samples: 200, seed: 1, wind_correlation_m: 750 }, constraints: {}, solver: {}, assets: {},
 }
 
 describe('mission store', () => {

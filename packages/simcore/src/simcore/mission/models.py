@@ -369,6 +369,48 @@ class ResolvedProfile(_Strict):
         return v
 
 
+class ManualWindLevel(_Strict):
+    height_m: float = quantity("m", "Height above the pad.", ge=0, le=30_000)
+    speed_ms: float = quantity("m/s", "Wind speed.", ge=0, le=150)
+    direction_deg: float = quantity(
+        "deg", "Direction the wind blows from, degrees clockwise from true north.", ge=0, lt=360
+    )
+
+
+class ManualProfile(_Strict):
+    kind: Literal["manual"] = Field(
+        description="Wind entered by hand, e.g. from a range safety officer's briefing."
+    )
+    note: str = Field(default="", description="Where the numbers came from, and when.")
+    levels: list[ManualWindLevel] = Field(
+        min_length=1,
+        description=(
+            "Wind at heights above the pad, in increasing height. Held constant above the top."
+        ),
+    )
+    surface_temperature_k: float | None = quantity(
+        "K",
+        "Air temperature at the pad. Unset uses the standard atmosphere.",
+        default=None,
+        gt=200,
+        lt=340,
+    )
+    surface_pressure_pa: float | None = quantity(
+        "Pa",
+        "Station pressure at the pad (not sea-level). Unset uses the standard atmosphere.",
+        default=None,
+        gt=30_000,
+        lt=110_000,
+    )
+
+    @field_validator("levels")
+    @classmethod
+    def _ascending(cls, v: list[ManualWindLevel]) -> list[ManualWindLevel]:
+        if any(b.height_m <= a.height_m for a, b in itertools.pairwise(v)):
+            raise ValueError("levels must be in strictly increasing height")
+        return v
+
+
 class SurfaceWind(_Strict):
     """A measured surface wind, blended into the profile near the ground."""
 
@@ -405,7 +447,7 @@ class SurfaceWind(_Strict):
 
 
 class Environment(_Strict):
-    atmosphere: StandardAtmosphere | ResolvedProfile = Field(
+    atmosphere: StandardAtmosphere | ResolvedProfile | ManualProfile = Field(
         default_factory=lambda: StandardAtmosphere(kind="standard"),
         discriminator="kind",
         description="Atmosphere and wind the flight is simulated in.",
@@ -413,6 +455,67 @@ class Environment(_Strict):
     surface_wind: SurfaceWind | None = Field(
         default=None,
         description="A measured surface wind to blend into the atmosphere near the ground.",
+    )
+
+
+# --- Monte Carlo ------------------------------------------------------------------
+
+
+class Spread(_Strict):
+    """One uncertain input: normally distributed about its nominal value."""
+
+    enabled: bool = Field(default=True, description="Vary this input in a campaign.")
+    sigma: float = Field(ge=0, description="One standard deviation, in the input's units.")
+
+
+def _spread(sigma: float, description: str) -> Any:
+    return Field(default_factory=lambda: Spread(sigma=sigma), description=description)
+
+
+class MonteCarloParameters(_Strict):
+    """What varies between samples, and by how much. Defaults follow the brief."""
+
+    total_impulse: Spread = _spread(
+        0.03, "Total impulse, relative (0.03 = 3%; use 0.05 for student-made motors)."
+    )
+    burn_time: Spread = _spread(0.05, "Burn time, relative. Impulse is kept, so thrust scales.")
+    dry_mass: Spread = _spread(0.005, "Rocket dry mass, relative (0.005 if weighed, 0.02 if not).")
+    dry_cg: Spread = _spread(0.005, "Rocket dry centre of mass, metres along the axis.")
+    drag: Spread = _spread(0.10, "Drag coefficient multiplier, relative.")
+    rail_inclination: Spread = _spread(0.5, "Rail inclination, degrees.")
+    rail_heading: Spread = _spread(2.0, "Rail heading, degrees.")
+    parachute_cd_s: Spread = _spread(0.10, "Each parachute's CdS, relative, independently.")
+    deployment_lag: Spread = _spread(
+        0.3, "Added to each device's deployment lag, seconds; the total is truncated at zero."
+    )
+    deploy_altitude: Spread = _spread(
+        10.0, "Altitude-triggered deployments, metres (altimeter error)."
+    )
+    wind_speed: Spread = _spread(
+        0.15, "Whole-profile wind speed multiplier, relative: the forecast's speed error."
+    )
+    wind_direction: Spread = _spread(
+        10.0, "Whole-profile wind direction offset, degrees: the forecast's direction error."
+    )
+    wind_layers: Spread = _spread(
+        1.0, "Smaller, height-correlated wind noise on top, m/s per component."
+    )
+
+
+class MonteCarlo(_Strict):
+    samples: int = Field(default=200, ge=10, le=5000, description="Number of flights to run.")
+    seed: int = Field(
+        default=1, ge=0, description="Sampling seed. The same seed gives the same samples."
+    )
+    wind_correlation_m: float = quantity(
+        "m",
+        "Height over which the layer noise stays correlated (500 to 1,000 m is typical).",
+        default=750.0,
+        gt=0,
+        le=5000,
+    )
+    parameters: MonteCarloParameters = Field(
+        default_factory=MonteCarloParameters, description="The uncertain inputs."
     )
 
 
@@ -429,7 +532,10 @@ class Mission(_Strict):
     )
     meta: MissionMeta = Field(description="Name, id, authorship.")
     rocket: Rocket | None = Field(default=None, description="Airframe, without the motor.")
-    motor: Motor | None = Field(default=None, description="Solid rocket motor.")
+    motor: Motor | None = Field(
+        default=None,
+        description="The motor: solid (with grain geometry) or generic (thrust curve and masses).",
+    )
     recovery: Recovery = Field(
         default_factory=Recovery, description="Parachutes and other recovery devices."
     )
@@ -438,7 +544,9 @@ class Mission(_Strict):
     environment: Environment = Field(
         default_factory=Environment, description="Atmosphere and wind."
     )
-    monte_carlo: OpenSection
+    monte_carlo: MonteCarlo = Field(
+        default_factory=MonteCarlo, description="Monte Carlo campaign settings."
+    )
     constraints: OpenSection
     solver: OpenSection
     assets: dict[str, Asset] = Field(

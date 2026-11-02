@@ -4,7 +4,13 @@ Nothing returned from here is a RocketPy object: results are FlightResult.
 Checked against the pinned RocketPy 1.13.0 API (see the tests/golden suite).
 """
 
-from simcore.engine.build import EngineInputError, center_of_pressure_m, check_runnable, run_flight
+from simcore.engine.build import (
+    EngineInputError,
+    MotorScale,
+    center_of_pressure_m,
+    check_runnable,
+    run_flight,
+)
 from simcore.engine.result import TRAJECTORY_CHANNELS, FlightResult, FlightSummary
 
 __all__ = [
@@ -12,6 +18,7 @@ __all__ = [
     "EngineInputError",
     "FlightResult",
     "FlightSummary",
+    "MotorScale",
     "center_of_pressure_m",
     "check_runnable",
     "run_flight",

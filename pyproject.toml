@@ -48,5 +48,5 @@ known-first-party = ["simcore", "apogee_api", "apogee_worker"]
 
 # No type information shipped. Only simcore.engine imports rocketpy.
 [[tool.mypy.overrides]]
-module = ["rocketpy", "rocketpy.*", "pyarrow", "pyarrow.*", "defusedxml", "defusedxml.*"]
+module = ["rocketpy", "rocketpy.*", "pyarrow", "pyarrow.*", "defusedxml", "defusedxml.*", "scipy", "scipy.*"]
 ignore_missing_imports = true

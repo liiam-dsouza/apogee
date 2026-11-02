@@ -110,3 +110,20 @@ def openrocket_cross_check(
             )
         )
     return [r.model_dump() for r in rows]
+
+
+def monte_carlo_chunk(
+    mission_data: dict[str, Any], *, campaign_id: str, chunk: int, data_dir: str
+) -> str:
+    """Fly one chunk of a campaign's samples and store the rows. Returns the campaign id."""
+    from simcore.assets import DirectoryAssetStore
+    from simcore.mission import load_mission
+    from simcore.montecarlo import run_samples
+    from simcore.montecarlo.store import CampaignStore, chunks
+
+    root = Path(data_dir)
+    mission = load_mission(mission_data)
+    indices = chunks(mission.monte_carlo.samples)[chunk]
+    rows = run_samples(mission, DirectoryAssetStore(root / "assets"), indices)
+    CampaignStore(root / "campaigns").write_chunk(campaign_id, chunk, rows)
+    return campaign_id

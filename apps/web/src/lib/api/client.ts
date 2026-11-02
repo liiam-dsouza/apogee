@@ -37,6 +37,14 @@ export type ProfileLevel = Schemas['ProfileLevel']
 export type SurfaceWind = Schemas['SurfaceWind']
 export type ForecastInfo = Schemas['ForecastInfo']
 export type EffectiveProfile = Schemas['EffectiveProfile']
+export type MonteCarlo = Schemas['MonteCarlo']
+export type MonteCarloParameters = Schemas['MonteCarloParameters']
+export type Spread = Schemas['Spread']
+export type CampaignState = Schemas['CampaignState']
+export type CampaignResult = Schemas['CampaignResult']
+export type CampaignSummary = Schemas['CampaignSummary']
+export type Probability = Schemas['Probability']
+export type Distribution = Schemas['Distribution']
 
 export const client = createClient<paths>({ baseUrl: '' })
 
@@ -167,7 +175,16 @@ export const api = {
     ),
   effectiveProfile: (environment: Environment, elevationM: number) =>
     unwrap<EffectiveProfile>(client.POST('/api/weather/effective', { body: { environment, elevation_m: elevationM } })),
+  runMonteCarlo: (mission: Mission) =>
+    unwrap<CampaignState>(client.POST('/api/sim/montecarlo', { body: { mission } })),
+  getCampaign: (id: string) =>
+    unwrap<CampaignResult>(client.GET('/api/campaigns/{campaign_id}', { params: { path: { campaign_id: id } } })),
+  campaignDistributions: (id: string) =>
+    unwrap<Distribution[]>(
+      client.GET('/api/campaigns/{campaign_id}/distributions', { params: { path: { campaign_id: id } } }),
+    ),
   /** A plain URL, for <a download>. */
+  campaignCsvUrl: (id: string) => `/api/campaigns/${encodeURIComponent(id)}/samples.csv`,
   exportMissionUrl: (id: string, format: 'yaml' | 'zip' = 'yaml') =>
     `/api/missions/${encodeURIComponent(id)}/export?format=${format}`,
 }

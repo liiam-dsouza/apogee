@@ -200,6 +200,204 @@
         "title": "Body_uploadAsset",
         "type": "object"
       },
+      "CampaignRequest": {
+        "properties": {
+          "mission": {
+            "$ref": "#/components/schemas/Mission",
+            "description": "The mission, with its monte_carlo settings."
+          }
+        },
+        "required": [
+          "mission"
+        ],
+        "title": "CampaignRequest",
+        "type": "object"
+      },
+      "CampaignResult": {
+        "properties": {
+          "points": {
+            "description": "Every landing so far.",
+            "items": {
+              "$ref": "#/components/schemas/LandingPoint"
+            },
+            "title": "Points",
+            "type": "array"
+          },
+          "state": {
+            "$ref": "#/components/schemas/CampaignState",
+            "description": "Progress."
+          },
+          "summary": {
+            "$ref": "#/components/schemas/CampaignSummary",
+            "description": "Statistics over the samples so far."
+          }
+        },
+        "required": [
+          "state",
+          "summary",
+          "points"
+        ],
+        "title": "CampaignResult",
+        "type": "object"
+      },
+      "CampaignState": {
+        "properties": {
+          "chunk_errors": {
+            "description": "Why chunk jobs failed, if any did.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Chunk Errors",
+            "type": "array"
+          },
+          "created_utc": {
+            "description": "When the campaign was first started.",
+            "format": "date-time",
+            "title": "Created Utc",
+            "type": "string"
+          },
+          "id": {
+            "description": "Campaign id: a hash of the mission and versions.",
+            "title": "Id",
+            "type": "string"
+          },
+          "samples": {
+            "description": "Samples in the campaign.",
+            "title": "Samples",
+            "type": "integer"
+          },
+          "samples_done": {
+            "description": "Samples in finished chunks (flown or failed).",
+            "title": "Samples Done",
+            "type": "integer"
+          },
+          "status": {
+            "description": "running: chunks are queued or flying. done: every chunk finished. failed: a chunk's job failed. stalled: unfinished chunks have no job (restart lost them); start the campaign again to resume.",
+            "enum": [
+              "running",
+              "done",
+              "failed",
+              "stalled"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "created_utc",
+          "samples",
+          "samples_done",
+          "chunk_errors"
+        ],
+        "title": "CampaignState",
+        "type": "object"
+      },
+      "CampaignSummary": {
+        "properties": {
+          "apogee_mean_standard_error_m": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Standard error of the mean apogee: how settled the mean is.",
+            "title": "Apogee Mean Standard Error M",
+            "units": "m"
+          },
+          "done": {
+            "description": "Samples flown successfully.",
+            "title": "Done",
+            "type": "integer"
+          },
+          "ellipses": {
+            "description": "Landing ellipses fitted from the covariance.",
+            "items": {
+              "$ref": "#/components/schemas/Ellipse"
+            },
+            "title": "Ellipses",
+            "type": "array"
+          },
+          "failed": {
+            "description": "Samples whose simulation failed.",
+            "title": "Failed",
+            "type": "integer"
+          },
+          "in_hazard": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Probability"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Landing inside any hazard zone, if the site has any."
+          },
+          "landing_center_east_m": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Mean landing point, east of the pad.",
+            "title": "Landing Center East M",
+            "units": "m"
+          },
+          "landing_center_north_m": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Mean landing point, north of the pad.",
+            "title": "Landing Center North M",
+            "units": "m"
+          },
+          "outside_boundary": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Probability"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Landing outside the range boundary, if the site has one."
+          },
+          "stats": {
+            "description": "Distribution of each output.",
+            "items": {
+              "$ref": "#/components/schemas/Stat"
+            },
+            "title": "Stats",
+            "type": "array"
+          }
+        },
+        "required": [
+          "done",
+          "failed",
+          "stats",
+          "landing_center_east_m",
+          "landing_center_north_m",
+          "ellipses",
+          "outside_boundary",
+          "in_hazard",
+          "apogee_mean_standard_error_m"
+        ],
+        "title": "CampaignSummary",
+        "type": "object"
+      },
       "ChannelInfo": {
         "properties": {
           "description": {
@@ -294,6 +492,41 @@
           "note"
         ],
         "title": "CrossCheck",
+        "type": "object"
+      },
+      "Distribution": {
+        "properties": {
+          "label": {
+            "description": "What it is.",
+            "title": "Label",
+            "type": "string"
+          },
+          "name": {
+            "description": "Output name.",
+            "title": "Name",
+            "type": "string"
+          },
+          "units": {
+            "description": "Units.",
+            "title": "Units",
+            "type": "string"
+          },
+          "values": {
+            "description": "One value per successful sample, in sample order.",
+            "items": {
+              "type": "number"
+            },
+            "title": "Values",
+            "type": "array"
+          }
+        },
+        "required": [
+          "name",
+          "label",
+          "units",
+          "values"
+        ],
+        "title": "Distribution",
         "type": "object"
       },
       "Drag": {
@@ -401,6 +634,60 @@
         "title": "EffectiveProfileRequest",
         "type": "object"
       },
+      "Ellipse": {
+        "properties": {
+          "bearing_deg": {
+            "description": "Direction of the major axis, clockwise from north.",
+            "title": "Bearing Deg",
+            "type": "number",
+            "units": "deg"
+          },
+          "polygon": {
+            "description": "The ellipse as [longitude, latitude] points, for drawing.",
+            "items": {
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "type": "array"
+            },
+            "title": "Polygon",
+            "type": "array"
+          },
+          "probability": {
+            "description": "Share of landings expected inside, 0 to 1.",
+            "title": "Probability",
+            "type": "number"
+          },
+          "semi_major_m": {
+            "description": "Semi-major axis.",
+            "title": "Semi Major M",
+            "type": "number",
+            "units": "m"
+          },
+          "semi_minor_m": {
+            "description": "Semi-minor axis.",
+            "title": "Semi Minor M",
+            "type": "number",
+            "units": "m"
+          }
+        },
+        "required": [
+          "probability",
+          "semi_major_m",
+          "semi_minor_m",
+          "bearing_deg",
+          "polygon"
+        ],
+        "title": "Ellipse",
+        "type": "object"
+      },
       "Environment": {
         "additionalProperties": false,
         "properties": {
@@ -408,6 +695,7 @@
             "description": "Atmosphere and wind the flight is simulated in.",
             "discriminator": {
               "mapping": {
+                "manual": "#/components/schemas/ManualProfile",
                 "profile": "#/components/schemas/ResolvedProfile",
                 "standard": "#/components/schemas/StandardAtmosphere"
               },
@@ -419,6 +707,9 @@
               },
               {
                 "$ref": "#/components/schemas/ResolvedProfile"
+              },
+              {
+                "$ref": "#/components/schemas/ManualProfile"
               }
             ],
             "title": "Atmosphere"
@@ -1097,6 +1388,136 @@
         "title": "Landing",
         "type": "object"
       },
+      "LandingPoint": {
+        "properties": {
+          "apogee_agl_m": {
+            "description": "That sample's apogee above the pad.",
+            "title": "Apogee Agl M",
+            "type": "number"
+          },
+          "index": {
+            "description": "Sample number.",
+            "title": "Index",
+            "type": "integer"
+          },
+          "latitude_deg": {
+            "description": "Landing latitude, WGS84.",
+            "title": "Latitude Deg",
+            "type": "number"
+          },
+          "longitude_deg": {
+            "description": "Landing longitude, WGS84.",
+            "title": "Longitude Deg",
+            "type": "number"
+          }
+        },
+        "required": [
+          "index",
+          "longitude_deg",
+          "latitude_deg",
+          "apogee_agl_m"
+        ],
+        "title": "LandingPoint",
+        "type": "object"
+      },
+      "ManualProfile": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "const": "manual",
+            "description": "Wind entered by hand, e.g. from a range safety officer's briefing.",
+            "title": "Kind",
+            "type": "string"
+          },
+          "levels": {
+            "description": "Wind at heights above the pad, in increasing height. Held constant above the top.",
+            "items": {
+              "$ref": "#/components/schemas/ManualWindLevel"
+            },
+            "minItems": 1,
+            "title": "Levels",
+            "type": "array"
+          },
+          "note": {
+            "default": "",
+            "description": "Where the numbers came from, and when.",
+            "title": "Note",
+            "type": "string"
+          },
+          "surface_pressure_pa": {
+            "anyOf": [
+              {
+                "exclusiveMaximum": 110000.0,
+                "exclusiveMinimum": 30000.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Station pressure at the pad (not sea-level). Unset uses the standard atmosphere.",
+            "title": "Surface Pressure Pa",
+            "units": "Pa"
+          },
+          "surface_temperature_k": {
+            "anyOf": [
+              {
+                "exclusiveMaximum": 340.0,
+                "exclusiveMinimum": 200.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Air temperature at the pad. Unset uses the standard atmosphere.",
+            "title": "Surface Temperature K",
+            "units": "K"
+          }
+        },
+        "required": [
+          "kind",
+          "levels"
+        ],
+        "title": "ManualProfile",
+        "type": "object"
+      },
+      "ManualWindLevel": {
+        "additionalProperties": false,
+        "properties": {
+          "direction_deg": {
+            "description": "Direction the wind blows from, degrees clockwise from true north.",
+            "exclusiveMaximum": 360.0,
+            "minimum": 0.0,
+            "title": "Direction Deg",
+            "type": "number",
+            "units": "deg"
+          },
+          "height_m": {
+            "description": "Height above the pad.",
+            "maximum": 30000.0,
+            "minimum": 0.0,
+            "title": "Height M",
+            "type": "number",
+            "units": "m"
+          },
+          "speed_ms": {
+            "description": "Wind speed.",
+            "maximum": 150.0,
+            "minimum": 0.0,
+            "title": "Speed Ms",
+            "type": "number",
+            "units": "m/s"
+          }
+        },
+        "required": [
+          "height_m",
+          "speed_ms",
+          "direction_deg"
+        ],
+        "title": "ManualWindLevel",
+        "type": "object"
+      },
       "Mission": {
         "additionalProperties": false,
         "description": "A complete mission config. Serialised as YAML (or JSON).",
@@ -1142,10 +1563,8 @@
             "description": "Name, id, authorship."
           },
           "monte_carlo": {
-            "additionalProperties": true,
-            "description": "Not modelled yet: accepted as-is so configs round-trip.",
-            "title": "Monte Carlo",
-            "type": "object"
+            "$ref": "#/components/schemas/MonteCarlo",
+            "description": "Monte Carlo campaign settings."
           },
           "motor": {
             "anyOf": [
@@ -1170,7 +1589,7 @@
                 "type": "null"
               }
             ],
-            "description": "Solid rocket motor.",
+            "description": "The motor: solid (with grain geometry) or generic (thrust curve and masses).",
             "title": "Motor"
           },
           "recovery": {
@@ -1326,6 +1745,101 @@
           "updated_utc"
         ],
         "title": "MissionSummary",
+        "type": "object"
+      },
+      "MonteCarlo": {
+        "additionalProperties": false,
+        "properties": {
+          "parameters": {
+            "$ref": "#/components/schemas/MonteCarloParameters",
+            "description": "The uncertain inputs."
+          },
+          "samples": {
+            "default": 200,
+            "description": "Number of flights to run.",
+            "maximum": 5000.0,
+            "minimum": 10.0,
+            "title": "Samples",
+            "type": "integer"
+          },
+          "seed": {
+            "default": 1,
+            "description": "Sampling seed. The same seed gives the same samples.",
+            "minimum": 0.0,
+            "title": "Seed",
+            "type": "integer"
+          },
+          "wind_correlation_m": {
+            "default": 750.0,
+            "description": "Height over which the layer noise stays correlated (500 to 1,000 m is typical).",
+            "exclusiveMinimum": 0.0,
+            "maximum": 5000.0,
+            "title": "Wind Correlation M",
+            "type": "number",
+            "units": "m"
+          }
+        },
+        "title": "MonteCarlo",
+        "type": "object"
+      },
+      "MonteCarloParameters": {
+        "additionalProperties": false,
+        "description": "What varies between samples, and by how much. Defaults follow the brief.",
+        "properties": {
+          "burn_time": {
+            "$ref": "#/components/schemas/Spread",
+            "description": "Burn time, relative. Impulse is kept, so thrust scales."
+          },
+          "deploy_altitude": {
+            "$ref": "#/components/schemas/Spread",
+            "description": "Altitude-triggered deployments, metres (altimeter error)."
+          },
+          "deployment_lag": {
+            "$ref": "#/components/schemas/Spread",
+            "description": "Added to each device's deployment lag, seconds; the total is truncated at zero."
+          },
+          "drag": {
+            "$ref": "#/components/schemas/Spread",
+            "description": "Drag coefficient multiplier, relative."
+          },
+          "dry_cg": {
+            "$ref": "#/components/schemas/Spread",
+            "description": "Rocket dry centre of mass, metres along the axis."
+          },
+          "dry_mass": {
+            "$ref": "#/components/schemas/Spread",
+            "description": "Rocket dry mass, relative (0.005 if weighed, 0.02 if not)."
+          },
+          "parachute_cd_s": {
+            "$ref": "#/components/schemas/Spread",
+            "description": "Each parachute's CdS, relative, independently."
+          },
+          "rail_heading": {
+            "$ref": "#/components/schemas/Spread",
+            "description": "Rail heading, degrees."
+          },
+          "rail_inclination": {
+            "$ref": "#/components/schemas/Spread",
+            "description": "Rail inclination, degrees."
+          },
+          "total_impulse": {
+            "$ref": "#/components/schemas/Spread",
+            "description": "Total impulse, relative (0.03 = 3%; use 0.05 for student-made motors)."
+          },
+          "wind_direction": {
+            "$ref": "#/components/schemas/Spread",
+            "description": "Whole-profile wind direction offset, degrees: the forecast's direction error."
+          },
+          "wind_layers": {
+            "$ref": "#/components/schemas/Spread",
+            "description": "Smaller, height-correlated wind noise on top, m/s per component."
+          },
+          "wind_speed": {
+            "$ref": "#/components/schemas/Spread",
+            "description": "Whole-profile wind speed multiplier, relative: the forecast's speed error."
+          }
+        },
+        "title": "MonteCarloParameters",
         "type": "object"
       },
       "MotorReference": {
@@ -1611,6 +2125,38 @@
           "triggered_agl_m"
         ],
         "title": "ParachuteEvent",
+        "type": "object"
+      },
+      "Probability": {
+        "properties": {
+          "count": {
+            "description": "Samples where it happened.",
+            "title": "Count",
+            "type": "integer"
+          },
+          "of": {
+            "description": "Samples it was judged over.",
+            "title": "Of",
+            "type": "integer"
+          },
+          "p": {
+            "description": "Estimated probability, 0 to 1.",
+            "title": "P",
+            "type": "number"
+          },
+          "upper_95": {
+            "description": "Upper end of the 95% confidence interval (Wilson). With few samples this is what to compare against a limit, not p.",
+            "title": "Upper 95",
+            "type": "number"
+          }
+        },
+        "required": [
+          "p",
+          "count",
+          "of",
+          "upper_95"
+        ],
+        "title": "Probability",
         "type": "object"
       },
       "Problem": {
@@ -2513,6 +3059,29 @@
         "title": "SolidMotor",
         "type": "object"
       },
+      "Spread": {
+        "additionalProperties": false,
+        "description": "One uncertain input: normally distributed about its nominal value.",
+        "properties": {
+          "enabled": {
+            "default": true,
+            "description": "Vary this input in a campaign.",
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "sigma": {
+            "description": "One standard deviation, in the input's units.",
+            "minimum": 0.0,
+            "title": "Sigma",
+            "type": "number"
+          }
+        },
+        "required": [
+          "sigma"
+        ],
+        "title": "Spread",
+        "type": "object"
+      },
       "StandardAtmosphere": {
         "additionalProperties": false,
         "properties": {
@@ -2527,6 +3096,74 @@
           "kind"
         ],
         "title": "StandardAtmosphere",
+        "type": "object"
+      },
+      "Stat": {
+        "properties": {
+          "label": {
+            "description": "What it is.",
+            "title": "Label",
+            "type": "string"
+          },
+          "max": {
+            "description": "Largest.",
+            "title": "Max",
+            "type": "number"
+          },
+          "mean": {
+            "description": "Mean.",
+            "title": "Mean",
+            "type": "number"
+          },
+          "min": {
+            "description": "Smallest.",
+            "title": "Min",
+            "type": "number"
+          },
+          "name": {
+            "description": "Output name.",
+            "title": "Name",
+            "type": "string"
+          },
+          "p5": {
+            "description": "5th percentile.",
+            "title": "P5",
+            "type": "number"
+          },
+          "p50": {
+            "description": "Median.",
+            "title": "P50",
+            "type": "number"
+          },
+          "p95": {
+            "description": "95th percentile.",
+            "title": "P95",
+            "type": "number"
+          },
+          "std": {
+            "description": "Standard deviation.",
+            "title": "Std",
+            "type": "number"
+          },
+          "units": {
+            "description": "Units.",
+            "title": "Units",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "label",
+          "units",
+          "mean",
+          "std",
+          "p5",
+          "p50",
+          "p95",
+          "min",
+          "max"
+        ],
+        "title": "Stat",
         "type": "object"
       },
       "SurfaceWind": {
@@ -2987,6 +3624,165 @@
         "summary": "Download Asset",
         "tags": [
           "assets"
+        ]
+      }
+    },
+    "/api/campaigns/{campaign_id}": {
+      "get": {
+        "description": "Progress, statistics and landing points, over the samples finished so far.",
+        "operationId": "getCampaign",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "campaign_id",
+            "required": true,
+            "schema": {
+              "title": "Campaign Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampaignResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No such campaign."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Campaign",
+        "tags": [
+          "monte carlo"
+        ]
+      }
+    },
+    "/api/campaigns/{campaign_id}/distributions": {
+      "get": {
+        "description": "Every sample's value of each output, for histograms.",
+        "operationId": "campaignDistributions",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "campaign_id",
+            "required": true,
+            "schema": {
+              "title": "Campaign Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Distribution"
+                  },
+                  "title": "Response Campaigndistributions",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No such campaign."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Campaign Distributions",
+        "tags": [
+          "monte carlo"
+        ]
+      }
+    },
+    "/api/campaigns/{campaign_id}/samples.csv": {
+      "get": {
+        "description": "Every sample's inputs and outputs side by side, for a spreadsheet.",
+        "operationId": "campaignSamplesCsv",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "campaign_id",
+            "required": true,
+            "schema": {
+              "title": "Campaign Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/csv": {}
+            },
+            "description": "One row per sample."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No such campaign."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Campaign Csv",
+        "tags": [
+          "monte carlo"
         ]
       }
     },
@@ -3853,6 +4649,58 @@
         "summary": "Run Flight",
         "tags": [
           "simulation"
+        ]
+      }
+    },
+    "/api/sim/montecarlo": {
+      "post": {
+        "description": "Start a campaign, or resume one: chunks without a finished result or a live job\nare (re)queued. The same mission and versions always give the same campaign.",
+        "operationId": "runMonteCarlo",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CampaignRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampaignState"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The mission cannot be flown yet."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No job queue."
+          }
+        },
+        "summary": "Run Monte Carlo",
+        "tags": [
+          "monte carlo"
         ]
       }
     },

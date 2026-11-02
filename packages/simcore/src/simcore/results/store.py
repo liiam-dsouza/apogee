@@ -68,9 +68,10 @@ class Series(BaseModel):
 
 def result_key(mission: Mission, *, ascent_only: bool) -> str:
     """Cache key: same mission, versions and mode give the same id."""
+    # Campaign settings don't change a single flight, so they don't change its key.
     payload = "\n".join(
         [
-            canonical_json(mission.model_dump(mode="json")),
+            canonical_json(mission.model_dump(mode="json", exclude={"monte_carlo"})),
             rocketpy_version(),
             simcore_version(),
             "ascent" if ascent_only else "full",
@@ -80,11 +81,30 @@ def result_key(mission: Mission, *, ascent_only: bool) -> str:
 
 
 def _describe_atmosphere(mission: Mission) -> str:
-    atmosphere = mission.environment.atmosphere
+    environment = mission.environment
+    atmosphere = environment.atmosphere
     if atmosphere.kind == "standard":
-        return "Standard atmosphere, no wind"
-    when = atmosphere.valid_utc.isoformat() if atmosphere.valid_utc else "time unknown"
-    return f"Profile from {atmosphere.source}, valid {when}"
+        text = (
+            "Standard atmosphere, no wind"
+            if not environment.surface_wind
+            else "Standard atmosphere"
+        )
+    elif atmosphere.kind == "manual":
+        text = f"Wind entered by hand ({len(atmosphere.levels)} levels)"
+        if atmosphere.note:
+            text += f": {atmosphere.note}"
+    else:
+        when = atmosphere.valid_utc.isoformat() if atmosphere.valid_utc else "time unknown"
+        text = f"Profile from {atmosphere.source}, valid {when}"
+        if atmosphere.fetched_utc:
+            text += f", fetched {atmosphere.fetched_utc.isoformat()}"
+    wind = environment.surface_wind
+    if wind:
+        text += (
+            f"; surface wind {wind.speed_ms:g} m/s from {wind.direction_deg:g}° at "
+            f"{wind.height_m:g} m, blended to {wind.blend_depth_m:g} m"
+        )
+    return text
 
 
 def _describe_drag(mission: Mission) -> str:

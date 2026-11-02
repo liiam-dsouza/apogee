@@ -5,6 +5,7 @@ the nose tip (ADR 0002), which RocketPy calls ``nose_to_tail``.
 """
 
 import warnings
+from dataclasses import dataclass
 from datetime import UTC, datetime
 
 import numpy as np
@@ -84,16 +85,37 @@ def build_environment(mission: Mission) -> rocketpy.Environment:
     return env
 
 
+@dataclass(frozen=True)
+class MotorScale:
+    """A motor's deviation from its thrust curve, for Monte Carlo samples.
+
+    ``impulse`` scales total impulse; ``burn_time`` stretches the curve in time
+    with impulse held (so thrust divides by it). Both 1 is the curve as given.
+    """
+
+    impulse: float = 1.0
+    burn_time: float = 1.0
+
+    def apply(self, points: list[tuple[float, float]]) -> list[list[float]]:
+        k_t, k_f = self.burn_time, self.impulse / self.burn_time
+        return [[t * k_t, f * k_f] for t, f in points]
+
+
+NOMINAL_MOTOR = MotorScale()
+
+
 def build_motor(
-    mission: Mission, assets: AssetStore
+    mission: Mission, assets: AssetStore, scale: MotorScale = NOMINAL_MOTOR
 ) -> rocketpy.SolidMotor | rocketpy.GenericMotor:
     assert mission.motor is not None
     m = mission.motor
     curve = parse_eng(assets.read(m.thrust_curve).decode("utf-8", errors="replace"))
+    thrust = scale.apply(list(curve.points))
+    burn_time = m.burn_time_s * scale.burn_time if m.burn_time_s else None
     if isinstance(m, GenericMotor):
         return rocketpy.GenericMotor(
-            thrust_source=[list(p) for p in curve.points],
-            burn_time=m.burn_time_s,
+            thrust_source=thrust,
+            burn_time=burn_time,
             chamber_radius=m.chamber_radius_m,
             chamber_height=m.chamber_height_m,
             chamber_position=m.chamber_position_m,
@@ -107,8 +129,8 @@ def build_motor(
         )
     g = m.grains
     return rocketpy.SolidMotor(
-        thrust_source=[list(p) for p in curve.points],
-        burn_time=m.burn_time_s,
+        thrust_source=thrust,
+        burn_time=burn_time,
         dry_mass=m.dry_mass_kg,
         dry_inertia=m.dry_inertia,
         center_of_dry_mass_position=m.dry_cg_position_m,
@@ -137,7 +159,9 @@ def _drag(curve: DragCurve, multiplier: float, assets: AssetStore) -> float | ro
     return curve.constant_cd * multiplier
 
 
-def build_rocket(mission: Mission, assets: AssetStore) -> rocketpy.Rocket:
+def build_rocket(
+    mission: Mission, assets: AssetStore, motor_scale: MotorScale = NOMINAL_MOTOR
+) -> rocketpy.Rocket:
     assert mission.rocket is not None
     r = mission.rocket
     rocket = rocketpy.Rocket(
@@ -149,7 +173,7 @@ def build_rocket(mission: Mission, assets: AssetStore) -> rocketpy.Rocket:
         center_of_mass_without_motor=r.dry_cg_m,
         coordinate_system_orientation="nose_to_tail",
     )
-    rocket.add_motor(build_motor(mission, assets), position=r.motor_position_m)
+    rocket.add_motor(build_motor(mission, assets, motor_scale), position=r.motor_position_m)
     rocket.add_nose(length=r.nose.length_m, kind=_NOSE_KIND[r.nose.kind], position=0.0)
     for i, fins in enumerate(r.fins):
         rocket.add_trapezoidal_fins(
@@ -193,7 +217,11 @@ def _array(fn: object, times: np.ndarray) -> np.ndarray:
 
 
 def run_flight(
-    mission: Mission, assets: AssetStore, *, terminate_on_apogee: bool = False
+    mission: Mission,
+    assets: AssetStore,
+    *,
+    terminate_on_apogee: bool = False,
+    motor_scale: MotorScale = NOMINAL_MOTOR,
 ) -> FlightResult:
     """Simulate one deterministic flight.
 
@@ -202,6 +230,8 @@ def run_flight(
         assets: Store holding the mission's thrust curve and drag tables.
         terminate_on_apogee: Stop at apogee (ascent only, about 30% faster).
             The result then has no landing.
+        motor_scale: Impulse and burn-time deviation from the thrust curve
+            (Monte Carlo); nominal by default.
 
     Raises:
         EngineInputError: The mission is missing a section a flight needs.
@@ -213,7 +243,7 @@ def run_flight(
     with warnings.catch_warnings(record=True) as w:
         warnings.simplefilter("always")
         flight = rocketpy.Flight(
-            rocket=build_rocket(mission, assets),
+            rocket=build_rocket(mission, assets, motor_scale),
             environment=build_environment(mission),
             rail_length=site.rail_length_m,
             inclination=site.inclination_deg,
