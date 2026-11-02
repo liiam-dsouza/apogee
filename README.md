@@ -16,8 +16,9 @@ docker compose up --build   # or: make up
 
 Open http://localhost:8080. API reference: http://localhost:8080/api/docs.
 
-New here? [Run your first flight](docs/guides/first-flight.md) with the
-reference rocket in `missions/examples/`.
+New here? Read [Start here](docs/start-here.md), then
+[run your first flight](docs/guides/first-flight.md) with the reference rocket
+in `missions/examples/`. The same docs are in the app under **Docs**, offline.
 
 Add `--profile full` to also run the offline map tile server.
 

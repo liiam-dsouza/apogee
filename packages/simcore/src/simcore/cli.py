@@ -30,8 +30,14 @@ def main(argv: list[str] | None = None) -> int:
     bundle.add_argument("path", type=Path)
     bundle.add_argument("-o", "--output", type=Path, required=True)
     bundle.add_argument("--assets", type=Path, help="asset directory (default: the mission's)")
+    sub.add_parser("reference", help="print the mission config reference (Markdown)")
     args = parser.parse_args(argv)
 
+    if args.command == "reference":
+        from simcore.mission.reference import render_reference
+
+        print(render_reference(), end="")
+        return 0
     mission, report = validate_mission(parse_yaml(args.path.read_text()))
     for issue in report.issues:
         print(f"{issue.severity}: {issue.path}: {issue.message}", file=sys.stderr)

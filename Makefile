@@ -26,13 +26,14 @@ dev-worker:  ## Job worker against local Redis
 dev-web:  ## Vite dev server, proxying /api to dev-api
 	cd apps/web && pnpm dev
 
-codegen:  ## Regenerate frontend API types from the FastAPI schema
+codegen:  ## Regenerate frontend API types and the mission config reference from the models
 	uv run python -m apogee_api.openapi > apps/web/openapi.json
+	uv run python -m simcore reference > docs/reference/mission-config.md
 	cd apps/web && pnpm codegen
 
 codegen-check: codegen  ## Fail if generated files are out of date (CI)
-	@out="$$(git status --porcelain -- apps/web/openapi.json apps/web/src/lib/api/schema.gen.ts apps/web/src/lib/api/fields.gen.ts)"; \
-	if [ -n "$$out" ]; then echo "Generated API files are stale; run make codegen and commit:"; echo "$$out"; exit 1; fi
+	@out="$$(git status --porcelain -- apps/web/openapi.json apps/web/src/lib/api/schema.gen.ts apps/web/src/lib/api/fields.gen.ts docs/reference/mission-config.md)"; \
+	if [ -n "$$out" ]; then echo "Generated files are stale; run make codegen and commit:"; echo "$$out"; exit 1; fi
 
 example:  ## Rebuild missions/examples/calisto.mission.zip from the test fixtures
 	uv run python -m simcore bundle tests/fixtures/calisto/calisto.mission.yaml -o missions/examples/calisto.mission.zip

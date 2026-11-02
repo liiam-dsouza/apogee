@@ -1,6 +1,7 @@
 import { Collapsible } from 'radix-ui'
 import { ChevronDown, Info } from 'lucide-react'
 import type { ReactNode } from 'react'
+import { Link } from 'react-router'
 
 /**
  * The collapsible "what this does" panel every section carries: the
@@ -18,9 +19,9 @@ export function Explainer({ children, methodsHref }: { children: ReactNode; meth
       <Collapsible.Content className="space-y-2 px-3 pb-3 text-sm leading-relaxed text-foreground">
         {children}
         {methodsHref && (
-          <a href={methodsHref} className="inline-block text-primary underline-offset-4 hover:underline">
+          <Link to={methodsHref} className="inline-block text-primary underline-offset-4 hover:underline">
             Read the method
-          </a>
+          </Link>
         )}
       </Collapsible.Content>
     </Collapsible.Root>

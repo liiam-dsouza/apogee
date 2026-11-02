@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -204,3 +205,11 @@ def test_v2_motor_migrates_to_tagged_solid_motor() -> None:
     mission = load_mission(data)
     assert mission.motor is not None
     assert mission.motor.kind == "solid"
+
+
+def test_config_reference_page_is_current() -> None:
+    # docs/reference/mission-config.md is generated; a model change must regenerate it.
+    from simcore.mission.reference import render_reference
+
+    page = Path(__file__).parents[3] / "docs" / "reference" / "mission-config.md"
+    assert page.read_text() == render_reference(), "run `make codegen`"

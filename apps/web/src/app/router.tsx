@@ -14,7 +14,7 @@ export const router = createBrowserRouter([
       { index: true, element: <Navigate to={LANDING} replace /> },
       // Keyed so each section gets its own panel group and persisted layout.
       ...SECTIONS.map((s) => ({
-        path: s.id,
+        path: s.subpaths ? `${s.id}/*` : s.id,
         element: <SectionView key={s.id} id={s.id} />,
         errorElement: <SectionError />,
       })),

@@ -43,6 +43,8 @@ export interface SectionDef {
   group: RailGroup
   /** Whether the section docks a right-hand editing pane. */
   hasPane: boolean
+  /** Whether the section owns the paths below it (e.g. /docs/methods/flight). */
+  subpaths?: boolean
   load: () => Promise<SectionModule>
 }
 
@@ -66,7 +68,7 @@ export const SECTIONS: SectionDef[] = [
 
   { id: 'hil', label: 'Hardware in the loop', icon: Cpu, group: 'hardware', hasPane: true, load: () => import('@/sections/hil') },
 
-  { id: 'docs', label: 'Docs', icon: BookOpen, group: 'footer', hasPane: true, load: () => import('@/sections/docs') },
+  { id: 'docs', label: 'Docs', icon: BookOpen, group: 'footer', hasPane: true, subpaths: true, load: () => import('@/sections/docs') },
   { id: 'settings', label: 'Settings', icon: Settings, group: 'footer', hasPane: false, load: () => import('@/sections/settings') },
 ]
 

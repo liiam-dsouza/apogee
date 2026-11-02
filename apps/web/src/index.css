@@ -135,3 +135,87 @@
 .u-cursor-x {
   border-right: 1px solid var(--muted-foreground) !important;
 }
+
+/* Rendered docs pages (sections/docs). Markdown has no classes, so style by element. */
+.doc-prose {
+  line-height: 1.65;
+  font-size: 0.9375rem;
+}
+.doc-prose h1 {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 600;
+  line-height: 1.2;
+  margin-bottom: 1rem;
+}
+.doc-prose h2 {
+  font-family: var(--font-display);
+  font-size: 1.375rem;
+  font-weight: 600;
+  margin: 2rem 0 0.75rem;
+}
+.doc-prose h3 {
+  font-weight: 600;
+  margin: 1.5rem 0 0.5rem;
+}
+.doc-prose :is(p, ul, ol, table, pre, blockquote) {
+  margin-bottom: 1rem;
+}
+.doc-prose ul {
+  list-style: disc;
+  padding-left: 1.25rem;
+}
+.doc-prose ol {
+  list-style: decimal;
+  padding-left: 1.25rem;
+}
+.doc-prose li + li {
+  margin-top: 0.25rem;
+}
+.doc-prose a {
+  color: var(--primary);
+  text-underline-offset: 4px;
+}
+.doc-prose a:hover {
+  text-decoration: underline;
+}
+.doc-prose code,
+.doc-prose .doc-repo-path {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.85em;
+  background: var(--surface);
+  border-radius: 4px;
+  padding: 0.1em 0.3em;
+}
+.doc-prose pre {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  overflow-x: auto;
+}
+.doc-prose pre code {
+  background: none;
+  padding: 0;
+}
+.doc-prose table {
+  display: block;
+  overflow-x: auto;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+.doc-prose :is(th, td) {
+  border-bottom: 1px solid var(--border);
+  padding: 0.4rem 0.75rem 0.4rem 0;
+  text-align: left;
+  vertical-align: top;
+}
+.doc-prose th {
+  color: var(--muted-foreground);
+  font-weight: 500;
+}
+.doc-prose blockquote {
+  border-left: 3px solid var(--border);
+  padding-left: 1rem;
+  color: var(--muted-foreground);
+}
