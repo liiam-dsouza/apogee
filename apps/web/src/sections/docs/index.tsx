@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { cn } from '@/lib/utils'
 import { GROUPS, HOME, PAGE_BY_SLUG, PAGES, renderDoc, searchDocs } from './pages'
+import { useSectionLayout } from '@/app/sectionLayout'
 
 function useSlug(): string {
   const rest = useParams()['*']
@@ -62,12 +63,20 @@ export function Centre() {
 }
 
 export function Pane() {
+  const layout = useSectionLayout()
   const slug = useSlug()
   const [query, setQuery] = useState('')
   const results = useMemo(() => searchDocs(query), [query])
 
   return (
-    <nav aria-label="Documentation" className="space-y-5 p-4">
+    // On a phone, picking a page shows it.
+    <nav
+      aria-label="Documentation"
+      className="space-y-5 p-4"
+      onClick={(e) => {
+        if ((e.target as HTMLElement).closest('a[href^="/docs/"]')) layout.showCentre()
+      }}
+    >
       <label className="flex h-9 items-center gap-2 rounded-md border border-border bg-background px-3 focus-within:border-primary">
         <Search className="size-4 text-muted-foreground" aria-hidden />
         <input

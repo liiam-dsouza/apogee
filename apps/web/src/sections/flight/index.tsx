@@ -10,6 +10,7 @@ import { formatSI, fromSI, unitFor, type Quantity, type Units } from '@/lib/unit
 import { useMissionStore } from '@/stores/mission'
 import { usePrefs } from '@/stores/prefs'
 import { useFlightRuns, useResult, useRunFlight, useSeries } from './run'
+import { useSectionLayout } from '@/app/sectionLayout'
 
 interface Channel {
   name: string
@@ -171,24 +172,26 @@ function Events({ summary, units }: { summary: FlightSummary; units: Units }) {
   return (
     <section aria-label="Events">
       <h2 className="mb-2 text-sm font-semibold">Events</h2>
-      <table className="w-full max-w-xl text-sm">
-        <thead className="text-left text-xs text-muted-foreground">
-          <tr>
-            <th className="py-1 font-normal">Event</th>
-            <th className="py-1 text-right font-normal">Time</th>
-            <th className="py-1 text-right font-normal">Altitude</th>
-          </tr>
-        </thead>
-        <tbody className="tabular-nums">
-          {rows.map(([name, t, alt]) => (
-            <tr key={name} className="border-t border-border">
-              <td className="py-1.5">{name}</td>
-              <td className="py-1.5 text-right">{t.toFixed(2)} s</td>
-              <td className="py-1.5 text-right text-muted-foreground">{alt}</td>
+      <div className="max-w-xl overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="text-left text-xs text-muted-foreground">
+            <tr>
+              <th className="py-1 font-normal">Event</th>
+              <th className="py-1 text-right font-normal">Time</th>
+              <th className="py-1 text-right font-normal">Altitude</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="tabular-nums">
+            {rows.map(([name, t, alt]) => (
+              <tr key={name} className="border-t border-border">
+                <td className="py-1.5">{name}</td>
+                <td className="py-1.5 text-right">{t.toFixed(2)} s</td>
+                <td className="py-1.5 text-right text-muted-foreground">{alt}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </section>
   )
 }
@@ -306,6 +309,7 @@ export function Pane() {
 }
 
 function RunPane() {
+  const layout = useSectionLayout()
   const { draft, run } = useCurrentRun()
   const [ascentOnly, setAscentOnly] = useState(false)
   const mutation = useRunFlight()
@@ -318,7 +322,11 @@ function RunPane() {
           variant="primary"
           className="w-full"
           disabled={!draft || mutation.isPending}
-          onClick={() => draft && mutation.mutate({ draft, ascentOnly })}
+          onClick={() => {
+            if (!draft) return
+            mutation.mutate({ draft, ascentOnly })
+            layout.showCentre()
+          }}
         >
           <Play />
           {mutation.isPending ? 'Simulating' : 'Run flight'}

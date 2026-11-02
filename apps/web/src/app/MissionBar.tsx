@@ -47,7 +47,7 @@ export function MissionBar() {
 
   return (
     <div className="flex min-w-0 items-center gap-1">
-      <span className="mr-2 truncate text-sm text-muted-foreground" title={name}>
+      <span className="mr-2 truncate text-sm text-muted-foreground max-lg:hidden" title={name}>
         {name}
       </span>
       {restoredFrom && <RestoredNotice savedAt={restoredFrom} />}
@@ -62,7 +62,7 @@ export function MissionBar() {
         </Button>
       </Tooltip>
       {save.error && (
-        <Tooltip content={<ProblemNotice error={save.error} />} className="max-w-96 p-0">
+        <Tooltip content={<ProblemNotice error={save.error} />} className="max-w-96 p-0" tappable>
           <button type="button" className="mr-1 text-sm text-nogo underline-offset-4 hover:underline">
             Not saved
           </button>
@@ -88,8 +88,9 @@ function RestoredNotice({ savedAt }: { savedAt: string }) {
   const [confirming, setConfirming] = useState(false)
   if (confirming) {
     return (
-      <span className="mr-1 flex items-center gap-1 text-sm">
-        Discard the restored changes?
+      <span className="mr-1 flex flex-wrap items-center gap-1 text-sm">
+        <span className="max-sm:hidden">Discard the restored changes?</span>
+        <span className="sm:hidden">Discard?</span>
         <Button variant="ghost" size="sm" className="h-7 px-2 text-nogo" onClick={() => void discardRestored()}>
           Discard
         </Button>
@@ -101,7 +102,7 @@ function RestoredNotice({ savedAt }: { savedAt: string }) {
   }
   return (
     <span className="mr-1 flex items-center gap-1 text-sm">
-      <Tooltip content={`Unsaved changes kept from ${new Date(savedAt).toLocaleString()}, before the page reloaded.`}>
+      <Tooltip content={`Unsaved changes kept from ${new Date(savedAt).toLocaleString()}, before the page reloaded.`} tappable>
         <span className="text-caution" tabIndex={0}>
           Restored
         </span>

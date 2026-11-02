@@ -137,31 +137,33 @@ function ResultsPane() {
   return (
     <div className="space-y-4 p-4">
       <h2 className="text-sm font-semibold">Every output</h2>
-      <table className="w-full text-sm tabular-nums">
-        <thead className="text-left text-xs text-muted-foreground">
-          <tr>
-            <th className="pb-1 font-normal" />
-            <th className="pb-1 font-normal">5%</th>
-            <th className="pb-1 font-normal">Median</th>
-            <th className="pb-1 font-normal">95%</th>
-          </tr>
-        </thead>
-        <tbody>
-          {stats
-            .filter((s) => DISPLAY[s.name])
-            .map((s) => {
-              const { toShown, format } = formatFor(s.name)
-              return (
-                <tr key={s.name} className="border-t border-border align-top">
-                  <td className="py-1 pr-2 text-xs">{s.label}</td>
-                  <td className="py-1 pr-2">{format(toShown(s.p5))}</td>
-                  <td className="py-1 pr-2">{format(toShown(s.p50))}</td>
-                  <td className="py-1">{format(toShown(s.p95))}</td>
-                </tr>
-              )
-            })}
-        </tbody>
-      </table>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm tabular-nums">
+          <thead className="text-left text-xs text-muted-foreground">
+            <tr>
+              <th className="pb-1 font-normal" />
+              <th className="pb-1 font-normal">5%</th>
+              <th className="pb-1 font-normal">Median</th>
+              <th className="pb-1 font-normal">95%</th>
+            </tr>
+          </thead>
+          <tbody>
+            {stats
+              .filter((s) => DISPLAY[s.name])
+              .map((s) => {
+                const { toShown, format } = formatFor(s.name)
+                return (
+                  <tr key={s.name} className="border-t border-border align-top">
+                    <td className="py-1 pr-2 text-xs">{s.label}</td>
+                    <td className="py-1 pr-2">{format(toShown(s.p5))}</td>
+                    <td className="py-1 pr-2">{format(toShown(s.p50))}</td>
+                    <td className="py-1">{format(toShown(s.p95))}</td>
+                  </tr>
+                )
+              })}
+          </tbody>
+        </table>
+      </div>
       <a
         href={api.campaignCsvUrl(campaign.id)}
         download

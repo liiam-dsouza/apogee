@@ -14,6 +14,7 @@ import {
   useMissionDocument,
   useMissionList,
 } from './queries'
+import { useSectionLayout } from '@/app/sectionLayout'
 
 /** The selected card lives in the URL (?id=), so a selection is linkable. */
 function useSelectedId() {
@@ -25,6 +26,7 @@ function useSelectedId() {
 const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' })
 
 export function Centre() {
+  const layout = useSectionLayout()
   const missions = useMissionList()
   const create = useCreateMission()
   const importMission = useImportMission()
@@ -32,7 +34,13 @@ export function Centre() {
   const fileInput = useRef<HTMLInputElement>(null)
 
   const onImport = (file: File | undefined) => {
-    if (file) importMission.mutate(file, { onSuccess: (doc) => select(doc.mission.meta.id!) })
+    if (file)
+      importMission.mutate(file, {
+        onSuccess: (doc) => {
+          select(doc.mission.meta.id!)
+          layout.showPane()
+        },
+      })
   }
 
   return (
@@ -42,7 +50,12 @@ export function Centre() {
           variant="primary"
           disabled={create.isPending}
           onClick={() =>
-            create.mutate('Untitled mission', { onSuccess: (doc) => select(doc.mission.meta.id!) })
+            create.mutate('Untitled mission', {
+              onSuccess: (doc) => {
+                select(doc.mission.meta.id!)
+                layout.showPane()
+              },
+            })
           }
         >
           <FilePlus2 aria-hidden />
@@ -76,7 +89,10 @@ export function Centre() {
         <ul className="grid grid-cols-[repeat(auto-fill,minmax(16rem,1fr))] gap-3">
           {missions.data.map((m) => (
             <li key={m.id}>
-              <MissionCard mission={m} selected={m.id === selectedId} onSelect={() => select(m.id)} />
+              <MissionCard mission={m} selected={m.id === selectedId} onSelect={() => {
+                  select(m.id)
+                  layout.showPane()
+                }} />
             </li>
           ))}
         </ul>
