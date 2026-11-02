@@ -358,6 +358,49 @@
         "title": "DragCurve",
         "type": "object"
       },
+      "EffectiveProfile": {
+        "properties": {
+          "levels": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ProfileLevel"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The profile the flight is simulated in; None for the standard atmosphere.",
+            "title": "Levels"
+          }
+        },
+        "required": [
+          "levels"
+        ],
+        "title": "EffectiveProfile",
+        "type": "object"
+      },
+      "EffectiveProfileRequest": {
+        "properties": {
+          "elevation_m": {
+            "description": "Pad elevation, metres above sea level.",
+            "title": "Elevation M",
+            "type": "number"
+          },
+          "environment": {
+            "$ref": "#/components/schemas/Environment",
+            "description": "The mission's environment section."
+          }
+        },
+        "required": [
+          "environment",
+          "elevation_m"
+        ],
+        "title": "EffectiveProfileRequest",
+        "type": "object"
+      },
       "Environment": {
         "additionalProperties": false,
         "properties": {
@@ -379,6 +422,17 @@
               }
             ],
             "title": "Atmosphere"
+          },
+          "surface_wind": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SurfaceWind"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A measured surface wind to blend into the atmosphere near the ground."
           }
         },
         "title": "Environment",
@@ -508,6 +562,98 @@
           "parachute_events"
         ],
         "title": "FlightSummary",
+        "type": "object"
+      },
+      "ForecastInfo": {
+        "description": "A cached forecast: when it was fetched, where for, and which hours it covers.",
+        "properties": {
+          "fetched_utc": {
+            "description": "When it was downloaded, UTC.",
+            "format": "date-time",
+            "title": "Fetched Utc",
+            "type": "string"
+          },
+          "grid_elevation_m": {
+            "description": "Model terrain height at the grid point.",
+            "title": "Grid Elevation M",
+            "type": "number"
+          },
+          "grid_latitude": {
+            "description": "The model grid point used, degrees.",
+            "title": "Grid Latitude",
+            "type": "number"
+          },
+          "grid_longitude": {
+            "description": "The model grid point used, degrees.",
+            "title": "Grid Longitude",
+            "type": "number"
+          },
+          "hours": {
+            "description": "Times it has a forecast for, UTC, hourly.",
+            "items": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "title": "Hours",
+            "type": "array"
+          },
+          "id": {
+            "description": "Cache id.",
+            "title": "Id",
+            "type": "string"
+          },
+          "latitude": {
+            "description": "Where it was requested for, degrees.",
+            "title": "Latitude",
+            "type": "number"
+          },
+          "longitude": {
+            "description": "Where it was requested for, degrees.",
+            "title": "Longitude",
+            "type": "number"
+          },
+          "source": {
+            "description": "Provider and model.",
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "fetched_utc",
+          "source",
+          "latitude",
+          "longitude",
+          "grid_latitude",
+          "grid_longitude",
+          "grid_elevation_m",
+          "hours"
+        ],
+        "title": "ForecastInfo",
+        "type": "object"
+      },
+      "ForecastRequest": {
+        "properties": {
+          "latitude": {
+            "description": "WGS84 latitude, degrees.",
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Latitude",
+            "type": "number"
+          },
+          "longitude": {
+            "description": "WGS84 longitude, degrees.",
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "title": "Longitude",
+            "type": "number"
+          }
+        },
+        "required": [
+          "latitude",
+          "longitude"
+        ],
+        "title": "ForecastRequest",
         "type": "object"
       },
       "GenericMotor": {
@@ -1827,6 +1973,19 @@
       "ResolvedProfile": {
         "additionalProperties": false,
         "properties": {
+          "fetched_utc": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When a forecast was downloaded, UTC. Its age is how stale the forecast is.",
+            "title": "Fetched Utc"
+          },
           "kind": {
             "const": "profile",
             "description": "A resolved atmosphere table, stored so runs are reproducible offline.",
@@ -2368,6 +2527,73 @@
           "kind"
         ],
         "title": "StandardAtmosphere",
+        "type": "object"
+      },
+      "SurfaceWind": {
+        "additionalProperties": false,
+        "description": "A measured surface wind, blended into the profile near the ground.",
+        "properties": {
+          "alpha": {
+            "default": 0.14,
+            "description": "Power-law exponent for speed against height. About 0.14 over open ground, higher over rough terrain.",
+            "maximum": 0.6,
+            "minimum": 0.0,
+            "title": "Alpha",
+            "type": "number"
+          },
+          "blend_depth_m": {
+            "default": 300.0,
+            "description": "Height above the pad by which the profile above has fully taken over.",
+            "exclusiveMinimum": 0.0,
+            "maximum": 3000.0,
+            "title": "Blend Depth M",
+            "type": "number",
+            "units": "m"
+          },
+          "direction_deg": {
+            "description": "Direction the wind blows from, degrees clockwise from true north.",
+            "exclusiveMaximum": 360.0,
+            "minimum": 0.0,
+            "title": "Direction Deg",
+            "type": "number",
+            "units": "deg"
+          },
+          "height_m": {
+            "default": 2.0,
+            "description": "Height of the anemometer above the pad.",
+            "exclusiveMinimum": 0.0,
+            "maximum": 100.0,
+            "title": "Height M",
+            "type": "number",
+            "units": "m"
+          },
+          "measured_utc": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When it was measured, UTC.",
+            "title": "Measured Utc"
+          },
+          "speed_ms": {
+            "description": "Measured wind speed.",
+            "maximum": 60.0,
+            "minimum": 0.0,
+            "title": "Speed Ms",
+            "type": "number",
+            "units": "m/s"
+          }
+        },
+        "required": [
+          "speed_ms",
+          "direction_deg"
+        ],
+        "title": "SurfaceWind",
         "type": "object"
       },
       "SystemInfo": {
@@ -3648,6 +3874,244 @@
         "summary": "System Info",
         "tags": [
           "system"
+        ]
+      }
+    },
+    "/api/weather/effective": {
+      "post": {
+        "description": "The atmosphere a flight would fly in, after blending in the surface wind.",
+        "operationId": "effectiveProfile",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EffectiveProfileRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EffectiveProfile"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Effective Profile",
+        "tags": [
+          "weather"
+        ]
+      }
+    },
+    "/api/weather/forecasts": {
+      "get": {
+        "description": "Cached forecasts for points within 25 km of this one, newest first.",
+        "operationId": "listForecasts",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "latitude",
+            "required": true,
+            "schema": {
+              "maximum": 90,
+              "minimum": -90,
+              "title": "Latitude",
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "longitude",
+            "required": true,
+            "schema": {
+              "maximum": 180,
+              "minimum": -180,
+              "title": "Longitude",
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ForecastInfo"
+                  },
+                  "title": "Response Listforecasts",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Forecasts",
+        "tags": [
+          "weather"
+        ]
+      },
+      "post": {
+        "description": "Fetch a seven-day hourly forecast for a point from Open-Meteo, and cache it.",
+        "operationId": "fetchForecast",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ForecastRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForecastInfo"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Open-Meteo refused the request."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Open-Meteo is not reachable (offline?)."
+          }
+        },
+        "summary": "Fetch Forecast",
+        "tags": [
+          "weather"
+        ]
+      }
+    },
+    "/api/weather/forecasts/{forecast_id}/profile": {
+      "get": {
+        "description": "One hour of a cached forecast as a profile, ready to put in the mission.",
+        "operationId": "forecastProfile",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "forecast_id",
+            "required": true,
+            "schema": {
+              "title": "Forecast Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The launch time; the nearest hour is used.",
+            "in": "query",
+            "name": "valid_utc",
+            "required": true,
+            "schema": {
+              "description": "The launch time; the nearest hour is used.",
+              "format": "date-time",
+              "title": "Valid Utc",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Pad elevation; the profile starts here.",
+            "in": "query",
+            "name": "elevation_m",
+            "required": true,
+            "schema": {
+              "description": "Pad elevation; the profile starts here.",
+              "title": "Elevation M",
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResolvedProfile"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No such cached forecast."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The forecast does not cover that time."
+          }
+        },
+        "summary": "Forecast Profile",
+        "tags": [
+          "weather"
         ]
       }
     }

@@ -31,6 +31,12 @@ export type OpenRocketImport = Schemas['OpenRocketImport']
 export type ImportReport = Schemas['ImportReport']
 export type CrossCheck = Schemas['CrossCheck']
 export type ThrustCurveImport = Schemas['ThrustCurveImport']
+export type Environment = Schemas['Environment']
+export type ResolvedProfile = Schemas['ResolvedProfile']
+export type ProfileLevel = Schemas['ProfileLevel']
+export type SurfaceWind = Schemas['SurfaceWind']
+export type ForecastInfo = Schemas['ForecastInfo']
+export type EffectiveProfile = Schemas['EffectiveProfile']
 
 export const client = createClient<paths>({ baseUrl: '' })
 
@@ -149,6 +155,18 @@ export const api = {
     ),
   fetchThrustCurve: (manufacturer: string, designation: string) =>
     unwrap<ThrustCurveImport>(client.POST('/api/imports/thrustcurve', { body: { manufacturer, designation } })),
+  fetchForecast: (latitude: number, longitude: number) =>
+    unwrap<ForecastInfo>(client.POST('/api/weather/forecasts', { body: { latitude, longitude } })),
+  listForecasts: (latitude: number, longitude: number) =>
+    unwrap<ForecastInfo[]>(client.GET('/api/weather/forecasts', { params: { query: { latitude, longitude } } })),
+  forecastProfile: (id: string, validUtc: string, elevationM: number) =>
+    unwrap<ResolvedProfile>(
+      client.GET('/api/weather/forecasts/{forecast_id}/profile', {
+        params: { path: { forecast_id: id }, query: { valid_utc: validUtc, elevation_m: elevationM } },
+      }),
+    ),
+  effectiveProfile: (environment: Environment, elevationM: number) =>
+    unwrap<EffectiveProfile>(client.POST('/api/weather/effective', { body: { environment, elevation_m: elevationM } })),
   /** A plain URL, for <a download>. */
   exportMissionUrl: (id: string, format: 'yaml' | 'zip' = 'yaml') =>
     `/api/missions/${encodeURIComponent(id)}/export?format=${format}`,

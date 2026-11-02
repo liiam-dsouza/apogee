@@ -25,6 +25,8 @@ export type Quantity =
   | 'temperature'
   | 'angle'
   | 'energy'
+  /** Dimensionless, e.g. an exponent. */
+  | 'ratio'
 
 interface Unit {
   symbol: string
@@ -59,6 +61,7 @@ const UNITS: Record<UnitSystem, Record<Quantity, Unit>> = {
     temperature: linear('°C', 1, 273.15),
     angle: linear('°', 1),
     energy: linear('J', 1),
+    ratio: linear('', 1),
   },
   imperial: {
     length: linear('in', FT / 12),
@@ -78,6 +81,7 @@ const UNITS: Record<UnitSystem, Record<Quantity, Unit>> = {
     },
     angle: linear('°', 1),
     energy: linear('ft·lbf', FT * LBF),
+    ratio: linear('', 1),
   },
 }
 

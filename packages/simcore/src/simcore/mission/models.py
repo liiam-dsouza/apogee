@@ -353,6 +353,10 @@ class ResolvedProfile(_Strict):
     )
     source: str = Field(description="Where the profile came from, e.g. 'manual' or a model.")
     valid_utc: datetime | None = Field(default=None, description="Time the profile describes, UTC.")
+    fetched_utc: datetime | None = Field(
+        default=None,
+        description="When a forecast was downloaded, UTC. Its age is how stale the forecast is.",
+    )
     levels: list[ProfileLevel] = Field(
         min_length=2, description="Levels, ordered by increasing altitude."
     )
@@ -365,11 +369,50 @@ class ResolvedProfile(_Strict):
         return v
 
 
+class SurfaceWind(_Strict):
+    """A measured surface wind, blended into the profile near the ground."""
+
+    speed_ms: float = quantity("m/s", "Measured wind speed.", ge=0, le=60)
+    direction_deg: float = quantity(
+        "deg", "Direction the wind blows from, degrees clockwise from true north.", ge=0, lt=360
+    )
+    height_m: float = quantity(
+        "m", "Height of the anemometer above the pad.", default=2.0, gt=0, le=100
+    )
+    alpha: float = Field(
+        default=0.14,
+        ge=0,
+        le=0.6,
+        description=(
+            "Power-law exponent for speed against height. About 0.14 over open ground, "
+            "higher over rough terrain."
+        ),
+    )
+    blend_depth_m: float = quantity(
+        "m",
+        "Height above the pad by which the profile above has fully taken over.",
+        default=300.0,
+        gt=0,
+        le=3000,
+    )
+    measured_utc: datetime | None = Field(default=None, description="When it was measured, UTC.")
+
+    @model_validator(mode="after")
+    def _depth_above_anemometer(self) -> "SurfaceWind":
+        if self.blend_depth_m <= self.height_m:
+            raise ValueError("blend_depth_m must be above the anemometer height")
+        return self
+
+
 class Environment(_Strict):
     atmosphere: StandardAtmosphere | ResolvedProfile = Field(
         default_factory=lambda: StandardAtmosphere(kind="standard"),
         discriminator="kind",
         description="Atmosphere and wind the flight is simulated in.",
+    )
+    surface_wind: SurfaceWind | None = Field(
+        default=None,
+        description="A measured surface wind to blend into the atmosphere near the ground.",
     )
 
 

@@ -14,7 +14,8 @@ from simcore.assets import AssetStore
 from simcore.engine.result import FlightResult, FlightSummary, Landing, ParachuteEvent
 from simcore.importers.drag import parse_drag_csv
 from simcore.importers.thrust import parse_eng
-from simcore.mission.models import DragCurve, GenericMotor, Mission, ResolvedProfile
+from simcore.mission.models import DragCurve, GenericMotor, Mission
+from simcore.weather.blend import effective_levels
 
 #: Our nose names -> RocketPy's (it lower-cases and strips spaces).
 _NOSE_KIND = {
@@ -57,35 +58,29 @@ def check_runnable(mission: Mission) -> None:
 def build_environment(mission: Mission) -> rocketpy.Environment:
     assert mission.site is not None
     site = mission.site
-    atmosphere = mission.environment.atmosphere
-    if isinstance(atmosphere, ResolvedProfile):
-        top = atmosphere.levels[-1].altitude_m
-        env = rocketpy.Environment(
-            latitude=site.latitude_deg,
-            longitude=site.longitude_deg,
-            elevation=site.elevation_m,
-            datum="WGS84",
-            max_expected_height=top,
-        )
-
-        def column(attr: str) -> list[list[float]]:
-            return [[lv.altitude_m, float(getattr(lv, attr))] for lv in atmosphere.levels]
-
-        env.set_atmospheric_model(
-            type="custom_atmosphere",
-            pressure=column("pressure_pa"),
-            temperature=column("temperature_k"),
-            wind_u=column("wind_u_ms"),
-            wind_v=column("wind_v_ms"),
-        )
-    else:
-        env = rocketpy.Environment(
-            latitude=site.latitude_deg,
-            longitude=site.longitude_deg,
-            elevation=site.elevation_m,
-            datum="WGS84",
-        )
+    levels = effective_levels(mission.environment, site.elevation_m)
+    location = {
+        "latitude": site.latitude_deg,
+        "longitude": site.longitude_deg,
+        "elevation": site.elevation_m,
+        "datum": "WGS84",
+    }
+    if levels is None:
+        env = rocketpy.Environment(**location)
         env.set_atmospheric_model(type="standard_atmosphere")
+        return env
+    env = rocketpy.Environment(**location, max_expected_height=levels[-1].altitude_m)
+
+    def column(attr: str) -> list[list[float]]:
+        return [[lv.altitude_m, float(getattr(lv, attr))] for lv in levels]
+
+    env.set_atmospheric_model(
+        type="custom_atmosphere",
+        pressure=column("pressure_pa"),
+        temperature=column("temperature_k"),
+        wind_u=column("wind_u_ms"),
+        wind_v=column("wind_v_ms"),
+    )
     return env
 
 

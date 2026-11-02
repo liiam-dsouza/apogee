@@ -21,7 +21,7 @@ section, which samples uncertain inputs, answers the second.
 | `motor.thrust_curve` (.eng asset) | parsed by simcore, passed as points; a (0, 0) point is prepended, as RocketPy's own reader does |
 | `rocket.drag` tables (CD vs Mach) | parsed by simcore, passed as a **linearly** interpolated `Function`, times `drag.multiplier` |
 | `recovery.devices` | `add_parachute`, trigger noise **zero** |
-| `environment.atmosphere` | standard atmosphere, or a resolved profile as `custom_atmosphere` |
+| `environment` | standard atmosphere, or a resolved profile (with any measured surface wind blended in) as `custom_atmosphere`; see [weather](weather.md) |
 | `site` | `Environment` location and elevation; rail length, inclination, heading |
 
 ## Assumptions

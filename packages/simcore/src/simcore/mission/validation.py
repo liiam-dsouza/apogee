@@ -134,19 +134,32 @@ def _asset_checks(mission: Mission) -> list[Issue]:
 
 
 def _environment_checks(mission: Mission) -> list[Issue]:
-    atmosphere = mission.environment.atmosphere
-    if mission.site is None or atmosphere.kind != "profile":
-        return []
-    if atmosphere.levels[0].altitude_m > mission.site.elevation_m:
-        return [
+    environment = mission.environment
+    atmosphere = environment.atmosphere
+    issues: list[Issue] = []
+    if atmosphere.kind == "standard" and environment.surface_wind is not None:
+        issues.append(
+            _warning(
+                "environment.surface_wind",
+                "There is no wind profile aloft, so the surface wind fades to calm "
+                "above the blend depth. Fetch a forecast for the wind aloft.",
+                "surface_wind_without_profile",
+            )
+        )
+    if (
+        mission.site is not None
+        and atmosphere.kind == "profile"
+        and atmosphere.levels[0].altitude_m > mission.site.elevation_m
+    ):
+        issues.append(
             _warning(
                 "environment.atmosphere.levels",
                 "The wind profile starts above the pad; "
                 "the lowest level is used down to the ground.",
                 "profile_above_pad",
             )
-        ]
-    return []
+        )
+    return issues
 
 
 def physical_checks(mission: Mission) -> list[Issue]:

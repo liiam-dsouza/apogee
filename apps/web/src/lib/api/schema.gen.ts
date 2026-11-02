@@ -300,6 +300,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/weather/effective": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Effective Profile
+         * @description The atmosphere a flight would fly in, after blending in the surface wind.
+         */
+        post: operations["effectiveProfile"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/weather/forecasts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Forecasts
+         * @description Cached forecasts for points within 25 km of this one, newest first.
+         */
+        get: operations["listForecasts"];
+        put?: never;
+        /**
+         * Fetch Forecast
+         * @description Fetch a seven-day hourly forecast for a point from Open-Meteo, and cache it.
+         */
+        post: operations["fetchForecast"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/weather/forecasts/{forecast_id}/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Forecast Profile
+         * @description One hour of a cached forecast as a profile, ready to put in the mission.
+         */
+        get: operations["forecastProfile"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -486,6 +550,24 @@ export interface components {
              */
             table?: string | null;
         };
+        /** EffectiveProfile */
+        EffectiveProfile: {
+            /**
+             * Levels
+             * @description The profile the flight is simulated in; None for the standard atmosphere.
+             */
+            levels: components["schemas"]["ProfileLevel"][] | null;
+        };
+        /** EffectiveProfileRequest */
+        EffectiveProfileRequest: {
+            /**
+             * Elevation M
+             * @description Pad elevation, metres above sea level.
+             */
+            elevation_m: number;
+            /** @description The mission's environment section. */
+            environment: components["schemas"]["Environment"];
+        };
         /** Environment */
         Environment: {
             /**
@@ -493,6 +575,8 @@ export interface components {
              * @description Atmosphere and wind the flight is simulated in.
              */
             atmosphere?: components["schemas"]["StandardAtmosphere"] | components["schemas"]["ResolvedProfile"];
+            /** @description A measured surface wind to blend into the atmosphere near the ground. */
+            surface_wind?: components["schemas"]["SurfaceWind"] | null;
         };
         /** FlightRequest */
         FlightRequest: {
@@ -572,6 +656,71 @@ export interface components {
              * @description Static stability margin at rail exit, in body calibers.
              */
             stability_margin_at_rail_exit_cal: number;
+        };
+        /**
+         * ForecastInfo
+         * @description A cached forecast: when it was fetched, where for, and which hours it covers.
+         */
+        ForecastInfo: {
+            /**
+             * Fetched Utc
+             * Format: date-time
+             * @description When it was downloaded, UTC.
+             */
+            fetched_utc: string;
+            /**
+             * Grid Elevation M
+             * @description Model terrain height at the grid point.
+             */
+            grid_elevation_m: number;
+            /**
+             * Grid Latitude
+             * @description The model grid point used, degrees.
+             */
+            grid_latitude: number;
+            /**
+             * Grid Longitude
+             * @description The model grid point used, degrees.
+             */
+            grid_longitude: number;
+            /**
+             * Hours
+             * @description Times it has a forecast for, UTC, hourly.
+             */
+            hours: string[];
+            /**
+             * Id
+             * @description Cache id.
+             */
+            id: string;
+            /**
+             * Latitude
+             * @description Where it was requested for, degrees.
+             */
+            latitude: number;
+            /**
+             * Longitude
+             * @description Where it was requested for, degrees.
+             */
+            longitude: number;
+            /**
+             * Source
+             * @description Provider and model.
+             */
+            source: string;
+        };
+        /** ForecastRequest */
+        ForecastRequest: {
+            /**
+             * Latitude
+             * @description WGS84 latitude, degrees.
+             */
+            latitude: number;
+            /**
+             * Longitude
+             * @description WGS84 longitude, degrees.
+             */
+            longitude: number;
         };
         /**
          * GenericMotor
@@ -1327,6 +1476,11 @@ export interface components {
         /** ResolvedProfile */
         ResolvedProfile: {
             /**
+             * Fetched Utc
+             * @description When a forecast was downloaded, UTC. Its age is how stale the forecast is.
+             */
+            fetched_utc?: string | null;
+            /**
              * @description A resolved atmosphere table, stored so runs are reproducible offline. (enum property replaced by openapi-typescript)
              * @enum {string}
              */
@@ -1597,6 +1751,45 @@ export interface components {
              * @enum {string}
              */
             kind: "standard";
+        };
+        /**
+         * SurfaceWind
+         * @description A measured surface wind, blended into the profile near the ground.
+         */
+        SurfaceWind: {
+            /**
+             * Alpha
+             * @description Power-law exponent for speed against height. About 0.14 over open ground, higher over rough terrain.
+             * @default 0.14
+             */
+            alpha: number;
+            /**
+             * Blend Depth M
+             * @description Height above the pad by which the profile above has fully taken over.
+             * @default 300
+             */
+            blend_depth_m: number;
+            /**
+             * Direction Deg
+             * @description Direction the wind blows from, degrees clockwise from true north.
+             */
+            direction_deg: number;
+            /**
+             * Height M
+             * @description Height of the anemometer above the pad.
+             * @default 2
+             */
+            height_m: number;
+            /**
+             * Measured Utc
+             * @description When it was measured, UTC.
+             */
+            measured_utc?: string | null;
+            /**
+             * Speed Ms
+             * @description Measured wind speed.
+             */
+            speed_ms: number;
         };
         /** SystemInfo */
         SystemInfo: {
@@ -2532,6 +2725,167 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SystemInfo"];
+                };
+            };
+        };
+    };
+    effectiveProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EffectiveProfileRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EffectiveProfile"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    listForecasts: {
+        parameters: {
+            query: {
+                latitude: number;
+                longitude: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForecastInfo"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    fetchForecast: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ForecastRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForecastInfo"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Open-Meteo refused the request. */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Open-Meteo is not reachable (offline?). */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    forecastProfile: {
+        parameters: {
+            query: {
+                /** @description The launch time; the nearest hour is used. */
+                valid_utc: string;
+                /** @description Pad elevation; the profile starts here. */
+                elevation_m: number;
+            };
+            header?: never;
+            path: {
+                forecast_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResolvedProfile"];
+                };
+            };
+            /** @description No such cached forecast. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description The forecast does not cover that time. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
                 };
             };
         };

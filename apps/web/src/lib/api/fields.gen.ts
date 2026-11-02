@@ -119,9 +119,25 @@ export const fields = {
       "description": "CSV asset of (Mach, CD) rows. Takes precedence over constant_cd."
     }
   },
+  "EffectiveProfile": {
+    "levels": {
+      "description": "The profile the flight is simulated in; None for the standard atmosphere."
+    }
+  },
+  "EffectiveProfileRequest": {
+    "elevation_m": {
+      "description": "Pad elevation, metres above sea level."
+    },
+    "environment": {
+      "description": "The mission's environment section."
+    }
+  },
   "Environment": {
     "atmosphere": {
       "description": "Atmosphere and wind the flight is simulated in."
+    },
+    "surface_wind": {
+      "description": "A measured surface wind to blend into the atmosphere near the ground."
     }
   },
   "FlightRequest": {
@@ -182,6 +198,47 @@ export const fields = {
     "stability_margin_at_rail_exit_cal": {
       "description": "Static stability margin at rail exit, in body calibers.",
       "units": "cal"
+    }
+  },
+  "ForecastInfo": {
+    "fetched_utc": {
+      "description": "When it was downloaded, UTC."
+    },
+    "grid_elevation_m": {
+      "description": "Model terrain height at the grid point."
+    },
+    "grid_latitude": {
+      "description": "The model grid point used, degrees."
+    },
+    "grid_longitude": {
+      "description": "The model grid point used, degrees."
+    },
+    "hours": {
+      "description": "Times it has a forecast for, UTC, hourly."
+    },
+    "id": {
+      "description": "Cache id."
+    },
+    "latitude": {
+      "description": "Where it was requested for, degrees."
+    },
+    "longitude": {
+      "description": "Where it was requested for, degrees."
+    },
+    "source": {
+      "description": "Provider and model."
+    }
+  },
+  "ForecastRequest": {
+    "latitude": {
+      "description": "WGS84 latitude, degrees.",
+      "minimum": -90,
+      "maximum": 90
+    },
+    "longitude": {
+      "description": "WGS84 longitude, degrees.",
+      "minimum": -180,
+      "maximum": 180
     }
   },
   "GenericMotor": {
@@ -704,6 +761,9 @@ export const fields = {
     }
   },
   "ResolvedProfile": {
+    "fetched_utc": {
+      "description": "When a forecast was downloaded, UTC. Its age is how stale the forecast is."
+    },
     "kind": {
       "description": "A resolved atmosphere table, stored so runs are reproducible offline."
     },
@@ -904,6 +964,40 @@ export const fields = {
   "StandardAtmosphere": {
     "kind": {
       "description": "International Standard Atmosphere, no wind. For sanity runs."
+    }
+  },
+  "SurfaceWind": {
+    "alpha": {
+      "description": "Power-law exponent for speed against height. About 0.14 over open ground, higher over rough terrain.",
+      "minimum": 0,
+      "maximum": 0.6
+    },
+    "blend_depth_m": {
+      "description": "Height above the pad by which the profile above has fully taken over.",
+      "units": "m",
+      "maximum": 3000,
+      "exclusiveMinimum": 0
+    },
+    "direction_deg": {
+      "description": "Direction the wind blows from, degrees clockwise from true north.",
+      "units": "deg",
+      "minimum": 0,
+      "exclusiveMaximum": 360
+    },
+    "height_m": {
+      "description": "Height of the anemometer above the pad.",
+      "units": "m",
+      "maximum": 100,
+      "exclusiveMinimum": 0
+    },
+    "measured_utc": {
+      "description": "When it was measured, UTC."
+    },
+    "speed_ms": {
+      "description": "Measured wind speed.",
+      "units": "m/s",
+      "minimum": 0,
+      "maximum": 60
     }
   },
   "SystemInfo": {

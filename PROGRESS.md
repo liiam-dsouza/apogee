@@ -3,6 +3,62 @@
 Running log of what's built against the project brief. Newest first.
 Frontend paths are relative to `apps/web/`.
 
+## 2026-11-02: Weather, first slice (forecasts, cache, surface-wind blend)
+
+**Done**
+- **Open-Meteo forecasts** (`simcore/weather/openmeteo.py`): seven days, hourly, every
+  pressure level to 50 hPa (~20 km). One hour resolves into a profile that starts at
+  the pad:
+  - Surface pressure and temperature are moved hydrostatically from the model's
+    terrain height to the pad's.
+  - Underground levels are dropped.
+  - Geopotential heights are converted to geometric altitude.
+- **Forecast cache** (`simcore/weather/cache.py`, `<data dir>/weather/`): every fetch is
+  kept as received. Offline, the cached forecasts for the site (within 25 km) are what you
+  fly with.
+- **Surface-wind blend** (`simcore/weather/blend.py`): a measured wind follows a power law
+  (alpha 0.14 by default) near the ground and fades into the forecast by the blend depth
+  (300 m by default). `effective_levels` gives the table the engine flies; the engine
+  now uses it.
+- **Mission:** `environment.surface_wind` (new), and `ResolvedProfile.fetched_utc`. Both
+  are optional, so schema v3 files still load. New warning: a surface wind over the
+  standard atmosphere fades to calm aloft.
+- **API:**
+  - `POST /api/weather/forecasts` (fetch and cache; offline → 503, refused → 502).
+  - `GET /api/weather/forecasts?latitude&longitude` (cached, nearby, newest first).
+  - `GET /api/weather/forecasts/{id}/profile?valid_utc&elevation_m`.
+  - `POST /api/weather/effective` (the flown profile, for preview).
+- **Weather section:**
+  - Fetch a forecast, choose a cached forecast and launch hour, and use it. The
+    forecast's age shows prominently: amber after 6 h, red after 24 h.
+  - Surface-wind editor.
+  - Wind speed and direction against height above the pad, plus a hodograph. They show
+    flown, forecast and measured, with hover readouts, a 1/3/10 km range and a table view.
+- **Site map:** satellite imagery toggle (Esri World Imagery, online only, saved in prefs).
+- **Docs:** `docs/methods/weather.md`.
+- **e2e:** fetch, pick the hour, blend and save (needs a live stack; skips if Open-Meteo
+  is unreachable).
+
+**Calisto at White Cliffs** with one forecast hour of the fixture: still air lands 0.7 km
+north; the forecast lands 3.8 km east (60 m/s westerlies at 10 km); adding a 6 m/s
+south-south-westerly at the pad moves it a further 1 km.
+
+**Found while doing this (fixed before commit)**
+- **Blending u and v invented a calm layer** when the measured wind opposed the forecast.
+  The blend now fades speed and direction separately.
+- **Direction then zig-zagged** when the forecast near the ground was almost exactly
+  opposite the measurement, because neighbouring heights took opposite "short ways"
+  round. Every height now turns the same way, the way the wind turns at the top of the
+  blend layer.
+- **Two test modules named `test_weather.py`** (simcore and API) broke pytest collection.
+  The API one is now `test_weather_api.py`.
+
+**Known gaps**
+- Manual profile entry, radiosonde soundings and RocketPy's forecast models aren't built yet.
+- No wind uncertainty yet (that's part of Monte Carlo).
+- Launch time is chosen in the browser's time zone; it's the site's only if the laptop is
+  at the site.
+
 ## 2026-11-02: OpenRocket import, Lanius test mission
 
 **Done**
