@@ -3,7 +3,7 @@
 GIT_SHA := $(shell git rev-parse --short HEAD 2>/dev/null || echo dev)
 export GIT_SHA
 
-.PHONY: help up down dev-redis dev-api dev-worker dev-web codegen codegen-check test lint example golden lanius
+.PHONY: help up down dev-redis dev-api dev-worker dev-web codegen codegen-check test lint example golden lanius notebook
 
 help:  ## List targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
@@ -40,6 +40,9 @@ example:  ## Rebuild missions/examples/calisto.mission.zip from the test fixture
 
 lanius:  ## Build data/lanius-white-cliffs.mission.zip from the team's data/Lanius.ork
 	uv run python scripts/lanius_test_mission.py
+
+notebook:  ## JupyterLab on notebooks/, for scripting simcore directly
+	uv run --group notebooks jupyter lab notebooks/
 
 golden:  ## Re-pin golden flight numbers (only after a reviewed change; the diff is the review)
 	uv run python tests/golden/regenerate.py

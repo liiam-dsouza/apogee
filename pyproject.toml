@@ -26,6 +26,8 @@ dev = [
   "httpx2",
   "hypothesis>=6",
 ]
+# Jupyter for notebooks/: uv sync --group notebooks
+notebooks = ["jupyterlab>=4", "ipykernel>=6"]
 
 [tool.ruff]
 line-length = 100

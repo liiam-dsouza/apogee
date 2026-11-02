@@ -38,7 +38,7 @@ services:
         VITE_FIELD_MODE: ${FIELD_MODE:-false}
         VITE_MAP_PMTILES: ${MAP_PMTILES:-}
     ports:
-      - "${WEB_PORT:-8080}:80"
+      - "${WEB_PORT:-4321}:80"
     depends_on:
       api:
         condition: service_healthy

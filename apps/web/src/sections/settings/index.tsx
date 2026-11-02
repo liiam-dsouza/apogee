@@ -19,6 +19,7 @@ export function Centre() {
         <FieldReadiness />
         <System />
         <Storage />
+		<p className="text-sm text-muted-foreground">Made with ❤️ by <a href="https://www.linkedin.com/in/liam-d-souza/" className="hover:underline">Liam D'Souza</a></p>
       </div>
     </div>
   )
