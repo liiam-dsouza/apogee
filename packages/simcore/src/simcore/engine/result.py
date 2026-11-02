@@ -48,6 +48,23 @@ class FlightSummary(BaseModel):
     max_dynamic_pressure_pa: float = quantity("Pa", "Highest dynamic pressure (max q).")
     max_acceleration_ms2: float = quantity("m/s²", "Highest acceleration magnitude.")
     burnout_time_s: float = quantity("s", "Motor burnout time.")
+    stability_margin_at_launch_cal: float = quantity(
+        "cal", "Static stability margin at ignition, on the pad."
+    )
+    rocket_length_m: float = quantity("m", "Rocket length, nose tip to the aftmost part.")
+    reference_diameter_m: float = quantity("m", "Body diameter that a caliber is measured in.")
+    thrust_to_weight: float = quantity(
+        "1",
+        "Lesser of the initial thrust (mean over the first 0.5 s) and the average thrust, "
+        "over the weight at ignition.",
+    )
+    main_deploy_agl_m: float | None = quantity(
+        "m", "Altitude above the pad when the last recovery device triggered (the main)."
+    )
+    drogue_descent_rate_ms: float | None = quantity(
+        "m/s",
+        "Descent rate under the first device when the last one triggered. None with one device.",
+    )
     landing: Landing | None = Field(
         description="Touchdown. None for an ascent-only flight, which stops at apogee."
     )

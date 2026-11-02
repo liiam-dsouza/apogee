@@ -285,11 +285,38 @@ Monte Carlo campaign settings.
 
 ## `constraints`
 
-Not modelled yet: accepted as-is so configs round-trip.
+Competition profile and team rules the go/no-go board checks.
 
 | Field | Type | Units | Allowed | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `constraints` | mapping |  |  |  | Not modelled yet: accepted as-is so configs round-trip. |
+| `constraints` | ConstraintSettings |  |  |  | Competition profile and team rules the go/no-go board checks. |
+| `constraints.profile` | string |  |  | `null` | Competition profile id, e.g. 'aurc-2027'. None: team rules only. |
+| `constraints.category` | string |  |  | `null` | Category within the profile. |
+| `constraints.overrides` | map of string to ConstraintOverride |  |  |  | Changes to profile rules, by rule id. |
+| `constraints.overrides.<key>.min` | number |  |  | `null` | Lowest allowed value. |
+| `constraints.overrides.<key>.max` | number |  |  | `null` | Highest allowed value. |
+| `constraints.overrides.<key>.target` | number |  |  | `null` | Target value. |
+| `constraints.overrides.<key>.tolerance_pct` | number |  | > 0 | `null` | Tolerance, percent. |
+| `constraints.overrides.<key>.tolerance_m` | number |  | > 0 | `null` | Tolerance, metric units. |
+| `constraints.overrides.<key>.severity` | one of `hard`, `scoring`, `advisory` |  |  | `null` | Severity. |
+| `constraints.overrides.<key>.evaluate_on` | one of `nominal`, `p50`, `p95`, `p99`, `worst` |  |  | `null` | What it is judged on. |
+| `constraints.overrides.<key>.disabled` | boolean |  |  | `false` | Drop this rule for this mission. |
+| `constraints.additional` | list of Constraint |  |  |  | The team's own rules, on top of the profile's. |
+| `constraints.additional[].id` | string |  |  | required | Stable id, e.g. 'min_rail_exit_velocity'. |
+| `constraints.additional[].label` | string |  |  | `""` | What it checks, in words. |
+| `constraints.additional[].metric` | one of `apogee_agl_m`, `rail_exit_velocity_ms`, `stability_margin_at_rail_exit_cal`, `min_stability_margin_cal`, `max_stability_margin_cal`, `stability_margin_at_launch_pct_length`, `min_stability_margin_pct_length`, `max_stability_margin_pct_length`, `thrust_to_weight`, `max_mach`, `max_acceleration_ms2`, `max_dynamic_pressure_pa`, `landing_speed_ms`, `landing_kinetic_energy_j`, `main_deploy_agl_m`, `drogue_descent_rate_ms`, `descent_time_s`, `drift_m`, `flight_time_s` |  |  | required | The result metric it tests. |
+| `constraints.additional[].min` | number |  |  | `null` | Lowest allowed value, in the metric's units. |
+| `constraints.additional[].max` | number |  |  | `null` | Highest allowed value, in the metric's units. |
+| `constraints.additional[].target` | number or string |  |  | `null` | Target value, or '$category.apogee_target_m' to take the profile category's target. Needs a tolerance. |
+| `constraints.additional[].tolerance_pct` | number |  | > 0 | `null` | Allowed distance from the target, percent of it. |
+| `constraints.additional[].tolerance_m` | number |  | > 0 | `null` | Allowed distance from the target, in the metric's units. |
+| `constraints.additional[].severity` | one of `hard`, `scoring`, `advisory` |  |  | `"hard"` | hard: a fail is a no-go. scoring: costs points. advisory: worth knowing. |
+| `constraints.additional[].evaluate_on` | one of `nominal`, `p50`, `p95`, `p99`, `worst` |  |  | `"p95"` | nominal: the single flight. p50/p95/p99: that share of Monte Carlo flights must comply. worst: every flight must. |
+| `constraints.additional[].reference` | string |  |  | `""` | The rule clause this comes from. |
+| `constraints.additional[].applies_if` | Condition |  |  | `null` | Judge only the flights this holds for. Unset: every flight. |
+| `constraints.additional[].applies_if.metric` | one of `apogee_agl_m`, `rail_exit_velocity_ms`, `stability_margin_at_rail_exit_cal`, `min_stability_margin_cal`, `max_stability_margin_cal`, `stability_margin_at_launch_pct_length`, `min_stability_margin_pct_length`, `max_stability_margin_pct_length`, `thrust_to_weight`, `max_mach`, `max_acceleration_ms2`, `max_dynamic_pressure_pa`, `landing_speed_ms`, `landing_kinetic_energy_j`, `main_deploy_agl_m`, `drogue_descent_rate_ms`, `descent_time_s`, `drift_m`, `flight_time_s` |  |  | required | The metric that decides. |
+| `constraints.additional[].applies_if.min` | number |  |  | `null` | Applies when the metric is at least this. |
+| `constraints.additional[].applies_if.max` | number |  |  | `null` | Applies when the metric is below this. |
 
 ## `solver`
 

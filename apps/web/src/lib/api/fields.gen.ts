@@ -47,6 +47,36 @@ export const fields = {
       "description": "Deploy at apogee."
     }
   },
+  "Board": {
+    "profile": {
+      "description": "The competition profile, if any."
+    },
+    "rows": {
+      "description": "Every rule, profile rules first."
+    },
+    "score": {
+      "description": "Expected apogee score, if the profile scores apogee and a category is set."
+    },
+    "verdict": {
+      "description": "no_go if any hard rule fails; incomplete if a hard rule cannot be judged."
+    }
+  },
+  "BoardRequest": {
+    "mission": {
+      "description": "The mission, saved or not."
+    }
+  },
+  "BoardResponse": {
+    "board": {
+      "description": "Every rule, judged."
+    },
+    "campaign": {
+      "description": "The campaign it is based on."
+    },
+    "flight": {
+      "description": "The single flight it is based on."
+    }
+  },
   "Body_importMission": {
     "file": {}
   },
@@ -62,6 +92,17 @@ export const fields = {
   "Body_uploadAsset": {
     "file": {},
     "kind": {}
+  },
+  "CampaignBasis": {
+    "campaign_id": {
+      "description": "The campaign id for this mission."
+    },
+    "samples": {
+      "description": "Samples in the campaign."
+    },
+    "samples_done": {
+      "description": "Samples finished so far (0 if never run)."
+    }
   },
   "CampaignRequest": {
     "mission": {
@@ -131,6 +172,17 @@ export const fields = {
       "description": "Distribution of each output."
     }
   },
+  "Category": {
+    "apogee_target_m": {
+      "description": "Target apogee, AGL."
+    },
+    "id": {
+      "description": "Category id."
+    },
+    "name": {
+      "description": "Category name."
+    }
+  },
   "ChannelInfo": {
     "description": {
       "description": "What the channel measures."
@@ -140,6 +192,99 @@ export const fields = {
     },
     "units": {
       "description": "Units of the values."
+    }
+  },
+  "Condition": {
+    "max": {
+      "description": "Applies when the metric is below this."
+    },
+    "metric": {
+      "description": "The metric that decides."
+    },
+    "min": {
+      "description": "Applies when the metric is at least this."
+    }
+  },
+  "Constraint": {
+    "applies_if": {
+      "description": "Judge only the flights this holds for. Unset: every flight."
+    },
+    "evaluate_on": {
+      "description": "nominal: the single flight. p50/p95/p99: that share of Monte Carlo flights must comply. worst: every flight must."
+    },
+    "id": {
+      "description": "Stable id, e.g. 'min_rail_exit_velocity'."
+    },
+    "label": {
+      "description": "What it checks, in words."
+    },
+    "max": {
+      "description": "Highest allowed value, in the metric's units."
+    },
+    "metric": {
+      "description": "The result metric it tests."
+    },
+    "min": {
+      "description": "Lowest allowed value, in the metric's units."
+    },
+    "reference": {
+      "description": "The rule clause this comes from."
+    },
+    "severity": {
+      "description": "hard: a fail is a no-go. scoring: costs points. advisory: worth knowing."
+    },
+    "target": {
+      "description": "Target value, or '$category.apogee_target_m' to take the profile category's target. Needs a tolerance."
+    },
+    "tolerance_m": {
+      "description": "Allowed distance from the target, in the metric's units.",
+      "exclusiveMinimum": 0
+    },
+    "tolerance_pct": {
+      "description": "Allowed distance from the target, percent of it.",
+      "exclusiveMinimum": 0
+    }
+  },
+  "ConstraintOverride": {
+    "disabled": {
+      "description": "Drop this rule for this mission."
+    },
+    "evaluate_on": {
+      "description": "What it is judged on."
+    },
+    "max": {
+      "description": "Highest allowed value."
+    },
+    "min": {
+      "description": "Lowest allowed value."
+    },
+    "severity": {
+      "description": "Severity."
+    },
+    "target": {
+      "description": "Target value."
+    },
+    "tolerance_m": {
+      "description": "Tolerance, metric units.",
+      "exclusiveMinimum": 0
+    },
+    "tolerance_pct": {
+      "description": "Tolerance, percent.",
+      "exclusiveMinimum": 0
+    }
+  },
+  "ConstraintSettings": {
+    "additional": {
+      "description": "The team's own rules, on top of the profile's."
+    },
+    "category": {
+      "description": "Category within the profile."
+    },
+    "overrides": {
+      "description": "Changes to profile rules, by rule id."
+    },
+    "profile": {
+      "description": "Competition profile id, e.g. 'aurc-2027'. None: team rules only."
     }
   },
   "CrossCheck": {
@@ -242,6 +387,14 @@ export const fields = {
       "description": "A measured surface wind to blend into the atmosphere near the ground."
     }
   },
+  "FlightBasis": {
+    "available": {
+      "description": "Whether that flight has been run."
+    },
+    "result_id": {
+      "description": "The single flight's result id for this mission."
+    }
+  },
   "FlightRequest": {
     "ascent_only": {
       "description": "Stop at apogee: about 30% faster, no landing data."
@@ -263,8 +416,16 @@ export const fields = {
       "description": "Motor burnout time.",
       "units": "s"
     },
+    "drogue_descent_rate_ms": {
+      "description": "Descent rate under the first device when the last one triggered. None with one device.",
+      "units": "m/s"
+    },
     "landing": {
       "description": "Touchdown. None for an ascent-only flight, which stops at apogee."
+    },
+    "main_deploy_agl_m": {
+      "description": "Altitude above the pad when the last recovery device triggered (the main).",
+      "units": "m"
     },
     "max_acceleration_ms2": {
       "description": "Highest acceleration magnitude.",
@@ -297,9 +458,25 @@ export const fields = {
       "description": "Speed when the last rail button leaves.",
       "units": "m/s"
     },
+    "reference_diameter_m": {
+      "description": "Body diameter that a caliber is measured in.",
+      "units": "m"
+    },
+    "rocket_length_m": {
+      "description": "Rocket length, nose tip to the aftmost part.",
+      "units": "m"
+    },
+    "stability_margin_at_launch_cal": {
+      "description": "Static stability margin at ignition, on the pad.",
+      "units": "cal"
+    },
     "stability_margin_at_rail_exit_cal": {
       "description": "Static stability margin at rail exit, in body calibers.",
       "units": "cal"
+    },
+    "thrust_to_weight": {
+      "description": "Lesser of the initial thrust (mean over the first 0.5 s) and the average thrust, over the weight at ignition.",
+      "units": "1"
     }
   },
   "ForecastInfo": {
@@ -593,7 +770,7 @@ export const fields = {
       "description": "Not modelled yet: accepted as-is so configs round-trip."
     },
     "constraints": {
-      "description": "Not modelled yet: accepted as-is so configs round-trip."
+      "description": "Competition profile and team rules the go/no-go board checks."
     },
     "environment": {
       "description": "Atmosphere and wind."
@@ -866,6 +1043,55 @@ export const fields = {
       "description": "URI identifying the problem type."
     }
   },
+  "Profile": {
+    "categories": {
+      "description": "Competition categories."
+    },
+    "constraints": {
+      "description": "The rules."
+    },
+    "id": {
+      "description": "Profile id, e.g. 'aurc-2027'."
+    },
+    "name": {
+      "description": "Competition name."
+    },
+    "notes": {
+      "description": "Anything a reader should know."
+    },
+    "rules_version": {
+      "description": "Version of the rules this profile encodes."
+    },
+    "scoring": {
+      "description": "Apogee scoring, if known."
+    },
+    "source": {
+      "description": "Where the rules document is."
+    },
+    "verified": {
+      "description": "Whether every rule has been checked against the rules document."
+    }
+  },
+  "ProfileInfo": {
+    "category": {
+      "description": "Category name, if one is chosen."
+    },
+    "id": {
+      "description": "Profile id."
+    },
+    "name": {
+      "description": "Competition name."
+    },
+    "rules_version": {
+      "description": "Rules version."
+    },
+    "source": {
+      "description": "Rules document."
+    },
+    "verified": {
+      "description": "Checked against the rules document."
+    }
+  },
   "ProfileLevel": {
     "altitude_m": {
       "description": "Geometric altitude above mean sea level.",
@@ -1078,6 +1304,59 @@ export const fields = {
       "description": "Boat-tail, if any."
     }
   },
+  "RuleResult": {
+    "evaluate_on": {
+      "description": "nominal, p50, p95, p99 or worst."
+    },
+    "id": {
+      "description": "Rule id."
+    },
+    "label": {
+      "description": "What it checks."
+    },
+    "lower": {
+      "description": "Lowest allowed value."
+    },
+    "metric": {
+      "description": "Metric tested."
+    },
+    "note": {
+      "description": "Why it is missing, or anything to qualify it."
+    },
+    "outcome": {
+      "description": "What it means: a hard fail is no_go, other fails warn."
+    },
+    "reference": {
+      "description": "Rule clause."
+    },
+    "samples": {
+      "description": "Monte Carlo flights it was judged over."
+    },
+    "severity": {
+      "description": "hard, scoring or advisory."
+    },
+    "source": {
+      "description": "profile, a team override of it, or a team rule."
+    },
+    "status": {
+      "description": "Whether the value is within the limits."
+    },
+    "units": {
+      "description": "The metric's units."
+    },
+    "upper": {
+      "description": "Highest allowed value."
+    },
+    "value_high": {
+      "description": "Value checked against the upper limit."
+    },
+    "value_low": {
+      "description": "Value checked against the lower limit."
+    },
+    "violation_share": {
+      "description": "Share of Monte Carlo flights outside the limits, if there is a campaign."
+    }
+  },
   "RunState": {
     "cached": {
       "description": "True if an identical run's result was reused."
@@ -1093,6 +1372,45 @@ export const fields = {
     },
     "status": {
       "description": "Run status."
+    }
+  },
+  "ScoreEstimate": {
+    "expected": {
+      "description": "Mean points over the Monte Carlo flights."
+    },
+    "formula": {
+      "description": "How points are computed."
+    },
+    "max_points": {
+      "description": "Points for hitting it exactly."
+    },
+    "nominal": {
+      "description": "Points the single flight would score."
+    },
+    "p5": {
+      "description": "Points 95% of Monte Carlo flights would beat."
+    },
+    "reference": {
+      "description": "The rule clause."
+    },
+    "target_m": {
+      "description": "Category target apogee, AGL."
+    }
+  },
+  "Scoring": {
+    "kind": {
+      "description": "gaussian: max_points * exp(-(z - Z)^2 / (2 (s Z)^2)). linear: max_points * (1 - |Z - z| / (s Z)), zero beyond. s is scale_pct / 100."
+    },
+    "max_points": {
+      "description": "Points for hitting the target exactly.",
+      "exclusiveMinimum": 0
+    },
+    "reference": {
+      "description": "The rule clause."
+    },
+    "scale_pct": {
+      "description": "s, percent of the target apogee.",
+      "exclusiveMinimum": 0
     }
   },
   "Series": {

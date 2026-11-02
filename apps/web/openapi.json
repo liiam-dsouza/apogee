@@ -124,6 +124,94 @@
         "title": "AtApogee",
         "type": "object"
       },
+      "Board": {
+        "properties": {
+          "profile": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProfileInfo"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The competition profile, if any."
+          },
+          "rows": {
+            "description": "Every rule, profile rules first.",
+            "items": {
+              "$ref": "#/components/schemas/RuleResult"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ScoreEstimate"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Expected apogee score, if the profile scores apogee and a category is set."
+          },
+          "verdict": {
+            "description": "no_go if any hard rule fails; incomplete if a hard rule cannot be judged.",
+            "enum": [
+              "go",
+              "no_go",
+              "incomplete"
+            ],
+            "title": "Verdict",
+            "type": "string"
+          }
+        },
+        "required": [
+          "verdict",
+          "rows",
+          "profile",
+          "score"
+        ],
+        "title": "Board",
+        "type": "object"
+      },
+      "BoardRequest": {
+        "properties": {
+          "mission": {
+            "$ref": "#/components/schemas/Mission",
+            "description": "The mission, saved or not."
+          }
+        },
+        "required": [
+          "mission"
+        ],
+        "title": "BoardRequest",
+        "type": "object"
+      },
+      "BoardResponse": {
+        "properties": {
+          "board": {
+            "$ref": "#/components/schemas/Board",
+            "description": "Every rule, judged."
+          },
+          "campaign": {
+            "$ref": "#/components/schemas/CampaignBasis",
+            "description": "The campaign it is based on."
+          },
+          "flight": {
+            "$ref": "#/components/schemas/FlightBasis",
+            "description": "The single flight it is based on."
+          }
+        },
+        "required": [
+          "board",
+          "flight",
+          "campaign"
+        ],
+        "title": "BoardResponse",
+        "type": "object"
+      },
       "Body_importMission": {
         "properties": {
           "file": {
@@ -198,6 +286,32 @@
           "kind"
         ],
         "title": "Body_uploadAsset",
+        "type": "object"
+      },
+      "CampaignBasis": {
+        "properties": {
+          "campaign_id": {
+            "description": "The campaign id for this mission.",
+            "title": "Campaign Id",
+            "type": "string"
+          },
+          "samples": {
+            "description": "Samples in the campaign.",
+            "title": "Samples",
+            "type": "integer"
+          },
+          "samples_done": {
+            "description": "Samples finished so far (0 if never run).",
+            "title": "Samples Done",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "campaign_id",
+          "samples",
+          "samples_done"
+        ],
+        "title": "CampaignBasis",
         "type": "object"
       },
       "CampaignRequest": {
@@ -398,6 +512,39 @@
         "title": "CampaignSummary",
         "type": "object"
       },
+      "Category": {
+        "additionalProperties": false,
+        "properties": {
+          "apogee_target_m": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Target apogee, AGL.",
+            "title": "Apogee Target M"
+          },
+          "id": {
+            "description": "Category id.",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "description": "Category name.",
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "Category",
+        "type": "object"
+      },
       "ChannelInfo": {
         "properties": {
           "description": {
@@ -422,6 +569,382 @@
           "description"
         ],
         "title": "ChannelInfo",
+        "type": "object"
+      },
+      "Condition": {
+        "additionalProperties": false,
+        "description": "Limits a rule to the flights it applies to, e.g. only supersonic ones.",
+        "properties": {
+          "max": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Applies when the metric is below this.",
+            "title": "Max"
+          },
+          "metric": {
+            "description": "The metric that decides.",
+            "enum": [
+              "apogee_agl_m",
+              "rail_exit_velocity_ms",
+              "stability_margin_at_rail_exit_cal",
+              "min_stability_margin_cal",
+              "max_stability_margin_cal",
+              "stability_margin_at_launch_pct_length",
+              "min_stability_margin_pct_length",
+              "max_stability_margin_pct_length",
+              "thrust_to_weight",
+              "max_mach",
+              "max_acceleration_ms2",
+              "max_dynamic_pressure_pa",
+              "landing_speed_ms",
+              "landing_kinetic_energy_j",
+              "main_deploy_agl_m",
+              "drogue_descent_rate_ms",
+              "descent_time_s",
+              "drift_m",
+              "flight_time_s"
+            ],
+            "title": "Metric",
+            "type": "string"
+          },
+          "min": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Applies when the metric is at least this.",
+            "title": "Min"
+          }
+        },
+        "required": [
+          "metric"
+        ],
+        "title": "Condition",
+        "type": "object"
+      },
+      "Constraint": {
+        "additionalProperties": false,
+        "description": "A declarative rule over one result metric: a minimum, a maximum, or a target band.",
+        "properties": {
+          "applies_if": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Condition"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Judge only the flights this holds for. Unset: every flight."
+          },
+          "evaluate_on": {
+            "default": "p95",
+            "description": "nominal: the single flight. p50/p95/p99: that share of Monte Carlo flights must comply. worst: every flight must.",
+            "enum": [
+              "nominal",
+              "p50",
+              "p95",
+              "p99",
+              "worst"
+            ],
+            "title": "Evaluate On",
+            "type": "string"
+          },
+          "id": {
+            "description": "Stable id, e.g. 'min_rail_exit_velocity'.",
+            "pattern": "^[a-z0-9_]+$",
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "default": "",
+            "description": "What it checks, in words.",
+            "title": "Label",
+            "type": "string"
+          },
+          "max": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Highest allowed value, in the metric's units.",
+            "title": "Max"
+          },
+          "metric": {
+            "description": "The result metric it tests.",
+            "enum": [
+              "apogee_agl_m",
+              "rail_exit_velocity_ms",
+              "stability_margin_at_rail_exit_cal",
+              "min_stability_margin_cal",
+              "max_stability_margin_cal",
+              "stability_margin_at_launch_pct_length",
+              "min_stability_margin_pct_length",
+              "max_stability_margin_pct_length",
+              "thrust_to_weight",
+              "max_mach",
+              "max_acceleration_ms2",
+              "max_dynamic_pressure_pa",
+              "landing_speed_ms",
+              "landing_kinetic_energy_j",
+              "main_deploy_agl_m",
+              "drogue_descent_rate_ms",
+              "descent_time_s",
+              "drift_m",
+              "flight_time_s"
+            ],
+            "title": "Metric",
+            "type": "string"
+          },
+          "min": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Lowest allowed value, in the metric's units.",
+            "title": "Min"
+          },
+          "reference": {
+            "default": "",
+            "description": "The rule clause this comes from.",
+            "title": "Reference",
+            "type": "string"
+          },
+          "severity": {
+            "default": "hard",
+            "description": "hard: a fail is a no-go. scoring: costs points. advisory: worth knowing.",
+            "enum": [
+              "hard",
+              "scoring",
+              "advisory"
+            ],
+            "title": "Severity",
+            "type": "string"
+          },
+          "target": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Target value, or '$category.apogee_target_m' to take the profile category's target. Needs a tolerance.",
+            "title": "Target"
+          },
+          "tolerance_m": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Allowed distance from the target, in the metric's units.",
+            "title": "Tolerance M"
+          },
+          "tolerance_pct": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Allowed distance from the target, percent of it.",
+            "title": "Tolerance Pct"
+          }
+        },
+        "required": [
+          "id",
+          "metric"
+        ],
+        "title": "Constraint",
+        "type": "object"
+      },
+      "ConstraintOverride": {
+        "additionalProperties": false,
+        "description": "A mission's change to one profile rule. Unset fields keep the profile's value.",
+        "properties": {
+          "disabled": {
+            "default": false,
+            "description": "Drop this rule for this mission.",
+            "title": "Disabled",
+            "type": "boolean"
+          },
+          "evaluate_on": {
+            "anyOf": [
+              {
+                "enum": [
+                  "nominal",
+                  "p50",
+                  "p95",
+                  "p99",
+                  "worst"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What it is judged on.",
+            "title": "Evaluate On"
+          },
+          "max": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Highest allowed value.",
+            "title": "Max"
+          },
+          "min": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Lowest allowed value.",
+            "title": "Min"
+          },
+          "severity": {
+            "anyOf": [
+              {
+                "enum": [
+                  "hard",
+                  "scoring",
+                  "advisory"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Severity.",
+            "title": "Severity"
+          },
+          "target": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Target value.",
+            "title": "Target"
+          },
+          "tolerance_m": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Tolerance, metric units.",
+            "title": "Tolerance M"
+          },
+          "tolerance_pct": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Tolerance, percent.",
+            "title": "Tolerance Pct"
+          }
+        },
+        "title": "ConstraintOverride",
+        "type": "object"
+      },
+      "ConstraintSettings": {
+        "additionalProperties": false,
+        "properties": {
+          "additional": {
+            "description": "The team's own rules, on top of the profile's.",
+            "items": {
+              "$ref": "#/components/schemas/Constraint"
+            },
+            "title": "Additional",
+            "type": "array"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Category within the profile.",
+            "title": "Category"
+          },
+          "overrides": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ConstraintOverride"
+            },
+            "description": "Changes to profile rules, by rule id.",
+            "title": "Overrides",
+            "type": "object"
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Competition profile id, e.g. 'aurc-2027'. None: team rules only.",
+            "title": "Profile"
+          }
+        },
+        "title": "ConstraintSettings",
         "type": "object"
       },
       "CrossCheck": {
@@ -729,6 +1252,26 @@
         "title": "Environment",
         "type": "object"
       },
+      "FlightBasis": {
+        "properties": {
+          "available": {
+            "description": "Whether that flight has been run.",
+            "title": "Available",
+            "type": "boolean"
+          },
+          "result_id": {
+            "description": "The single flight's result id for this mission.",
+            "title": "Result Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "result_id",
+          "available"
+        ],
+        "title": "FlightBasis",
+        "type": "object"
+      },
       "FlightRequest": {
         "properties": {
           "ascent_only": {
@@ -769,6 +1312,19 @@
             "type": "number",
             "units": "s"
           },
+          "drogue_descent_rate_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Descent rate under the first device when the last one triggered. None with one device.",
+            "title": "Drogue Descent Rate Ms",
+            "units": "m/s"
+          },
           "landing": {
             "anyOf": [
               {
@@ -779,6 +1335,19 @@
               }
             ],
             "description": "Touchdown. None for an ascent-only flight, which stops at apogee."
+          },
+          "main_deploy_agl_m": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Altitude above the pad when the last recovery device triggered (the main).",
+            "title": "Main Deploy Agl M",
+            "units": "m"
           },
           "max_acceleration_ms2": {
             "description": "Highest acceleration magnitude.",
@@ -830,11 +1399,35 @@
             "type": "number",
             "units": "m/s"
           },
+          "reference_diameter_m": {
+            "description": "Body diameter that a caliber is measured in.",
+            "title": "Reference Diameter M",
+            "type": "number",
+            "units": "m"
+          },
+          "rocket_length_m": {
+            "description": "Rocket length, nose tip to the aftmost part.",
+            "title": "Rocket Length M",
+            "type": "number",
+            "units": "m"
+          },
+          "stability_margin_at_launch_cal": {
+            "description": "Static stability margin at ignition, on the pad.",
+            "title": "Stability Margin At Launch Cal",
+            "type": "number",
+            "units": "cal"
+          },
           "stability_margin_at_rail_exit_cal": {
             "description": "Static stability margin at rail exit, in body calibers.",
             "title": "Stability Margin At Rail Exit Cal",
             "type": "number",
             "units": "cal"
+          },
+          "thrust_to_weight": {
+            "description": "Lesser of the initial thrust (mean over the first 0.5 s) and the average thrust, over the weight at ignition.",
+            "title": "Thrust To Weight",
+            "type": "number",
+            "units": "1"
           }
         },
         "required": [
@@ -849,6 +1442,12 @@
           "max_dynamic_pressure_pa",
           "max_acceleration_ms2",
           "burnout_time_s",
+          "stability_margin_at_launch_cal",
+          "rocket_length_m",
+          "reference_diameter_m",
+          "thrust_to_weight",
+          "main_deploy_agl_m",
+          "drogue_descent_rate_ms",
           "landing",
           "parachute_events"
         ],
@@ -1537,10 +2136,8 @@
             "type": "object"
           },
           "constraints": {
-            "additionalProperties": true,
-            "description": "Not modelled yet: accepted as-is so configs round-trip.",
-            "title": "Constraints",
-            "type": "object"
+            "$ref": "#/components/schemas/ConstraintSettings",
+            "description": "Competition profile and team rules the go/no-go board checks."
           },
           "environment": {
             "$ref": "#/components/schemas/Environment",
@@ -2211,6 +2808,130 @@
         "title": "Problem",
         "type": "object"
       },
+      "Profile": {
+        "additionalProperties": false,
+        "properties": {
+          "categories": {
+            "description": "Competition categories.",
+            "items": {
+              "$ref": "#/components/schemas/Category"
+            },
+            "title": "Categories",
+            "type": "array"
+          },
+          "constraints": {
+            "description": "The rules.",
+            "items": {
+              "$ref": "#/components/schemas/Constraint"
+            },
+            "title": "Constraints",
+            "type": "array"
+          },
+          "id": {
+            "description": "Profile id, e.g. 'aurc-2027'.",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "description": "Competition name.",
+            "title": "Name",
+            "type": "string"
+          },
+          "notes": {
+            "default": "",
+            "description": "Anything a reader should know.",
+            "title": "Notes",
+            "type": "string"
+          },
+          "rules_version": {
+            "description": "Version of the rules this profile encodes.",
+            "title": "Rules Version",
+            "type": "string"
+          },
+          "scoring": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Scoring"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Apogee scoring, if known."
+          },
+          "source": {
+            "description": "Where the rules document is.",
+            "title": "Source",
+            "type": "string"
+          },
+          "verified": {
+            "description": "Whether every rule has been checked against the rules document.",
+            "title": "Verified",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "source",
+          "rules_version",
+          "verified",
+          "constraints"
+        ],
+        "title": "Profile",
+        "type": "object"
+      },
+      "ProfileInfo": {
+        "properties": {
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Category name, if one is chosen.",
+            "title": "Category"
+          },
+          "id": {
+            "description": "Profile id.",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "description": "Competition name.",
+            "title": "Name",
+            "type": "string"
+          },
+          "rules_version": {
+            "description": "Rules version.",
+            "title": "Rules Version",
+            "type": "string"
+          },
+          "source": {
+            "description": "Rules document.",
+            "title": "Source",
+            "type": "string"
+          },
+          "verified": {
+            "description": "Checked against the rules document.",
+            "title": "Verified",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "rules_version",
+          "verified",
+          "source",
+          "category"
+        ],
+        "title": "ProfileInfo",
+        "type": "object"
+      },
       "ProfileLevel": {
         "additionalProperties": false,
         "properties": {
@@ -2737,6 +3458,175 @@
         "title": "Rocket",
         "type": "object"
       },
+      "RuleResult": {
+        "properties": {
+          "evaluate_on": {
+            "description": "nominal, p50, p95, p99 or worst.",
+            "title": "Evaluate On",
+            "type": "string"
+          },
+          "id": {
+            "description": "Rule id.",
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "description": "What it checks.",
+            "title": "Label",
+            "type": "string"
+          },
+          "lower": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Lowest allowed value.",
+            "title": "Lower"
+          },
+          "metric": {
+            "description": "Metric tested.",
+            "title": "Metric",
+            "type": "string"
+          },
+          "note": {
+            "default": "",
+            "description": "Why it is missing, or anything to qualify it.",
+            "title": "Note",
+            "type": "string"
+          },
+          "outcome": {
+            "description": "What it means: a hard fail is no_go, other fails warn.",
+            "enum": [
+              "go",
+              "warn",
+              "no_go",
+              "missing"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          },
+          "reference": {
+            "description": "Rule clause.",
+            "title": "Reference",
+            "type": "string"
+          },
+          "samples": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Monte Carlo flights it was judged over.",
+            "title": "Samples"
+          },
+          "severity": {
+            "description": "hard, scoring or advisory.",
+            "title": "Severity",
+            "type": "string"
+          },
+          "source": {
+            "description": "profile, a team override of it, or a team rule.",
+            "enum": [
+              "profile",
+              "override",
+              "team"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "status": {
+            "description": "Whether the value is within the limits.",
+            "enum": [
+              "pass",
+              "fail",
+              "missing",
+              "not_applicable"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "units": {
+            "description": "The metric's units.",
+            "title": "Units",
+            "type": "string"
+          },
+          "upper": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Highest allowed value.",
+            "title": "Upper"
+          },
+          "value_high": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Value checked against the upper limit.",
+            "title": "Value High"
+          },
+          "value_low": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Value checked against the lower limit.",
+            "title": "Value Low"
+          },
+          "violation_share": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Share of Monte Carlo flights outside the limits, if there is a campaign.",
+            "title": "Violation Share"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "metric",
+          "units",
+          "source",
+          "severity",
+          "evaluate_on",
+          "reference",
+          "lower",
+          "upper",
+          "value_low",
+          "value_high",
+          "status",
+          "outcome",
+          "violation_share",
+          "samples"
+        ],
+        "title": "RuleResult",
+        "type": "object"
+      },
       "RunState": {
         "properties": {
           "cached": {
@@ -2792,6 +3682,117 @@
           "cached"
         ],
         "title": "RunState",
+        "type": "object"
+      },
+      "ScoreEstimate": {
+        "properties": {
+          "expected": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Mean points over the Monte Carlo flights.",
+            "title": "Expected"
+          },
+          "formula": {
+            "description": "How points are computed.",
+            "title": "Formula",
+            "type": "string"
+          },
+          "max_points": {
+            "description": "Points for hitting it exactly.",
+            "title": "Max Points",
+            "type": "number"
+          },
+          "nominal": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Points the single flight would score.",
+            "title": "Nominal"
+          },
+          "p5": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Points 95% of Monte Carlo flights would beat.",
+            "title": "P5"
+          },
+          "reference": {
+            "description": "The rule clause.",
+            "title": "Reference",
+            "type": "string"
+          },
+          "target_m": {
+            "description": "Category target apogee, AGL.",
+            "title": "Target M",
+            "type": "number"
+          }
+        },
+        "required": [
+          "target_m",
+          "max_points",
+          "nominal",
+          "expected",
+          "p5",
+          "formula",
+          "reference"
+        ],
+        "title": "ScoreEstimate",
+        "type": "object"
+      },
+      "Scoring": {
+        "additionalProperties": false,
+        "description": "How the competition scores apogee against the category target.",
+        "properties": {
+          "kind": {
+            "description": "gaussian: max_points * exp(-(z - Z)^2 / (2 (s Z)^2)). linear: max_points * (1 - |Z - z| / (s Z)), zero beyond. s is scale_pct / 100.",
+            "enum": [
+              "gaussian",
+              "linear"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "max_points": {
+            "description": "Points for hitting the target exactly.",
+            "exclusiveMinimum": 0.0,
+            "title": "Max Points",
+            "type": "number"
+          },
+          "reference": {
+            "description": "The rule clause.",
+            "title": "Reference",
+            "type": "string"
+          },
+          "scale_pct": {
+            "description": "s, percent of the target apogee.",
+            "exclusiveMinimum": 0.0,
+            "title": "Scale Pct",
+            "type": "number"
+          }
+        },
+        "required": [
+          "kind",
+          "max_points",
+          "scale_pct",
+          "reference"
+        ],
+        "title": "Scoring",
         "type": "object"
       },
       "Series": {
@@ -3786,6 +4787,48 @@
         ]
       }
     },
+    "/api/constraints/board": {
+      "post": {
+        "description": "Judge the mission's rules on its single flight and its Monte Carlo campaign.",
+        "operationId": "goNoGoBoard",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BoardRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BoardResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The constraint settings are wrong."
+          }
+        },
+        "summary": "Go No Go",
+        "tags": [
+          "constraints"
+        ]
+      }
+    },
     "/api/health": {
       "get": {
         "operationId": "getHealth",
@@ -4438,6 +5481,32 @@
         "summary": "Export Mission",
         "tags": [
           "missions"
+        ]
+      }
+    },
+    "/api/profiles": {
+      "get": {
+        "description": "Every competition profile, with its rules.",
+        "operationId": "listProfiles",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Profile"
+                  },
+                  "title": "Response Listprofiles",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Profiles",
+        "tags": [
+          "constraints"
         ]
       }
     },

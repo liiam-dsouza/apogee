@@ -1,0 +1,80 @@
+# Transcribed from the IREC 2027 Rules & Requirements and Design, Test &
+# Evaluation Guide (both 2027 REV P1, effective 2026-10-15) in docs/rules/.
+# REV P1 is a preliminary revision: check for a later one before relying on
+# this, and keep `verified` false until a team member has checked every rule.
+id: irec-2027
+name: "International Rocket Engineering Competition 2027"
+source: "docs/rules/2027_IREC_RULES.pdf, docs/rules/2027_IREC_ROCKET_SPEC.pdf (2027 REV P1)"
+rules_version: "2027 REV P1 (preliminary), effective 2026-10-15"
+verified: false
+notes: >-
+  Rules are judged at the 95th percentile of a Monte Carlo campaign by
+  default. ESRA rails for single-stage solids are 17 ft (5.18 m) and are
+  typically set at 84° ± 2° elevation (DTEG 5.3.1, 10.1.1): set the site's
+  rail to match. Rail departure is when only one rail button remains on the
+  rail (DTEG 5.3.2), which is how RocketPy defines rail exit. The minimum
+  stability rule covers launch to burnout (DTEG 10.2.1); here it is checked
+  over the whole ascent, which includes that. Two-stage rockets are not
+  simulated. Not checked here: fin span at least 0.8 calibers (DTEG 10.2.4),
+  the 4.4 lb payload (R&R 3.1.1), dual-event recovery for apogees above
+  1,500 ft (DTEG 6.1.1) and fin flutter.
+categories:
+  - {id: cots-10k, name: "COTS 10K", apogee_target_m: 3048}
+  - {id: cots-30k, name: "COTS 30K", apogee_target_m: 9144}
+  - {id: srad-solid-10k, name: "SRAD Solid 10K", apogee_target_m: 3048}
+  - {id: srad-solid-30k, name: "SRAD Solid 30K", apogee_target_m: 9144}
+  - {id: two-stage-30k, name: "Two-Stage 30K (not simulated)", apogee_target_m: 9144}
+  - {id: two-stage-45k, name: "Two-Stage 45K (not simulated)", apogee_target_m: 13716}
+  - {id: srad-hybrid-10k, name: "SRAD Hybrid 10K", apogee_target_m: 3048}
+  - {id: srad-hybrid-30k, name: "SRAD Hybrid 30K", apogee_target_m: 9144}
+  - {id: srad-liquid-5k, name: "SRAD Liquid 5K", apogee_target_m: 1524}
+  - {id: srad-liquid-10k, name: "SRAD Liquid 10K", apogee_target_m: 3048}
+scoring:
+  kind: linear
+  max_points: 350
+  scale_pct: 30
+  reference: "R&R 6.6.1"
+constraints:
+  - id: rail_departure
+    label: "Rail departure velocity at least 25 m/s"
+    metric: rail_exit_velocity_ms
+    min: 25
+    reference: "DTEG 5.3.1, 5.3.2"
+  - id: min_stability_subsonic
+    label: "Stability margin at least 7.5% of length (subsonic flights)"
+    metric: min_stability_margin_pct_length
+    min: 7.5
+    applies_if: {metric: max_mach, max: 1}
+    reference: "DTEG 10.2.1"
+  - id: min_stability_supersonic
+    label: "Stability margin at least 10% of length (supersonic flights)"
+    metric: min_stability_margin_pct_length
+    min: 10
+    applies_if: {metric: max_mach, min: 1}
+    reference: "DTEG 10.2.1"
+  - id: max_stability_at_launch
+    label: "Stability margin at launch at most 18% of length"
+    metric: stability_margin_at_launch_pct_length
+    max: 18
+    reference: "DTEG 10.3.1"
+  - id: max_stability_in_flight
+    label: "Stability margin through flight at most 25% of length"
+    metric: max_stability_margin_pct_length
+    max: 25
+    reference: "DTEG 10.3.1"
+  - id: drogue_descent
+    label: "Descent under drogue between 20 and 40 m/s at main deployment"
+    metric: drogue_descent_rate_ms
+    min: 20
+    max: 40
+    reference: "DTEG 6.3.3"
+  - id: main_deploy_altitude
+    label: "Main deploys no higher than 1,500 ft AGL"
+    metric: main_deploy_agl_m
+    max: 457.2
+    reference: "DTEG 6.1.1, 6.4.1"
+  - id: landing_velocity
+    label: "Descent rate at landing below 11 m/s"
+    metric: landing_speed_ms
+    max: 11
+    reference: "DTEG 6.4.3"

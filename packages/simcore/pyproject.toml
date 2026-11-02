@@ -11,6 +11,7 @@ dependencies = [
   "ruamel.yaml>=0.19",
   "python-ulid>=4.1",
   "numpy>=2",
+  "scipy>=1.14",  # Latin Hypercube and chi-squared quantiles (Monte Carlo)
   "pyarrow>=18",
   "defusedxml>=0.7",  # .ork files are uploads: untrusted XML
 ]

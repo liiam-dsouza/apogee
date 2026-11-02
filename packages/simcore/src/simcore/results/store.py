@@ -68,10 +68,10 @@ class Series(BaseModel):
 
 def result_key(mission: Mission, *, ascent_only: bool) -> str:
     """Cache key: same mission, versions and mode give the same id."""
-    # Campaign settings don't change a single flight, so they don't change its key.
+    # Campaign settings and constraints don't change a single flight, so not its key.
     payload = "\n".join(
         [
-            canonical_json(mission.model_dump(mode="json", exclude={"monte_carlo"})),
+            canonical_json(mission.model_dump(mode="json", exclude={"monte_carlo", "constraints"})),
             rocketpy_version(),
             simcore_version(),
             "ascent" if ascent_only else "full",

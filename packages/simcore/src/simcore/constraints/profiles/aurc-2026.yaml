@@ -1,0 +1,72 @@
+# Transcribed from the 2026 AURC Rules (v2.2) and Rocket Specifications (v2.0)
+# in docs/rules/. `verified` stays false until a team member has checked every
+# rule here against those documents. Never edit this file for a new rules
+# year: copy it to a new id.
+id: aurc-2026
+name: "Australian Universities Rocket Competition 2026"
+source: "docs/rules/2026_AURC_RULES (Rules v2.2), docs/rules/2026_AURC_ROCKET_SPEC.pdf (Rocket Specifications v2.0)"
+rules_version: "Rules v2.2; Rocket Specifications v2.0"
+verified: false
+notes: >-
+  Every rule is judged at the 95th percentile of a Monte Carlo campaign by
+  default, which is stricter than "as predicted by the trajectory simulation";
+  override evaluate_on to nominal to judge the single flight as the rules word
+  it. Not checked here: fin flutter velocity at least 1.5 times max velocity
+  (Spec 4.2.1), the 5,000 ft category's 400 g payload (Spec 10.3.4), launch
+  rail inclination (Spec 2.3.4: Endeavour's launch operating procedures), and
+  dual deployment of each independent piece (Spec 5.2.1). Stability limits
+  cover powered and coasting flight to apogee. "Initial thrust" for
+  thrust-to-weight is taken as the mean over the first 0.5 s of burn.
+categories:
+  - {id: 5k-cots-solid, name: "5,000 ft AGL, COTS solid", apogee_target_m: 1524}
+  - {id: 5k-srad-hybrid, name: "5,000 ft AGL, SRAD hybrid", apogee_target_m: 1524}
+  - {id: 10k-srad-hybrid, name: "10,000 ft AGL, SRAD hybrid", apogee_target_m: 3048}
+  - {id: 10k-cots, name: "10,000 ft AGL, COTS solid or hybrid", apogee_target_m: 3048}
+  - {id: 30k-cots-solid, name: "30,000 ft AGL, COTS solid", apogee_target_m: 9144}
+scoring:
+  kind: gaussian
+  max_points: 350
+  scale_pct: 7.5
+  reference: "Rules 2.4.7.1"
+constraints:
+  - id: max_apogee
+    label: "Apogee at most 32,000 ft AGL"
+    metric: apogee_agl_m
+    max: 9753.6
+    reference: "Spec 4.1.1"
+  - id: thrust_to_weight
+    label: "Thrust to weight above 5"
+    metric: thrust_to_weight
+    min: 5
+    reference: "Spec 4.3.1, 4.3.2"
+  - id: min_stability
+    label: "Stability margin at least 1.5 cal during ascent"
+    metric: min_stability_margin_cal
+    min: 1.5
+    reference: "Spec 4.4.3"
+  - id: max_stability
+    label: "Stability margin at most 6 cal during ascent"
+    metric: max_stability_margin_cal
+    max: 6
+    reference: "Spec 4.4.3"
+  - id: rail_departure
+    label: "Rail departure velocity above 15 m/s"
+    metric: rail_exit_velocity_ms
+    min: 15
+    reference: "Spec 4.4.5 (exemption by analysis: 4.4.6)"
+  - id: drogue_descent
+    label: "Descent under drogue between 20 and 50 m/s"
+    metric: drogue_descent_rate_ms
+    min: 20
+    max: 50
+    reference: "Spec 5.3.2"
+  - id: main_deploy_altitude
+    label: "Main deploys below 3,500 ft AGL"
+    metric: main_deploy_agl_m
+    max: 1066.8
+    reference: "Spec 5.4.1; Rules 2.4.8 (no recovery points above it)"
+  - id: ground_hit_velocity
+    label: "Ground hit velocity under main below 11 m/s"
+    metric: landing_speed_ms
+    max: 11
+    reference: "Spec 5.4.2"

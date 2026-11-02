@@ -22,10 +22,12 @@ CHUNK_SIZE = 20
 
 
 def campaign_key(mission: Mission) -> str:
-    """Same mission (campaign settings included) and versions give the same campaign."""
-    payload = "\n".join(
-        [canonical_json(mission.model_dump(mode="json")), rocketpy_version(), simcore_version()]
-    )
+    """Same mission (campaign settings included) and versions give the same campaign.
+
+    Constraints are judged on a campaign, not part of it, so they are left out.
+    """
+    data = mission.model_dump(mode="json", exclude={"constraints"})
+    payload = "\n".join([canonical_json(data), rocketpy_version(), simcore_version()])
     return hashlib.sha256(payload.encode()).hexdigest()[:32]
 
 

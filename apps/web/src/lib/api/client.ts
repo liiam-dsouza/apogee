@@ -45,6 +45,11 @@ export type CampaignResult = Schemas['CampaignResult']
 export type CampaignSummary = Schemas['CampaignSummary']
 export type Probability = Schemas['Probability']
 export type Distribution = Schemas['Distribution']
+export type Profile = Schemas['Profile']
+export type Constraint = Schemas['Constraint']
+export type BoardResponse = Schemas['BoardResponse']
+export type RuleResult = Schemas['RuleResult']
+export type ConstraintSettings = NonNullable<Mission['constraints']>
 
 export const client = createClient<paths>({ baseUrl: '' })
 
@@ -183,6 +188,9 @@ export const api = {
     unwrap<Distribution[]>(
       client.GET('/api/campaigns/{campaign_id}/distributions', { params: { path: { campaign_id: id } } }),
     ),
+  listProfiles: () => unwrap<Profile[]>(client.GET('/api/profiles')),
+  goNoGoBoard: (mission: Mission) =>
+    unwrap<BoardResponse>(client.POST('/api/constraints/board', { body: { mission } })),
   /** A plain URL, for <a download>. */
   campaignCsvUrl: (id: string) => `/api/campaigns/${encodeURIComponent(id)}/samples.csv`,
   exportMissionUrl: (id: string, format: 'yaml' | 'zip' = 'yaml') =>

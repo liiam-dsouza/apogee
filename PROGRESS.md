@@ -3,6 +3,60 @@
 Running log of what's built against the project brief. Newest first.
 Frontend paths are relative to `apps/web/`.
 
+## 2026-11-02: Constraints, competition profiles (AURC 2026, IREC 2027), go/no-go board
+
+**Done**
+- **The rules documents in `docs/rules/` were reviewed and transcribed into profiles**
+  (`simcore/constraints/profiles/aurc-2026.yaml`, `irec-2027.yaml`):
+  - Every rule cites its clause.
+  - Both are marked **not verified** until a team member checks them; the board warns.
+  - The brief's example values were wrong for AURC. It scores apogee on a normal curve
+    (σ = 7.5% of target), not a ±3% band, and has no drift or landing-energy limit.
+- **`constraints` is modelled:**
+  - a profile and a category;
+  - per-rule overrides: change the limit or what it is judged on, or drop the rule;
+  - team rules.
+  - Validation flags an unknown profile, category or rule id.
+- **Evaluator (`simcore.constraints`):**
+  - Rules are judged on the single flight or at p50/p95/p99/worst of the campaign
+    (always the bad tail), with the share of flights outside.
+  - A rule with nothing to judge is never a pass.
+  - Conditional rules (`applies_if`), e.g. IREC's subsonic and supersonic stability
+    minimums.
+  - The expected apogee score follows each competition's formula.
+- **New flight metrics:**
+  - stability at launch;
+  - stability as % of length (IREC's unit);
+  - thrust-to-weight (AURC 4.3);
+  - main deployment altitude;
+  - drogue descent rate at main deployment.
+  - Every campaign sample now records every metric.
+- **Board API:** `POST /api/constraints/board` finds the mission's own flight and campaign
+  by hash. Rules are excluded from both cache keys, so editing a rule never orphans the
+  runs it is judged on. `GET /api/profiles`.
+- **Go / no-go section:**
+  - a large GO / NO-GO / NOT JUDGED verdict;
+  - what it is based on (with links to run what's missing);
+  - the score card;
+  - one row per rule with its value, limit, what it is judged on, its source (profile /
+    override / team) and its clause.
+  - The pane chooses the profile and category, toggles or re-judges profile rules, and
+    adds team rules.
+- **Docs:** `docs/methods/constraints.md`, including what each competition requires
+  that the board does *not* check. **e2e:** the Calisto journey ends on the board
+  (NO-GO under AURC 2026: drogue descent 18 m/s).
+- `scipy` is now a declared simcore dependency (it was imported but undeclared).
+
+**Lanius against AURC 2026** (10k COTS, 60 samples, still air): **NO-GO**. Descent under
+drogue at main deployment is 16.6 to 19.5 m/s, under Spec 5.3.2's 20 m/s, in 98% of
+flights. AURC doesn't say where to measure it; at main deployment (230 m AGL, densest
+air) is the strictest reading. Thrust-to-weight 5.59 at the 5th percentile (limit 5).
+Score: 320/350 for the single flight, 260 expected over the campaign.
+
+**Not checked by the board** (in the rules, listed in the method page): fin flutter,
+payload mass, rail inclination, IREC fin span ≥ 0.8 cal, dual deployment per independent
+piece, two-stage rockets.
+
 ## 2026-11-02: Monte Carlo campaigns, Dispersion map, results histograms
 
 **Done**

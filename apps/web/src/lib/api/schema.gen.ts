@@ -98,6 +98,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/constraints/board": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Go No Go
+         * @description Judge the mission's rules on its single flight and its Monte Carlo campaign.
+         */
+        post: operations["goNoGoBoard"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -271,6 +291,26 @@ export interface paths {
         };
         /** Export Mission */
         get: operations["exportMission"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/profiles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Profiles
+         * @description Every competition profile, with its rules.
+         */
+        get: operations["listProfiles"];
         put?: never;
         post?: never;
         delete?: never;
@@ -515,6 +555,38 @@ export interface components {
              */
             kind: "apogee";
         };
+        /** Board */
+        Board: {
+            /** @description The competition profile, if any. */
+            profile: components["schemas"]["ProfileInfo"] | null;
+            /**
+             * Rows
+             * @description Every rule, profile rules first.
+             */
+            rows: components["schemas"]["RuleResult"][];
+            /** @description Expected apogee score, if the profile scores apogee and a category is set. */
+            score: components["schemas"]["ScoreEstimate"] | null;
+            /**
+             * Verdict
+             * @description no_go if any hard rule fails; incomplete if a hard rule cannot be judged.
+             * @enum {string}
+             */
+            verdict: "go" | "no_go" | "incomplete";
+        };
+        /** BoardRequest */
+        BoardRequest: {
+            /** @description The mission, saved or not. */
+            mission: components["schemas"]["Mission"];
+        };
+        /** BoardResponse */
+        BoardResponse: {
+            /** @description Every rule, judged. */
+            board: components["schemas"]["Board"];
+            /** @description The campaign it is based on. */
+            campaign: components["schemas"]["CampaignBasis"];
+            /** @description The single flight it is based on. */
+            flight: components["schemas"]["FlightBasis"];
+        };
         /** Body_importMission */
         Body_importMission: {
             /** File */
@@ -544,6 +616,24 @@ export interface components {
              * @enum {string}
              */
             kind: "thrust_curve" | "drag_table";
+        };
+        /** CampaignBasis */
+        CampaignBasis: {
+            /**
+             * Campaign Id
+             * @description The campaign id for this mission.
+             */
+            campaign_id: string;
+            /**
+             * Samples
+             * @description Samples in the campaign.
+             */
+            samples: number;
+            /**
+             * Samples Done
+             * @description Samples finished so far (0 if never run).
+             */
+            samples_done: number;
         };
         /** CampaignRequest */
         CampaignRequest: {
@@ -639,6 +729,24 @@ export interface components {
              */
             stats: components["schemas"]["Stat"][];
         };
+        /** Category */
+        Category: {
+            /**
+             * Apogee Target M
+             * @description Target apogee, AGL.
+             */
+            apogee_target_m?: number | null;
+            /**
+             * Id
+             * @description Category id.
+             */
+            id: string;
+            /**
+             * Name
+             * @description Category name.
+             */
+            name: string;
+        };
         /** ChannelInfo */
         ChannelInfo: {
             /**
@@ -656,6 +764,170 @@ export interface components {
              * @description Units of the values.
              */
             units: string;
+        };
+        /**
+         * Condition
+         * @description Limits a rule to the flights it applies to, e.g. only supersonic ones.
+         */
+        Condition: {
+            /**
+             * Max
+             * @description Applies when the metric is below this.
+             */
+            max?: number | null;
+            /**
+             * Metric
+             * @description The metric that decides.
+             * @enum {string}
+             */
+            metric: "apogee_agl_m" | "rail_exit_velocity_ms" | "stability_margin_at_rail_exit_cal" | "min_stability_margin_cal" | "max_stability_margin_cal" | "stability_margin_at_launch_pct_length" | "min_stability_margin_pct_length" | "max_stability_margin_pct_length" | "thrust_to_weight" | "max_mach" | "max_acceleration_ms2" | "max_dynamic_pressure_pa" | "landing_speed_ms" | "landing_kinetic_energy_j" | "main_deploy_agl_m" | "drogue_descent_rate_ms" | "descent_time_s" | "drift_m" | "flight_time_s";
+            /**
+             * Min
+             * @description Applies when the metric is at least this.
+             */
+            min?: number | null;
+        };
+        /**
+         * Constraint
+         * @description A declarative rule over one result metric: a minimum, a maximum, or a target band.
+         */
+        Constraint: {
+            /** @description Judge only the flights this holds for. Unset: every flight. */
+            applies_if?: components["schemas"]["Condition"] | null;
+            /**
+             * Evaluate On
+             * @description nominal: the single flight. p50/p95/p99: that share of Monte Carlo flights must comply. worst: every flight must.
+             * @default p95
+             * @enum {string}
+             */
+            evaluate_on: "nominal" | "p50" | "p95" | "p99" | "worst";
+            /**
+             * Id
+             * @description Stable id, e.g. 'min_rail_exit_velocity'.
+             */
+            id: string;
+            /**
+             * Label
+             * @description What it checks, in words.
+             * @default
+             */
+            label: string;
+            /**
+             * Max
+             * @description Highest allowed value, in the metric's units.
+             */
+            max?: number | null;
+            /**
+             * Metric
+             * @description The result metric it tests.
+             * @enum {string}
+             */
+            metric: "apogee_agl_m" | "rail_exit_velocity_ms" | "stability_margin_at_rail_exit_cal" | "min_stability_margin_cal" | "max_stability_margin_cal" | "stability_margin_at_launch_pct_length" | "min_stability_margin_pct_length" | "max_stability_margin_pct_length" | "thrust_to_weight" | "max_mach" | "max_acceleration_ms2" | "max_dynamic_pressure_pa" | "landing_speed_ms" | "landing_kinetic_energy_j" | "main_deploy_agl_m" | "drogue_descent_rate_ms" | "descent_time_s" | "drift_m" | "flight_time_s";
+            /**
+             * Min
+             * @description Lowest allowed value, in the metric's units.
+             */
+            min?: number | null;
+            /**
+             * Reference
+             * @description The rule clause this comes from.
+             * @default
+             */
+            reference: string;
+            /**
+             * Severity
+             * @description hard: a fail is a no-go. scoring: costs points. advisory: worth knowing.
+             * @default hard
+             * @enum {string}
+             */
+            severity: "hard" | "scoring" | "advisory";
+            /**
+             * Target
+             * @description Target value, or '$category.apogee_target_m' to take the profile category's target. Needs a tolerance.
+             */
+            target?: number | string | null;
+            /**
+             * Tolerance M
+             * @description Allowed distance from the target, in the metric's units.
+             */
+            tolerance_m?: number | null;
+            /**
+             * Tolerance Pct
+             * @description Allowed distance from the target, percent of it.
+             */
+            tolerance_pct?: number | null;
+        };
+        /**
+         * ConstraintOverride
+         * @description A mission's change to one profile rule. Unset fields keep the profile's value.
+         */
+        ConstraintOverride: {
+            /**
+             * Disabled
+             * @description Drop this rule for this mission.
+             * @default false
+             */
+            disabled: boolean;
+            /**
+             * Evaluate On
+             * @description What it is judged on.
+             */
+            evaluate_on?: ("nominal" | "p50" | "p95" | "p99" | "worst") | null;
+            /**
+             * Max
+             * @description Highest allowed value.
+             */
+            max?: number | null;
+            /**
+             * Min
+             * @description Lowest allowed value.
+             */
+            min?: number | null;
+            /**
+             * Severity
+             * @description Severity.
+             */
+            severity?: ("hard" | "scoring" | "advisory") | null;
+            /**
+             * Target
+             * @description Target value.
+             */
+            target?: number | null;
+            /**
+             * Tolerance M
+             * @description Tolerance, metric units.
+             */
+            tolerance_m?: number | null;
+            /**
+             * Tolerance Pct
+             * @description Tolerance, percent.
+             */
+            tolerance_pct?: number | null;
+        };
+        /** ConstraintSettings */
+        ConstraintSettings: {
+            /**
+             * Additional
+             * @description The team's own rules, on top of the profile's.
+             */
+            additional?: components["schemas"]["Constraint"][];
+            /**
+             * Category
+             * @description Category within the profile.
+             */
+            category?: string | null;
+            /**
+             * Overrides
+             * @description Changes to profile rules, by rule id.
+             */
+            overrides?: {
+                [key: string]: components["schemas"]["ConstraintOverride"];
+            };
+            /**
+             * Profile
+             * @description Competition profile id, e.g. 'aurc-2027'. None: team rules only.
+             */
+            profile?: string | null;
         };
         /** CrossCheck */
         CrossCheck: {
@@ -807,6 +1079,19 @@ export interface components {
             /** @description A measured surface wind to blend into the atmosphere near the ground. */
             surface_wind?: components["schemas"]["SurfaceWind"] | null;
         };
+        /** FlightBasis */
+        FlightBasis: {
+            /**
+             * Available
+             * @description Whether that flight has been run.
+             */
+            available: boolean;
+            /**
+             * Result Id
+             * @description The single flight's result id for this mission.
+             */
+            result_id: string;
+        };
         /** FlightRequest */
         FlightRequest: {
             /**
@@ -838,8 +1123,18 @@ export interface components {
              * @description Motor burnout time.
              */
             burnout_time_s: number;
+            /**
+             * Drogue Descent Rate Ms
+             * @description Descent rate under the first device when the last one triggered. None with one device.
+             */
+            drogue_descent_rate_ms: number | null;
             /** @description Touchdown. None for an ascent-only flight, which stops at apogee. */
             landing: components["schemas"]["Landing"] | null;
+            /**
+             * Main Deploy Agl M
+             * @description Altitude above the pad when the last recovery device triggered (the main).
+             */
+            main_deploy_agl_m: number | null;
             /**
              * Max Acceleration Ms2
              * @description Highest acceleration magnitude.
@@ -881,10 +1176,30 @@ export interface components {
              */
             rail_exit_velocity_ms: number;
             /**
+             * Reference Diameter M
+             * @description Body diameter that a caliber is measured in.
+             */
+            reference_diameter_m: number;
+            /**
+             * Rocket Length M
+             * @description Rocket length, nose tip to the aftmost part.
+             */
+            rocket_length_m: number;
+            /**
+             * Stability Margin At Launch Cal
+             * @description Static stability margin at ignition, on the pad.
+             */
+            stability_margin_at_launch_cal: number;
+            /**
              * Stability Margin At Rail Exit Cal
              * @description Static stability margin at rail exit, in body calibers.
              */
             stability_margin_at_rail_exit_cal: number;
+            /**
+             * Thrust To Weight
+             * @description Lesser of the initial thrust (mean over the first 0.5 s) and the average thrust, over the weight at ignition.
+             */
+            thrust_to_weight: number;
         };
         /**
          * ForecastInfo
@@ -1298,13 +1613,8 @@ export interface components {
             ballast?: {
                 [key: string]: unknown;
             };
-            /**
-             * Constraints
-             * @description Not modelled yet: accepted as-is so configs round-trip.
-             */
-            constraints?: {
-                [key: string]: unknown;
-            };
+            /** @description Competition profile and team rules the go/no-go board checks. */
+            constraints?: components["schemas"]["ConstraintSettings"];
             /** @description Atmosphere and wind. */
             environment?: components["schemas"]["Environment"];
             /**
@@ -1662,6 +1972,85 @@ export interface components {
              */
             type: string;
         };
+        /** Profile */
+        Profile: {
+            /**
+             * Categories
+             * @description Competition categories.
+             */
+            categories?: components["schemas"]["Category"][];
+            /**
+             * Constraints
+             * @description The rules.
+             */
+            constraints: components["schemas"]["Constraint"][];
+            /**
+             * Id
+             * @description Profile id, e.g. 'aurc-2027'.
+             */
+            id: string;
+            /**
+             * Name
+             * @description Competition name.
+             */
+            name: string;
+            /**
+             * Notes
+             * @description Anything a reader should know.
+             * @default
+             */
+            notes: string;
+            /**
+             * Rules Version
+             * @description Version of the rules this profile encodes.
+             */
+            rules_version: string;
+            /** @description Apogee scoring, if known. */
+            scoring?: components["schemas"]["Scoring"] | null;
+            /**
+             * Source
+             * @description Where the rules document is.
+             */
+            source: string;
+            /**
+             * Verified
+             * @description Whether every rule has been checked against the rules document.
+             */
+            verified: boolean;
+        };
+        /** ProfileInfo */
+        ProfileInfo: {
+            /**
+             * Category
+             * @description Category name, if one is chosen.
+             */
+            category: string | null;
+            /**
+             * Id
+             * @description Profile id.
+             */
+            id: string;
+            /**
+             * Name
+             * @description Competition name.
+             */
+            name: string;
+            /**
+             * Rules Version
+             * @description Rules version.
+             */
+            rules_version: string;
+            /**
+             * Source
+             * @description Rules document.
+             */
+            source: string;
+            /**
+             * Verified
+             * @description Checked against the rules document.
+             */
+            verified: boolean;
+        };
         /** ProfileLevel */
         ProfileLevel: {
             /**
@@ -1955,6 +2344,98 @@ export interface components {
             /** @description Boat-tail, if any. */
             tail?: components["schemas"]["Tail"] | null;
         };
+        /** RuleResult */
+        RuleResult: {
+            /**
+             * Evaluate On
+             * @description nominal, p50, p95, p99 or worst.
+             */
+            evaluate_on: string;
+            /**
+             * Id
+             * @description Rule id.
+             */
+            id: string;
+            /**
+             * Label
+             * @description What it checks.
+             */
+            label: string;
+            /**
+             * Lower
+             * @description Lowest allowed value.
+             */
+            lower: number | null;
+            /**
+             * Metric
+             * @description Metric tested.
+             */
+            metric: string;
+            /**
+             * Note
+             * @description Why it is missing, or anything to qualify it.
+             * @default
+             */
+            note: string;
+            /**
+             * Outcome
+             * @description What it means: a hard fail is no_go, other fails warn.
+             * @enum {string}
+             */
+            outcome: "go" | "warn" | "no_go" | "missing";
+            /**
+             * Reference
+             * @description Rule clause.
+             */
+            reference: string;
+            /**
+             * Samples
+             * @description Monte Carlo flights it was judged over.
+             */
+            samples: number | null;
+            /**
+             * Severity
+             * @description hard, scoring or advisory.
+             */
+            severity: string;
+            /**
+             * Source
+             * @description profile, a team override of it, or a team rule.
+             * @enum {string}
+             */
+            source: "profile" | "override" | "team";
+            /**
+             * Status
+             * @description Whether the value is within the limits.
+             * @enum {string}
+             */
+            status: "pass" | "fail" | "missing" | "not_applicable";
+            /**
+             * Units
+             * @description The metric's units.
+             */
+            units: string;
+            /**
+             * Upper
+             * @description Highest allowed value.
+             */
+            upper: number | null;
+            /**
+             * Value High
+             * @description Value checked against the upper limit.
+             */
+            value_high: number | null;
+            /**
+             * Value Low
+             * @description Value checked against the lower limit.
+             */
+            value_low: number | null;
+            /**
+             * Violation Share
+             * @description Share of Monte Carlo flights outside the limits, if there is a campaign.
+             */
+            violation_share: number | null;
+        };
         /** RunState */
         RunState: {
             /**
@@ -1983,6 +2464,71 @@ export interface components {
              * @enum {string}
              */
             status: "queued" | "running" | "done" | "failed";
+        };
+        /** ScoreEstimate */
+        ScoreEstimate: {
+            /**
+             * Expected
+             * @description Mean points over the Monte Carlo flights.
+             */
+            expected: number | null;
+            /**
+             * Formula
+             * @description How points are computed.
+             */
+            formula: string;
+            /**
+             * Max Points
+             * @description Points for hitting it exactly.
+             */
+            max_points: number;
+            /**
+             * Nominal
+             * @description Points the single flight would score.
+             */
+            nominal: number | null;
+            /**
+             * P5
+             * @description Points 95% of Monte Carlo flights would beat.
+             */
+            p5: number | null;
+            /**
+             * Reference
+             * @description The rule clause.
+             */
+            reference: string;
+            /**
+             * Target M
+             * @description Category target apogee, AGL.
+             */
+            target_m: number;
+        };
+        /**
+         * Scoring
+         * @description How the competition scores apogee against the category target.
+         */
+        Scoring: {
+            /**
+             * Kind
+             * @description gaussian: max_points * exp(-(z - Z)^2 / (2 (s Z)^2)). linear: max_points * (1 - |Z - z| / (s Z)), zero beyond. s is scale_pct / 100.
+             * @enum {string}
+             */
+            kind: "gaussian" | "linear";
+            /**
+             * Max Points
+             * @description Points for hitting the target exactly.
+             */
+            max_points: number;
+            /**
+             * Reference
+             * @description The rule clause.
+             */
+            reference: string;
+            /**
+             * Scale Pct
+             * @description s, percent of the target apogee.
+             */
+            scale_pct: number;
         };
         /** Series */
         Series: {
@@ -2604,6 +3150,39 @@ export interface operations {
             };
         };
     };
+    goNoGoBoard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BoardRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BoardResponse"];
+                };
+            };
+            /** @description The constraint settings are wrong. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     getHealth: {
         parameters: {
             query?: never;
@@ -3129,6 +3708,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    listProfiles: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Profile"][];
                 };
             };
         };

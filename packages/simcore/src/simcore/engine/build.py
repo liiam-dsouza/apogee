@@ -212,6 +212,23 @@ def build_rocket(
     return rocket
 
 
+def rocket_length_m(mission: Mission) -> float:
+    """Nose tip to the aftmost part: nozzle, fin trailing edge or tail."""
+    r = mission.rocket
+    assert r is not None
+    ends = [r.nose.length_m, r.motor_position_m]
+    for fins in r.fins:
+        sweep = (
+            fins.sweep_length_m
+            if fins.sweep_length_m is not None
+            else (fins.root_chord_m - fins.tip_chord_m) / 2
+        )
+        ends += [fins.position_m + fins.root_chord_m, fins.position_m + sweep + fins.tip_chord_m]
+    if r.tail:
+        ends.append(r.tail.position_m + r.tail.length_m)
+    return max(ends)
+
+
 def _array(fn: object, times: np.ndarray) -> np.ndarray:
     return np.asarray(fn(times), dtype=float)  # type: ignore[operator]
 
@@ -294,6 +311,17 @@ def run_flight(
         for t, parachute in flight.parachute_events
     ]
 
+    rocket = mission.rocket
+    assert rocket is not None
+    motor = flight.rocket.motor
+    burn_start = float(motor.burn_start_time)
+    early = np.linspace(burn_start, burn_start + 0.5, 51)
+    initial_thrust = float(np.mean(_array(motor.thrust, early)))
+    weight = float(flight.rocket.total_mass(0)) * 9.80665
+    descent_rate = None
+    if len(events) >= 2:
+        descent_rate = abs(float(flight.vz(events[-1].triggered_s)))
+
     summary = FlightSummary(
         apogee_agl_m=float(flight.apogee) - ground,
         apogee_time_s=float(flight.apogee_time),
@@ -306,6 +334,12 @@ def run_flight(
         max_dynamic_pressure_pa=float(flight.max_dynamic_pressure),
         max_acceleration_ms2=float(flight.max_acceleration),
         burnout_time_s=float(flight.rocket.motor.burn_out_time),
+        stability_margin_at_launch_cal=float(trajectory["stability_margin_cal"][0]),
+        rocket_length_m=rocket_length_m(mission),
+        reference_diameter_m=2 * rocket.radius_m,
+        thrust_to_weight=min(initial_thrust, float(motor.average_thrust)) / weight,
+        main_deploy_agl_m=events[-1].triggered_agl_m if events else None,
+        drogue_descent_rate_ms=descent_rate,
         landing=landing,
         parachute_events=events,
     )

@@ -519,6 +519,122 @@ class MonteCarlo(_Strict):
     )
 
 
+# --- Constraints ------------------------------------------------------------------
+
+#: Result metrics a constraint can test. Each is computed from a flight summary
+#: and recorded for every Monte Carlo sample (see simcore.constraints.metrics).
+Metric = Literal[
+    "apogee_agl_m",
+    "rail_exit_velocity_ms",
+    "stability_margin_at_rail_exit_cal",
+    "min_stability_margin_cal",
+    "max_stability_margin_cal",
+    "stability_margin_at_launch_pct_length",
+    "min_stability_margin_pct_length",
+    "max_stability_margin_pct_length",
+    "thrust_to_weight",
+    "max_mach",
+    "max_acceleration_ms2",
+    "max_dynamic_pressure_pa",
+    "landing_speed_ms",
+    "landing_kinetic_energy_j",
+    "main_deploy_agl_m",
+    "drogue_descent_rate_ms",
+    "descent_time_s",
+    "drift_m",
+    "flight_time_s",
+]
+
+EvaluateOn = Literal["nominal", "p50", "p95", "p99", "worst"]
+Severity = Literal["hard", "scoring", "advisory"]
+
+
+class Condition(_Strict):
+    """Limits a rule to the flights it applies to, e.g. only supersonic ones."""
+
+    metric: Metric = Field(description="The metric that decides.")
+    min: float | None = Field(default=None, description="Applies when the metric is at least this.")
+    max: float | None = Field(default=None, description="Applies when the metric is below this.")
+
+
+class Constraint(_Strict):
+    """A declarative rule over one result metric: a minimum, a maximum, or a target band."""
+
+    id: str = Field(
+        pattern=r"^[a-z0-9_]+$", description="Stable id, e.g. 'min_rail_exit_velocity'."
+    )
+    label: str = Field(default="", description="What it checks, in words.")
+    metric: Metric = Field(description="The result metric it tests.")
+    min: float | None = Field(
+        default=None, description="Lowest allowed value, in the metric's units."
+    )
+    max: float | None = Field(
+        default=None, description="Highest allowed value, in the metric's units."
+    )
+    target: float | str | None = Field(
+        default=None,
+        description=(
+            "Target value, or '$category.apogee_target_m' to take the profile category's target. "
+            "Needs a tolerance."
+        ),
+    )
+    tolerance_pct: float | None = Field(
+        default=None, gt=0, description="Allowed distance from the target, percent of it."
+    )
+    tolerance_m: float | None = Field(
+        default=None, gt=0, description="Allowed distance from the target, in the metric's units."
+    )
+    severity: Severity = Field(
+        default="hard",
+        description="hard: a fail is a no-go. scoring: costs points. advisory: worth knowing.",
+    )
+    evaluate_on: EvaluateOn = Field(
+        default="p95",
+        description=(
+            "nominal: the single flight. p50/p95/p99: that share of Monte Carlo flights must "
+            "comply. worst: every flight must."
+        ),
+    )
+    reference: str = Field(default="", description="The rule clause this comes from.")
+    applies_if: Condition | None = Field(
+        default=None, description="Judge only the flights this holds for. Unset: every flight."
+    )
+
+    @model_validator(mode="after")
+    def _has_a_limit(self) -> "Constraint":
+        if self.min is None and self.max is None and self.target is None:
+            raise ValueError("a constraint needs a min, a max or a target")
+        if self.target is not None and self.tolerance_pct is None and self.tolerance_m is None:
+            raise ValueError("a target needs tolerance_pct or tolerance_m")
+        return self
+
+
+class ConstraintOverride(_Strict):
+    """A mission's change to one profile rule. Unset fields keep the profile's value."""
+
+    min: float | None = Field(default=None, description="Lowest allowed value.")
+    max: float | None = Field(default=None, description="Highest allowed value.")
+    target: float | None = Field(default=None, description="Target value.")
+    tolerance_pct: float | None = Field(default=None, gt=0, description="Tolerance, percent.")
+    tolerance_m: float | None = Field(default=None, gt=0, description="Tolerance, metric units.")
+    severity: Severity | None = Field(default=None, description="Severity.")
+    evaluate_on: EvaluateOn | None = Field(default=None, description="What it is judged on.")
+    disabled: bool = Field(default=False, description="Drop this rule for this mission.")
+
+
+class ConstraintSettings(_Strict):
+    profile: str | None = Field(
+        default=None, description="Competition profile id, e.g. 'aurc-2027'. None: team rules only."
+    )
+    category: str | None = Field(default=None, description="Category within the profile.")
+    overrides: dict[str, ConstraintOverride] = Field(
+        default_factory=dict, description="Changes to profile rules, by rule id."
+    )
+    additional: list[Constraint] = Field(
+        default_factory=list, description="The team's own rules, on top of the profile's."
+    )
+
+
 class Mission(_Strict):
     """A complete mission config. Serialised as YAML (or JSON)."""
 
@@ -547,7 +663,10 @@ class Mission(_Strict):
     monte_carlo: MonteCarlo = Field(
         default_factory=MonteCarlo, description="Monte Carlo campaign settings."
     )
-    constraints: OpenSection
+    constraints: ConstraintSettings = Field(
+        default_factory=ConstraintSettings,
+        description="Competition profile and team rules the go/no-go board checks.",
+    )
     solver: OpenSection
     assets: dict[str, Asset] = Field(
         default_factory=dict,

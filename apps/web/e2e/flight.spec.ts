@@ -51,6 +51,18 @@ test('import the Calisto bundle, fly it, and run a small campaign', async ({ pag
     await page.getByRole('link', { name: 'Monte Carlo results' }).click()
     await expect(page.getByRole('img', { name: /histogram of 20 samples/ })).toHaveCount(8)
     await page.screenshot({ path: 'test-results/montecarlo-results.png' })
+
+    // Judge it against AURC 2026: Calisto's drogue descends at about 18 m/s, under Spec 5.3.2's 20.
+    await page.getByRole('link', { name: 'Go / no-go' }).click()
+    await page.getByLabel('Profile').selectOption('aurc-2026')
+    await page.getByLabel('Category').selectOption('10k-cots')
+    await expect(page.getByText('NO-GO', { exact: true })).toBeVisible()
+    const drogue = page.getByRole('row', { name: /Descent under drogue/ })
+    await expect(drogue).toContainText('Fail')
+    await expect(drogue).toContainText('Spec 5.3.2')
+    await expect(page.getByRole('row', { name: /Rail departure/ })).toContainText('Pass')
+    await expect(page.getByRole('region', { name: 'Apogee score' })).toContainText('of 350')
+    await page.screenshot({ path: 'test-results/go-no-go.png', fullPage: true })
   } finally {
     await request.delete(`/api/missions/${CALISTO_ID}`)
   }

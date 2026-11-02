@@ -166,10 +166,58 @@ def _environment_checks(mission: Mission) -> list[Issue]:
     return issues
 
 
+def _constraint_checks(mission: Mission) -> list[Issue]:
+    from simcore.constraints import ProfileError, load_profiles  # imports the engine's metrics
+
+    settings = mission.constraints
+    if not settings.profile:
+        return []
+    try:
+        profile = load_profiles()[settings.profile]
+    except (KeyError, ProfileError):
+        return [
+            _error(
+                "constraints.profile", "There is no such competition profile.", "unknown_profile"
+            )
+        ]
+    ids = {c.id for c in profile.constraints}
+    issues = [
+        _warning(
+            f"constraints.overrides.{rule}", "The profile has no rule with this id.", "unknown_rule"
+        )
+        for rule in settings.overrides
+        if rule not in ids
+    ]
+    if settings.category and settings.category not in {c.id for c in profile.categories}:
+        issues.append(
+            _error("constraints.category", "The profile has no such category.", "unknown_category")
+        )
+    elif not settings.category and any(isinstance(c.target, str) for c in profile.constraints):
+        issues.append(
+            _error(
+                "constraints.category",
+                "Choose a category: the profile's apogee target depends on it.",
+                "category_required",
+            )
+        )
+    elif not settings.category and profile.scoring:
+        issues.append(
+            _warning(
+                "constraints.category",
+                "Choose a category to estimate the apogee score.",
+                "category_for_score",
+            )
+        )
+    return issues
+
+
 def physical_checks(mission: Mission) -> list[Issue]:
     """Checks that need the whole, well-typed config."""
     issues: list[Issue] = (
-        _rocket_checks(mission) + _asset_checks(mission) + _environment_checks(mission)
+        _rocket_checks(mission)
+        + _asset_checks(mission)
+        + _environment_checks(mission)
+        + _constraint_checks(mission)
     )
     site = mission.site
     if (

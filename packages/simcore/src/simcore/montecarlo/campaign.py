@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 from scipy.stats import chi2
 
 from simcore.assets import AssetStore
+from simcore.constraints.metrics import from_summary
 from simcore.engine import run_flight
 from simcore.mission.models import Mission, quantity
 from simcore.mission.validation import point_in_polygon
@@ -29,12 +30,17 @@ OUTPUTS: dict[str, tuple[str, str]] = {
     "max_mach": ("1", "Max Mach"),
     "max_dynamic_pressure_pa": ("Pa", "Max dynamic pressure"),
     "max_acceleration_ms2": ("m/s²", "Max acceleration"),
+    "thrust_to_weight": ("1", "Thrust to weight"),
+    "main_deploy_agl_m": ("m", "Main deployment altitude"),
+    "drogue_descent_rate_ms": ("m/s", "Descent rate under drogue, at main deployment"),
     "landing_east_m": ("m", "Landing east of the pad"),
     "landing_north_m": ("m", "Landing north of the pad"),
     "landing_latitude_deg": ("deg", "Landing latitude"),
     "landing_longitude_deg": ("deg", "Landing longitude"),
     "drift_m": ("m", "Drift from the pad"),
     "landing_speed_ms": ("m/s", "Touchdown speed"),
+    "landing_kinetic_energy_j": ("J", "Landing kinetic energy (whole rocket)"),
+    "descent_time_s": ("s", "Descent time, apogee to touchdown"),
     "flight_time_s": ("s", "Flight time"),
 }
 
@@ -54,25 +60,14 @@ def run_samples(mission: Mission, assets: AssetStore, indices: list[int]) -> lis
             row["error"] = f"{type(e).__name__}: {e}"
             rows.append(row)
             continue
-        row |= {
-            "apogee_agl_m": s.apogee_agl_m,
-            "apogee_time_s": s.apogee_time_s,
-            "rail_exit_velocity_ms": s.rail_exit_velocity_ms,
-            "stability_margin_at_rail_exit_cal": s.stability_margin_at_rail_exit_cal,
-            "min_stability_margin_cal": s.min_stability_margin_cal,
-            "max_mach": s.max_mach,
-            "max_dynamic_pressure_pa": s.max_dynamic_pressure_pa,
-            "max_acceleration_ms2": s.max_acceleration_ms2,
-        }
+        # Every constraint metric, so any rule can be judged on the campaign.
+        row |= from_summary(s)
         if s.landing:
             row |= {
                 "landing_east_m": s.landing.east_m,
                 "landing_north_m": s.landing.north_m,
                 "landing_latitude_deg": s.landing.latitude_deg,
                 "landing_longitude_deg": s.landing.longitude_deg,
-                "drift_m": s.landing.drift_distance_m,
-                "landing_speed_ms": s.landing.speed_ms,
-                "flight_time_s": s.landing.flight_time_s,
             }
         rows.append(row)
     return rows
