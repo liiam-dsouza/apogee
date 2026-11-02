@@ -46,6 +46,9 @@ export type CampaignSummary = Schemas['CampaignSummary']
 export type Probability = Schemas['Probability']
 export type Distribution = Schemas['Distribution']
 export type Profile = Schemas['Profile']
+export type ThrustCurveDetail = Schemas['ThrustCurveDetail']
+export type DescentResponse = Schemas['DescentResponse']
+export type RecoveryDevice = Schemas['RecoveryDevice']
 export type Constraint = Schemas['Constraint']
 export type BoardResponse = Schemas['BoardResponse']
 export type RuleResult = Schemas['RuleResult']
@@ -187,6 +190,23 @@ export const api = {
   campaignDistributions: (id: string) =>
     unwrap<Distribution[]>(
       client.GET('/api/campaigns/{campaign_id}/distributions', { params: { path: { campaign_id: id } } }),
+    ),
+  thrustCurve: (sha: string) =>
+    unwrap<ThrustCurveDetail>(client.GET('/api/assets/{sha256}/thrust-curve', { params: { path: { sha256: sha } } })),
+  importMotor: (file: File) =>
+    unwrap<ThrustCurveImport>(
+      client.POST('/api/imports/motor', {
+        body: { file: file as unknown as string },
+        bodySerializer: () => {
+          const form = new FormData()
+          form.append('file', file)
+          return form
+        },
+      }),
+    ),
+  descentRates: (mission: Mission, targetRates: Record<string, number> = {}) =>
+    unwrap<DescentResponse>(
+      client.POST('/api/recovery/descent', { body: { mission, target_rates_ms: targetRates } }),
     ),
   listProfiles: () => unwrap<Profile[]>(client.GET('/api/profiles')),
   goNoGoBoard: (mission: Mission) =>

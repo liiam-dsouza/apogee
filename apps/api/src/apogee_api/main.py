@@ -15,6 +15,7 @@ from apogee_api.routers import (
     imports,
     missions,
     montecarlo,
+    recovery,
     results,
     sim,
     system,
@@ -62,6 +63,7 @@ def create_app() -> FastAPI:
     app.include_router(weather.router)
     app.include_router(montecarlo.router)
     app.include_router(constraints.router)
+    app.include_router(recovery.router)
     return app
 
 

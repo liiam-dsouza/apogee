@@ -37,6 +37,34 @@ section, which samples uncertain inputs, answers the second.
   limits are usually per independently descending section; that split is not modelled yet.
 - **Standard atmosphere has no wind.** Use it for sanity checks only.
 
+## Sizing recovery
+
+The **Recovery** section estimates each device's steady descent rate, where drag
+balances weight: v = √(2 m g / (ρ CdS)). Here m is the rocket's dry mass plus the
+burnt-out motor, and ρ comes from the mission's atmosphere
+(`simcore.recovery`). Each device governs the descent from where it opens to
+where the next one takes over, or to the ground. It is reported at both ends:
+the bottom is the slowest point, in denser air, and is where IREC's DTEG 6.3.3
+measures the drogue. Enter a wanted rate and it gives the CdS that achieves it
+there.
+
+As in the flight simulation, a deploying device replaces the one before it: the
+rate under the main uses the main's CdS alone. For Calisto the estimate agrees
+with the simulated flight within 3% under both canopies.
+
+These are sizing estimates. The single flight, with deployment lag and the
+approach to terminal speed, is the answer the go/no-go board uses.
+
+## The motor
+
+The **Motor** section shows the thrust curve and its impulse class, where each
+letter doubles the total impulse (H is 160 to 320 N·s, M is 5,120 to 10,240).
+A motor imported from an `.eng` file is a *generic* motor: its masses and
+propellant geometry are estimated from the file's header (as RocketPy does,
+except that RocketPy uses the case diameter as the radius). Check them against
+the motor's data sheet. A motor with known grain geometry is a *solid* motor,
+and its grains can be edited.
+
 ## Determinism, and its limits
 
 The same mission on the same platform gives **byte-identical** results:

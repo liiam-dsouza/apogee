@@ -3,6 +3,41 @@
 Running log of what's built against the project brief. Newest first.
 Frontend paths are relative to `apps/web/`.
 
+## 2026-11-02: Motor and Recovery editors
+
+**Done**
+- **Motor section:**
+  - The thrust curve (peak marked), impulse class and how far through it, total
+    impulse, average and peak thrust, burn time, propellant and loaded mass.
+  - The pane edits every generic or solid motor field (and the grains), and replaces the
+    motor by uploading an `.eng` or fetching from ThrustCurve.org.
+  - The new curve goes into the mission's assets and the old one is dropped if nothing
+    else uses it.
+- **Recovery section:**
+  - A steady-descent table per device (`simcore.recovery`): the stretch it governs, and
+    its rate at the top and bottom of that stretch.
+  - Enter a wanted rate to get the CdS that gives it, then **Use this CdS**.
+  - The pane adds, removes and edits devices: name, CdS, trigger (apogee or altitude),
+    deployment lag. New devices start from placeholder presets.
+- **API:**
+  - `GET /api/assets/{sha}/thrust-curve`.
+  - `POST /api/imports/motor` (upload an `.eng`, get an estimated motor).
+  - `POST /api/recovery/descent`: takes apogee from the mission's own flight, if it
+    has been run.
+- **Validated against the simulation:** the steady-rate estimate matches Calisto's
+  simulated drogue rate (at main deployment) and touchdown speed within 3% and 5%, and
+  Lanius's drogue exactly (17.9 m/s).
+- Units gained area, time and density.
+- **e2e:** the Calisto journey now checks the motor page and resizes the drogue for
+  25 m/s through the table.
+
+**For the Lanius AURC no-go:** its drogue (CdS 0.94 m²) gives 17.9 m/s where the main
+opens. CdS 0.62 m² gives 22 m/s there, 0.48 m² gives 25 m/s (AURC Spec 5.3.2 asks for 20
+to 50).
+
+**Known gaps:** no RockSim `.rse` import; parachute inflation and opening shock aren't
+modelled; the motor's dry inertia isn't editable (shown only through its estimate).
+
 ## 2026-11-02: Constraints, competition profiles (AURC 2026, IREC 2027), go/no-go board
 
 **Done**

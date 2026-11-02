@@ -38,6 +38,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/assets/{sha256}/thrust-curve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Thrust Curve
+         * @description A stored thrust curve, parsed: its points and what they add up to.
+         */
+        get: operations["thrustCurve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/campaigns/{campaign_id}": {
         parameters: {
             query?: never;
@@ -129,6 +149,26 @@ export interface paths {
         get: operations["getHealth"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/imports/motor": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Import Motor
+         * @description Store an uploaded .eng and estimate a motor section from its header.
+         */
+        post: operations["importMotor"];
         delete?: never;
         options?: never;
         head?: never;
@@ -313,6 +353,26 @@ export interface paths {
         get: operations["listProfiles"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/recovery/descent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Descent
+         * @description Steady descent rate under each device, where it opens and where the next takes over.
+         */
+        post: operations["descentRates"];
         delete?: never;
         options?: never;
         head?: never;
@@ -589,6 +649,11 @@ export interface components {
         };
         /** Body_importMission */
         Body_importMission: {
+            /** File */
+            file: string;
+        };
+        /** Body_importMotor */
+        Body_importMotor: {
             /** File */
             file: string;
         };
@@ -967,6 +1032,79 @@ export interface components {
              * @description Units of both values.
              */
             units: string;
+        };
+        /** DescentRequest */
+        DescentRequest: {
+            /** @description The mission, saved or not. */
+            mission: components["schemas"]["Mission"];
+            /**
+             * Target Rates Ms
+             * @description Wanted descent rate per device name, at the bottom of its stretch.
+             */
+            target_rates_ms?: {
+                [key: string]: number;
+            };
+        };
+        /** DescentResponse */
+        DescentResponse: {
+            /**
+             * Apogee Agl M
+             * @description From this mission's single flight, if it has been run.
+             */
+            apogee_agl_m: number | null;
+            /**
+             * Devices
+             * @description Highest first.
+             */
+            devices: components["schemas"]["DeviceDescent"][];
+            /**
+             * Mass Kg
+             * @description Rocket and burnt-out motor.
+             */
+            mass_kg: number;
+        };
+        /** DeviceDescent */
+        DeviceDescent: {
+            /**
+             * Bottom Agl M
+             * @description Where it hands over: the next device's height, or 0.
+             */
+            bottom_agl_m: number;
+            /**
+             * Cd S For Target M2
+             * @description CdS that gives the target rate there.
+             */
+            cd_s_for_target_m2: number | null;
+            /**
+             * Cd S M2
+             * @description The device's CdS.
+             */
+            cd_s_m2: number;
+            /**
+             * Name
+             * @description Device name.
+             */
+            name: string;
+            /**
+             * Rate Bottom Ms
+             * @description Steady descent rate at the bottom.
+             */
+            rate_bottom_ms: number;
+            /**
+             * Rate Top Ms
+             * @description Steady descent rate at the top.
+             */
+            rate_top_ms: number | null;
+            /**
+             * Target Rate Ms
+             * @description The rate asked for at the bottom, if any.
+             */
+            target_rate_ms: number | null;
+            /**
+             * Top Agl M
+             * @description Where it takes over: its deployment height. None for apogee without a flight.
+             */
+            top_agl_m: number | null;
         };
         /** Distribution */
         Distribution: {
@@ -2835,6 +2973,67 @@ export interface components {
              */
             top_radius_m: number;
         };
+        /** ThrustCurveDetail */
+        ThrustCurveDetail: {
+            /**
+             * Average Thrust N
+             * @description Total impulse over burn time.
+             */
+            average_thrust_n: number;
+            /**
+             * Burn Time S
+             * @description Last thrust point.
+             */
+            burn_time_s: number;
+            /**
+             * Class Percent
+             * @description How far through its class, 0 to 100.
+             */
+            class_percent: number;
+            /**
+             * Designation
+             * @description Motor designation from the file header.
+             */
+            designation: string;
+            /**
+             * Impulse Class
+             * @description Impulse class letter, e.g. 'M'.
+             */
+            impulse_class: string;
+            /**
+             * Manufacturer
+             * @description Manufacturer code from the file header.
+             */
+            manufacturer: string;
+            /**
+             * Max Thrust N
+             * @description Peak thrust.
+             */
+            max_thrust_n: number;
+            /**
+             * Points
+             * @description (time s, thrust N), from ignition.
+             */
+            points: [
+                number,
+                number
+            ][];
+            /**
+             * Propellant Mass Kg
+             * @description From the file header.
+             */
+            propellant_mass_kg: number;
+            /**
+             * Total Impulse Ns
+             * @description Area under the curve.
+             */
+            total_impulse_ns: number;
+            /**
+             * Total Mass Kg
+             * @description Loaded motor, from the file header.
+             */
+            total_mass_kg: number;
+        };
         /** ThrustCurveImport */
         ThrustCurveImport: {
             /** @description The stored thrust curve. */
@@ -3030,6 +3229,46 @@ export interface operations {
             };
         };
     };
+    thrustCurve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sha256: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ThrustCurveDetail"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     getCampaign: {
         parameters: {
             query?: never;
@@ -3199,6 +3438,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Health"];
+                };
+            };
+        };
+    };
+    importMotor: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_importMotor"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ThrustCurveImport"];
+                };
+            };
+            /** @description Not a readable thrust curve. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -3728,6 +4000,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Profile"][];
+                };
+            };
+        };
+    };
+    descentRates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DescentRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DescentResponse"];
+                };
+            };
+            /** @description No rocket, motor or site yet. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
                 };
             };
         };

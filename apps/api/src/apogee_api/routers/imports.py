@@ -300,3 +300,34 @@ def fetch_thrust_curve(body: ThrustCurveRequest, store: AssetStoreDep) -> Thrust
             f"({rasp.get('source', 'unknown')} data, {rasp.get('license', 'licence unknown')})"
         ),
     )
+
+
+@router.post(
+    "/motor",
+    operation_id="importMotor",
+    responses={422: {"model": Problem, "description": "Not a readable thrust curve."}},
+)
+async def import_motor(file: UploadFile, store: AssetStoreDep) -> ThrustCurveImport:
+    """Store an uploaded .eng and estimate a motor section from its header."""
+    data = await file.read(10 * 1024 * 1024)
+    filename = file.filename or "motor.eng"
+    try:
+        motor, sha, _, curve = _motor_from_curve(filename, data, store)
+    except ThrustCurveError as e:
+        raise ApiProblem(422, "unreadable_asset", f"{filename} could not be read", str(e)) from e
+    return ThrustCurveImport(
+        asset=AssetInfo(
+            sha256=sha,
+            kind="thrust_curve",
+            filename=filename,
+            size=len(data),
+            thrust_curve=ThrustCurveInfo(
+                designation=curve.designation,
+                total_impulse_ns=curve.total_impulse_ns,
+                burn_time_s=curve.burn_time_s,
+                propellant_mass_kg=curve.propellant_mass_kg,
+            ),
+        ),
+        motor=motor,
+        source=f"Uploaded {filename}; masses and geometry estimated from its header",
+    )

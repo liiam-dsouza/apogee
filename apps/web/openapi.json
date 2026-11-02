@@ -226,6 +226,20 @@
         "title": "Body_importMission",
         "type": "object"
       },
+      "Body_importMotor": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_importMotor",
+        "type": "object"
+      },
       "Body_importOpenRocket": {
         "properties": {
           "file": {
@@ -1015,6 +1029,156 @@
           "note"
         ],
         "title": "CrossCheck",
+        "type": "object"
+      },
+      "DescentRequest": {
+        "properties": {
+          "mission": {
+            "$ref": "#/components/schemas/Mission",
+            "description": "The mission, saved or not."
+          },
+          "target_rates_ms": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "description": "Wanted descent rate per device name, at the bottom of its stretch.",
+            "title": "Target Rates Ms",
+            "type": "object"
+          }
+        },
+        "required": [
+          "mission"
+        ],
+        "title": "DescentRequest",
+        "type": "object"
+      },
+      "DescentResponse": {
+        "properties": {
+          "apogee_agl_m": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "From this mission's single flight, if it has been run.",
+            "title": "Apogee Agl M",
+            "units": "m"
+          },
+          "devices": {
+            "description": "Highest first.",
+            "items": {
+              "$ref": "#/components/schemas/DeviceDescent"
+            },
+            "title": "Devices",
+            "type": "array"
+          },
+          "mass_kg": {
+            "description": "Rocket and burnt-out motor.",
+            "title": "Mass Kg",
+            "type": "number",
+            "units": "kg"
+          }
+        },
+        "required": [
+          "mass_kg",
+          "apogee_agl_m",
+          "devices"
+        ],
+        "title": "DescentResponse",
+        "type": "object"
+      },
+      "DeviceDescent": {
+        "properties": {
+          "bottom_agl_m": {
+            "description": "Where it hands over: the next device's height, or 0.",
+            "title": "Bottom Agl M",
+            "type": "number",
+            "units": "m"
+          },
+          "cd_s_for_target_m2": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "CdS that gives the target rate there.",
+            "title": "Cd S For Target M2",
+            "units": "m\u00b2"
+          },
+          "cd_s_m2": {
+            "description": "The device's CdS.",
+            "title": "Cd S M2",
+            "type": "number",
+            "units": "m\u00b2"
+          },
+          "name": {
+            "description": "Device name.",
+            "title": "Name",
+            "type": "string"
+          },
+          "rate_bottom_ms": {
+            "description": "Steady descent rate at the bottom.",
+            "title": "Rate Bottom Ms",
+            "type": "number",
+            "units": "m/s"
+          },
+          "rate_top_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Steady descent rate at the top.",
+            "title": "Rate Top Ms",
+            "units": "m/s"
+          },
+          "target_rate_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The rate asked for at the bottom, if any.",
+            "title": "Target Rate Ms",
+            "units": "m/s"
+          },
+          "top_agl_m": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Where it takes over: its deployment height. None for apogee without a flight.",
+            "title": "Top Agl M",
+            "units": "m"
+          }
+        },
+        "required": [
+          "name",
+          "cd_s_m2",
+          "top_agl_m",
+          "bottom_agl_m",
+          "rate_top_ms",
+          "rate_bottom_ms",
+          "target_rate_ms",
+          "cd_s_for_target_m2"
+        ],
+        "title": "DeviceDescent",
         "type": "object"
       },
       "Distribution": {
@@ -4319,6 +4483,99 @@
         "title": "Tail",
         "type": "object"
       },
+      "ThrustCurveDetail": {
+        "properties": {
+          "average_thrust_n": {
+            "description": "Total impulse over burn time.",
+            "title": "Average Thrust N",
+            "type": "number",
+            "units": "N"
+          },
+          "burn_time_s": {
+            "description": "Last thrust point.",
+            "title": "Burn Time S",
+            "type": "number",
+            "units": "s"
+          },
+          "class_percent": {
+            "description": "How far through its class, 0 to 100.",
+            "title": "Class Percent",
+            "type": "number"
+          },
+          "designation": {
+            "description": "Motor designation from the file header.",
+            "title": "Designation",
+            "type": "string"
+          },
+          "impulse_class": {
+            "description": "Impulse class letter, e.g. 'M'.",
+            "title": "Impulse Class",
+            "type": "string"
+          },
+          "manufacturer": {
+            "description": "Manufacturer code from the file header.",
+            "title": "Manufacturer",
+            "type": "string"
+          },
+          "max_thrust_n": {
+            "description": "Peak thrust.",
+            "title": "Max Thrust N",
+            "type": "number",
+            "units": "N"
+          },
+          "points": {
+            "description": "(time s, thrust N), from ignition.",
+            "items": {
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "type": "array"
+            },
+            "title": "Points",
+            "type": "array"
+          },
+          "propellant_mass_kg": {
+            "description": "From the file header.",
+            "title": "Propellant Mass Kg",
+            "type": "number",
+            "units": "kg"
+          },
+          "total_impulse_ns": {
+            "description": "Area under the curve.",
+            "title": "Total Impulse Ns",
+            "type": "number",
+            "units": "N\u00b7s"
+          },
+          "total_mass_kg": {
+            "description": "Loaded motor, from the file header.",
+            "title": "Total Mass Kg",
+            "type": "number",
+            "units": "kg"
+          }
+        },
+        "required": [
+          "designation",
+          "manufacturer",
+          "points",
+          "total_impulse_ns",
+          "impulse_class",
+          "class_percent",
+          "burn_time_s",
+          "average_thrust_n",
+          "max_thrust_n",
+          "propellant_mass_kg",
+          "total_mass_kg"
+        ],
+        "title": "ThrustCurveDetail",
+        "type": "object"
+      },
       "ThrustCurveImport": {
         "properties": {
           "asset": {
@@ -4628,6 +4885,59 @@
         ]
       }
     },
+    "/api/assets/{sha256}/thrust-curve": {
+      "get": {
+        "description": "A stored thrust curve, parsed: its points and what they add up to.",
+        "operationId": "thrustCurve",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sha256",
+            "required": true,
+            "schema": {
+              "title": "Sha256",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ThrustCurveDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "summary": "Thrust Curve",
+        "tags": [
+          "assets"
+        ]
+      }
+    },
     "/api/campaigns/{campaign_id}": {
       "get": {
         "description": "Progress, statistics and landing points, over the samples finished so far.",
@@ -4847,6 +5157,48 @@
         "summary": "Health",
         "tags": [
           "system"
+        ]
+      }
+    },
+    "/api/imports/motor": {
+      "post": {
+        "description": "Store an uploaded .eng and estimate a motor section from its header.",
+        "operationId": "importMotor",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_importMotor"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ThrustCurveImport"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not a readable thrust curve."
+          }
+        },
+        "summary": "Import Motor",
+        "tags": [
+          "imports"
         ]
       }
     },
@@ -5507,6 +5859,48 @@
         "summary": "List Profiles",
         "tags": [
           "constraints"
+        ]
+      }
+    },
+    "/api/recovery/descent": {
+      "post": {
+        "description": "Steady descent rate under each device, where it opens and where the next takes over.",
+        "operationId": "descentRates",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DescentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DescentResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No rocket, motor or site yet."
+          }
+        },
+        "summary": "Descent",
+        "tags": [
+          "recovery"
         ]
       }
     },

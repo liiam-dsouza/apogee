@@ -63,6 +63,20 @@ test('import the Calisto bundle, fly it, and run a small campaign', async ({ pag
     await expect(page.getByRole('row', { name: /Rail departure/ })).toContainText('Pass')
     await expect(page.getByRole('region', { name: 'Apogee score' })).toContainText('of 350')
     await page.screenshot({ path: 'test-results/go-no-go.png', fullPage: true })
+
+    // The motor: its curve and class.
+    await page.getByRole('link', { name: 'Motor' }).click()
+    await expect(page.getByText(/M class/)).toBeVisible()
+    await expect(page.getByRole('img', { name: /Thrust against time/ })).toBeVisible()
+
+    // Recovery: size the drogue for 25 m/s where the main takes over, and use it.
+    await page.getByRole('link', { name: 'Recovery' }).click()
+    const drogueRow = page.getByRole('row', { name: /^Drogue/ })
+    await expect(drogueRow).toContainText('to 800 m')
+    await page.getByLabel('Wanted descent rate under Drogue').fill('25')
+    await drogueRow.getByRole('button', { name: 'Use this CdS' }).click()
+    await expect(drogueRow.getByRole('cell').nth(4)).toHaveText('25.0 m/s')
+    await page.screenshot({ path: 'test-results/recovery.png', fullPage: true })
   } finally {
     await request.delete(`/api/missions/${CALISTO_ID}`)
   }

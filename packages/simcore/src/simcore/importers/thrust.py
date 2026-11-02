@@ -44,6 +44,31 @@ class ThrustCurve:
     def burn_time_s(self) -> float:
         return self.points[-1][0]
 
+    @property
+    def average_thrust_n(self) -> float:
+        return self.total_impulse_ns / self.burn_time_s if self.burn_time_s > 0 else 0.0
+
+    @property
+    def max_thrust_n(self) -> float:
+        return max(f for _, f in self.points)
+
+
+def motor_class(total_impulse_ns: float) -> tuple[str, float]:
+    """The impulse class letter and how far through it the motor is, in percent.
+
+    Class A is 1.26 to 2.5 N·s and each letter doubles: H is 160 to 320 N·s,
+    M is 5,120 to 10,240. Below A the class is "1/2A" and so on; this returns
+    "A" or below as "A" with a percentage under zero.
+    """
+    letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    upper = 2.5
+    for letter in letters:
+        if total_impulse_ns <= upper:
+            lower = upper / 2
+            return letter, 100 * (total_impulse_ns - lower) / (upper - lower)
+        upper *= 2
+    return "Z", 100.0
+
 
 def parse_eng(text: str) -> ThrustCurve:
     """Parse a RASP .eng file.

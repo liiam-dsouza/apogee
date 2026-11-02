@@ -80,6 +80,9 @@ export const fields = {
   "Body_importMission": {
     "file": {}
   },
+  "Body_importMotor": {
+    "file": {}
+  },
   "Body_importOpenRocket": {
     "file": {},
     "thrust_curve": {
@@ -308,6 +311,60 @@ export const fields = {
     },
     "units": {
       "description": "Units of both values."
+    }
+  },
+  "DescentRequest": {
+    "mission": {
+      "description": "The mission, saved or not."
+    },
+    "target_rates_ms": {
+      "description": "Wanted descent rate per device name, at the bottom of its stretch."
+    }
+  },
+  "DescentResponse": {
+    "apogee_agl_m": {
+      "description": "From this mission's single flight, if it has been run.",
+      "units": "m"
+    },
+    "devices": {
+      "description": "Highest first."
+    },
+    "mass_kg": {
+      "description": "Rocket and burnt-out motor.",
+      "units": "kg"
+    }
+  },
+  "DeviceDescent": {
+    "bottom_agl_m": {
+      "description": "Where it hands over: the next device's height, or 0.",
+      "units": "m"
+    },
+    "cd_s_for_target_m2": {
+      "description": "CdS that gives the target rate there.",
+      "units": "m²"
+    },
+    "cd_s_m2": {
+      "description": "The device's CdS.",
+      "units": "m²"
+    },
+    "name": {
+      "description": "Device name."
+    },
+    "rate_bottom_ms": {
+      "description": "Steady descent rate at the bottom.",
+      "units": "m/s"
+    },
+    "rate_top_ms": {
+      "description": "Steady descent rate at the top.",
+      "units": "m/s"
+    },
+    "target_rate_ms": {
+      "description": "The rate asked for at the bottom, if any.",
+      "units": "m/s"
+    },
+    "top_agl_m": {
+      "description": "Where it takes over: its deployment height. None for apogee without a flight.",
+      "units": "m"
     }
   },
   "Distribution": {
@@ -1633,6 +1690,47 @@ export const fields = {
       "description": "Radius at the forward end of the tail.",
       "units": "m",
       "exclusiveMinimum": 0
+    }
+  },
+  "ThrustCurveDetail": {
+    "average_thrust_n": {
+      "description": "Total impulse over burn time.",
+      "units": "N"
+    },
+    "burn_time_s": {
+      "description": "Last thrust point.",
+      "units": "s"
+    },
+    "class_percent": {
+      "description": "How far through its class, 0 to 100."
+    },
+    "designation": {
+      "description": "Motor designation from the file header."
+    },
+    "impulse_class": {
+      "description": "Impulse class letter, e.g. 'M'."
+    },
+    "manufacturer": {
+      "description": "Manufacturer code from the file header."
+    },
+    "max_thrust_n": {
+      "description": "Peak thrust.",
+      "units": "N"
+    },
+    "points": {
+      "description": "(time s, thrust N), from ignition."
+    },
+    "propellant_mass_kg": {
+      "description": "From the file header.",
+      "units": "kg"
+    },
+    "total_impulse_ns": {
+      "description": "Area under the curve.",
+      "units": "N·s"
+    },
+    "total_mass_kg": {
+      "description": "Loaded motor, from the file header.",
+      "units": "kg"
     }
   },
   "ThrustCurveImport": {

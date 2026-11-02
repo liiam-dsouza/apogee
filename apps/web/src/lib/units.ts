@@ -27,6 +27,9 @@ export type Quantity =
   | 'energy'
   /** Dimensionless, e.g. an exponent. */
   | 'ratio'
+  | 'area'
+  | 'time'
+  | 'density'
 
 interface Unit {
   symbol: string
@@ -62,6 +65,9 @@ const UNITS: Record<UnitSystem, Record<Quantity, Unit>> = {
     angle: linear('°', 1),
     energy: linear('J', 1),
     ratio: linear('', 1),
+    area: linear('m²', 1),
+    time: linear('s', 1),
+    density: linear('kg/m³', 1),
   },
   imperial: {
     length: linear('in', FT / 12),
@@ -82,6 +88,9 @@ const UNITS: Record<UnitSystem, Record<Quantity, Unit>> = {
     angle: linear('°', 1),
     energy: linear('ft·lbf', FT * LBF),
     ratio: linear('', 1),
+    area: linear('ft²', FT * FT),
+    time: linear('s', 1),
+    density: linear('lb/ft³', LB / FT ** 3),
   },
 }
 

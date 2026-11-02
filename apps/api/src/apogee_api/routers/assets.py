@@ -92,3 +92,57 @@ def download_asset(sha256: str, store: AssetStoreDep) -> Response:
         media_type="application/octet-stream",
         headers={"Cache-Control": "public, max-age=31536000, immutable"},
     )
+
+
+class ThrustCurveDetail(BaseModel):
+    designation: str = Field(description="Motor designation from the file header.")
+    manufacturer: str = Field(description="Manufacturer code from the file header.")
+    points: list[tuple[float, float]] = Field(description="(time s, thrust N), from ignition.")
+    total_impulse_ns: float = Field(
+        description="Area under the curve.", json_schema_extra={"units": "N·s"}
+    )
+    impulse_class: str = Field(description="Impulse class letter, e.g. 'M'.")
+    class_percent: float = Field(description="How far through its class, 0 to 100.")
+    burn_time_s: float = Field(description="Last thrust point.", json_schema_extra={"units": "s"})
+    average_thrust_n: float = Field(
+        description="Total impulse over burn time.", json_schema_extra={"units": "N"}
+    )
+    max_thrust_n: float = Field(description="Peak thrust.", json_schema_extra={"units": "N"})
+    propellant_mass_kg: float = Field(
+        description="From the file header.", json_schema_extra={"units": "kg"}
+    )
+    total_mass_kg: float = Field(
+        description="Loaded motor, from the file header.", json_schema_extra={"units": "kg"}
+    )
+
+
+@router.get(
+    "/{sha256}/thrust-curve",
+    operation_id="thrustCurve",
+    responses={404: {"model": Problem}, 422: {"model": Problem}},
+)
+def thrust_curve(sha256: str, store: AssetStoreDep) -> ThrustCurveDetail:
+    """A stored thrust curve, parsed: its points and what they add up to."""
+    from simcore.assets import AssetError
+    from simcore.importers.thrust import motor_class, parse_eng
+
+    try:
+        curve = parse_eng(store.read(sha256).decode("utf-8", errors="replace"))
+    except AssetError as e:
+        raise ApiProblem(404, "asset_not_found", "Asset not found", str(e)) from e
+    except ThrustCurveError as e:
+        raise ApiProblem(422, "unreadable_asset", "Not a thrust curve", str(e)) from e
+    letter, pct = motor_class(curve.total_impulse_ns)
+    return ThrustCurveDetail(
+        designation=curve.designation,
+        manufacturer=curve.manufacturer,
+        points=curve.points,
+        total_impulse_ns=curve.total_impulse_ns,
+        impulse_class=letter,
+        class_percent=pct,
+        burn_time_s=curve.burn_time_s,
+        average_thrust_n=curve.average_thrust_n,
+        max_thrust_n=curve.max_thrust_n,
+        propellant_mass_kg=curve.propellant_mass_kg,
+        total_mass_kg=curve.total_mass_kg,
+    )
