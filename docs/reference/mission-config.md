@@ -159,11 +159,16 @@ Parachutes and other recovery devices.
 
 ## `ballast`
 
-Not modelled yet: accepted as-is so configs round-trip.
+Ballast installed and to solve for.
 
 | Field | Type | Units | Allowed | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `ballast` | mapping |  |  |  | Not modelled yet: accepted as-is so configs round-trip. |
+| `ballast` | Ballast |  |  |  | Ballast installed and to solve for. |
+| `ballast.installed_kg` | number | kg | ≥ 0 | `0.0` | Ballast in the rocket now. Every flight includes it. |
+| `ballast.position_m` | number | m | ≥ 0 | `null` | Centre of the ballast bay, aft of the nose tip. Needed for any ballast. |
+| `ballast.target_apogee_m` | number | m | > 0 | `null` | Apogee to trim to, above the pad. Unset: the competition category's target. |
+| `ballast.increment_kg` | number | kg | > 0 | `0.05` | Smallest step you can add: one plate, or a measure of shot. |
+| `ballast.max_kg` | number | kg | > 0 | `2.0` | Most the bay holds. |
 
 ## `site`
 

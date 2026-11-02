@@ -127,3 +127,56 @@ def monte_carlo_chunk(
     rows = run_samples(mission, DirectoryAssetStore(root / "assets"), indices)
     CampaignStore(root / "campaigns").write_chunk(campaign_id, chunk, rows)
     return campaign_id
+
+
+def solve_ballast(mission_data: dict[str, Any], *, result_id: str, data_dir: str) -> str:
+    """Solve for ballast and store the solution as ``ballast/<result_id>.json``."""
+    import json
+    import os
+
+    from simcore.assets import DirectoryAssetStore
+    from simcore.ballast.solve import solve
+    from simcore.mission import load_mission
+
+    root = Path(data_dir)
+    solution = solve(load_mission(mission_data), DirectoryAssetStore(root / "assets"))
+    out = root / "ballast"
+    out.mkdir(parents=True, exist_ok=True)
+    tmp = out / f".{result_id}.{os.getpid()}.tmp"
+    tmp.write_text(json.dumps(solution.model_dump(mode="json")))
+    os.replace(tmp, out / f"{result_id}.json")
+    return result_id
+
+
+def fit_postflight(
+    mission_data: dict[str, Any],
+    *,
+    log_sha: str,
+    time_column: str,
+    altitude_column: str,
+    altitude_units: str,
+    fit_impulse: bool,
+    result_id: str,
+    data_dir: str,
+) -> str:
+    """Fit the mission to a stored flight log; store the fit as ``postflight/<result_id>.json``."""
+    import json
+    import os
+
+    from simcore.assets import DirectoryAssetStore
+    from simcore.mission import load_mission
+    from simcore.postflight import read_log
+    from simcore.postflight.fit import fit
+
+    root = Path(data_dir)
+    store = DirectoryAssetStore(root / "assets")
+    t, alt = read_log(
+        store.read(log_sha), time_column, altitude_column, "ft" if altitude_units == "ft" else "m"
+    )
+    result = fit(load_mission(mission_data), store, t, alt, fit_impulse=fit_impulse)
+    out = root / "postflight"
+    out.mkdir(parents=True, exist_ok=True)
+    tmp = out / f".{result_id}.{os.getpid()}.tmp"
+    tmp.write_text(json.dumps(result.model_dump(mode="json")))
+    os.replace(tmp, out / f"{result_id}.json")
+    return result_id

@@ -7,7 +7,7 @@ const BUNDLE = path.resolve(import.meta.dirname, '../../../missions/examples/cal
 const CALISTO_ID = '01JCALISTO0000000000000000'
 
 test('import the Calisto bundle, fly it, and run a small campaign', async ({ page, request }) => {
-  test.setTimeout(180_000) // the first run also starts the worker's process pool
+  test.setTimeout(360_000) // the first run also starts the worker's process pool
   await request.delete(`/api/missions/${CALISTO_ID}`) // start clean; 404 is fine
   try {
     await page.goto('/missions')
@@ -77,6 +77,45 @@ test('import the Calisto bundle, fly it, and run a small campaign', async ({ pag
     await drogueRow.getByRole('button', { name: 'Use this CdS' }).click()
     await expect(drogueRow.getByRole('cell').nth(4)).toHaveText('25.0 m/s')
     await page.screenshot({ path: 'test-results/recovery.png', fullPage: true })
+
+    // Ballast to the AURC 10k target (3,048 m, from the category chosen above), with its report.
+    await page.getByRole('link', { name: 'Ballast' }).click()
+    await page.getByRole('textbox', { name: 'Bay centre, aft of the nose tip' }).fill('0.4')
+    await page.getByRole('button', { name: 'Solve' }).click()
+    await expect(page.getByRole('region', { name: 'Recommendation' })).toBeVisible({ timeout: 240_000 })
+    await expect(page.getByRole('region', { name: 'Recommendation' })).toContainText(/Add \d+ ×/)
+    await expect(page.getByRole('region', { name: 'Constraint report' })).toBeVisible()
+    await page.getByRole('button', { name: 'Install this ballast' }).click()
+    await expect(page.getByRole('button', { name: 'Installed' })).toBeDisabled()
+    await page.screenshot({ path: 'test-results/ballast.png', fullPage: true })
+
+    // Fly again with the ballast (and the resized drogue), then compare with the first run.
+    await page.getByRole('link', { name: 'Single flight' }).click()
+    await page.getByRole('button', { name: 'Run flight' }).click()
+    await expect(page.getByRole('region', { name: 'Key numbers' })).toBeVisible({ timeout: 60_000 })
+    await page.getByRole('link', { name: 'Compare' }).click()
+    const changed = page.getByRole('region', { name: 'Settings that differ' })
+    await expect(changed).toContainText('ballast.installed_kg')
+    await expect(changed).toContainText('cd_s_m2')
+    await expect(page.getByRole('region', { name: 'Key numbers' }).getByRole('row', { name: /^Apogee/ })).toContainText('−')
+    await expect(page.getByRole('img', { name: /run A and run B against time/ })).toHaveCount(3)
+    await page.screenshot({ path: 'test-results/compare.png', fullPage: true })
+
+    // Post-flight: a "log" made from the stored flight itself, recorded 3 s before launch.
+    const [latest] = await (await request.get(`/api/results?mission_id=${CALISTO_ID}`)).json()
+    const path = await (await request.get(`/api/results/${latest.id}/path?max_points=400`)).json()
+    const rows = (path.t as number[])
+      .filter((_, i) => path.altitude_agl_m[i] <= Math.max(...path.altitude_agl_m))
+      .map((t, i) => `${(t + 3).toFixed(2)},${(path.altitude_agl_m[i] / 0.3048).toFixed(1)}`)
+    const log = `Time (s),Altitude (ft)\n0,0\n1,0\n2,0\n${rows.join('\n')}\n`
+    await page.getByRole('link', { name: 'Post-flight' }).click()
+    await page.getByLabel('Flight log file').setInputFiles({ name: 'altimeter.csv', mimeType: 'text/csv', buffer: Buffer.from(log) })
+    await expect(page.getByRole('region', { name: 'Log preview' })).toBeVisible()
+    await page.getByRole('button', { name: 'Fit the prediction to this log' }).click()
+    await expect(page.getByRole('region', { name: 'Fit' })).toBeVisible({ timeout: 120_000 })
+    await page.getByRole('button', { name: 'Use the fitted drag multiplier' }).click()
+    await expect(page.getByRole('button', { name: 'The mission uses this drag' })).toBeDisabled()
+    await page.screenshot({ path: 'test-results/post-flight.png', fullPage: true })
   } finally {
     await request.delete(`/api/missions/${CALISTO_ID}`)
   }

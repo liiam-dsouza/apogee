@@ -11,10 +11,12 @@ from apogee_api.db import init_engine
 from apogee_api.queue import ArqQueue, InlineQueue, JobQueue
 from apogee_api.routers import (
     assets,
+    ballast,
     constraints,
     imports,
     missions,
     montecarlo,
+    postflight,
     recovery,
     results,
     sim,
@@ -64,6 +66,8 @@ def create_app() -> FastAPI:
     app.include_router(montecarlo.router)
     app.include_router(constraints.router)
     app.include_router(recovery.router)
+    app.include_router(ballast.router)
+    app.include_router(postflight.router)
     return app
 
 

@@ -47,6 +47,14 @@ export type Probability = Schemas['Probability']
 export type Distribution = Schemas['Distribution']
 export type Profile = Schemas['Profile']
 export type ThrustCurveDetail = Schemas['ThrustCurveDetail']
+export type BallastSolution = Schemas['BallastSolution']
+export type BallastRun = Schemas['BallastRun']
+export type StoreUsage = Schemas['StoreUsage']
+export type FlightPath = Schemas['FlightPath']
+export type Comparison = Schemas['Comparison']
+export type LogPreview = Schemas['LogPreview']
+export type PostflightFit = Schemas['PostflightFit']
+export type FitRequest = Schemas['FitRequest']
 export type DescentResponse = Schemas['DescentResponse']
 export type RecoveryDevice = Schemas['RecoveryDevice']
 export type Constraint = Schemas['Constraint']
@@ -208,6 +216,39 @@ export const api = {
     unwrap<DescentResponse>(
       client.POST('/api/recovery/descent', { body: { mission, target_rates_ms: targetRates } }),
     ),
+  solveBallast: (mission: Mission) =>
+    unwrap<BallastRun>(client.POST('/api/ballast/solve', { body: { mission } })),
+  getBallast: (id: string) =>
+    unwrap<BallastSolution>(client.GET('/api/ballast/{result_id}', { params: { path: { result_id: id } } })),
+  lookupFlight: (mission: Mission) =>
+    unwrap<Schemas['FlightLookup']>(client.POST('/api/sim/flight/lookup', { body: { mission, ascent_only: false } })),
+  getPath: (id: string, maxPoints = 1500) =>
+    unwrap<FlightPath>(
+      client.GET('/api/results/{result_id}/path', {
+        params: { path: { result_id: id }, query: { max_points: maxPoints } },
+      }),
+    ),
+  listResults: (missionId?: string) =>
+    unwrap<ResultRecord[]>(client.GET('/api/results', { params: { query: { mission_id: missionId, limit: 50 } } })),
+  compareResults: (a: string, b: string) =>
+    unwrap<Comparison>(client.GET('/api/results/compare/{a}/{b}', { params: { path: { a, b } } })),
+  uploadFlightLog: (file: File) =>
+    unwrap<LogPreview>(
+      client.POST('/api/postflight/logs', {
+        body: { file: file as unknown as string },
+        bodySerializer: () => {
+          const form = new FormData()
+          form.append('file', file)
+          return form
+        },
+      }),
+    ),
+  fitPostflight: (body: FitRequest) => unwrap<Schemas['FitRun']>(client.POST('/api/postflight/fit', { body })),
+  getPostflightFit: (id: string) =>
+    unwrap<PostflightFit>(client.GET('/api/postflight/fits/{result_id}', { params: { path: { result_id: id } } })),
+  storage: () => unwrap<StoreUsage[]>(client.GET('/api/system/storage')),
+  clearStore: (name: string) =>
+    unwrap<void>(client.DELETE('/api/system/storage/{name}', { params: { path: { name } } })),
   listProfiles: () => unwrap<Profile[]>(client.GET('/api/profiles')),
   goNoGoBoard: (mission: Mission) =>
     unwrap<BoardResponse>(client.POST('/api/constraints/board', { body: { mission } })),

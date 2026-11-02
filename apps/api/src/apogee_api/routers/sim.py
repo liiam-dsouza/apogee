@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 from apogee_api.deps import AssetStoreDep, QueueDep, SettingsDep
 from apogee_api.problems import ApiProblem, Problem
 from apogee_api.queue import FLIGHT_TASK, JobState, QueueUnavailable
-from simcore.mission import Issue, Mission
+from simcore.mission import Issue, Mission, canonical_json
 from simcore.mission.validation import physical_checks
 from simcore.results import result_key
 
@@ -108,7 +108,12 @@ async def run_flight(
             issues,
         )
     result_id = result_key(mission, ascent_only=body.ascent_only)
-    if (settings.results_dir / result_id / "result.json").exists():
+    stored = settings.results_dir / result_id
+    if (stored / "result.json").exists():
+        # Results from before runs kept their mission: the id is the mission's hash, so
+        # this request's mission is the one that produced it (for Compare).
+        if not (stored / "mission.json").exists():
+            (stored / "mission.json").write_text(canonical_json(mission.model_dump(mode="json")))
         return RunState(status="done", job_id=None, result_id=result_id, cached=True)
     try:
         job_id = await queue.submit(
@@ -144,3 +149,17 @@ async def get_job(job_id: str, queue: QueueDep) -> JobState:
         return await queue.state(job_id)
     except QueueUnavailable as e:
         raise ApiProblem(503, "queue_unavailable", "The job queue is not reachable") from e
+
+
+class FlightLookup(BaseModel):
+    result_id: str = Field(description="The mission's single-flight result id.")
+    available: bool = Field(description="Whether that flight has been run.")
+
+
+@router.post("/sim/flight/lookup", operation_id="lookupFlight")
+def lookup_flight(body: FlightRequest, settings: SettingsDep) -> FlightLookup:
+    """Where this exact mission's flight result is, and whether it exists. Runs nothing."""
+    rid = result_key(body.mission, ascent_only=body.ascent_only)
+    return FlightLookup(
+        result_id=rid, available=(settings.results_dir / rid / "result.json").exists()
+    )

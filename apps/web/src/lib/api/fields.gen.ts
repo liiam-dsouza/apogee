@@ -47,6 +47,107 @@ export const fields = {
       "description": "Deploy at apogee."
     }
   },
+  "Ballast": {
+    "increment_kg": {
+      "description": "Smallest step you can add: one plate, or a measure of shot.",
+      "units": "kg",
+      "exclusiveMinimum": 0
+    },
+    "installed_kg": {
+      "description": "Ballast in the rocket now. Every flight includes it.",
+      "units": "kg",
+      "minimum": 0
+    },
+    "max_kg": {
+      "description": "Most the bay holds.",
+      "units": "kg",
+      "exclusiveMinimum": 0
+    },
+    "position_m": {
+      "description": "Centre of the ballast bay, aft of the nose tip. Needed for any ballast.",
+      "units": "m",
+      "minimum": 0
+    },
+    "target_apogee_m": {
+      "description": "Apogee to trim to, above the pad. Unset: the competition category's target.",
+      "units": "m",
+      "exclusiveMinimum": 0
+    }
+  },
+  "BallastRequest": {
+    "mission": {
+      "description": "The mission, with its ballast settings."
+    }
+  },
+  "BallastRun": {
+    "error": {
+      "description": "Why it failed."
+    },
+    "job_id": {
+      "description": "Job to poll while not done."
+    },
+    "result_id": {
+      "description": "Where the solution is (or will be) stored."
+    },
+    "status": {
+      "description": "Solve status."
+    }
+  },
+  "BallastSolution": {
+    "apogee_agl_m": {
+      "description": "Nominal apogee at the recommended mass.",
+      "units": "m"
+    },
+    "apogee_p5_m": {
+      "description": "5th percentile of the Monte Carlo apogee.",
+      "units": "m"
+    },
+    "apogee_p95_m": {
+      "description": "95th percentile of the Monte Carlo apogee.",
+      "units": "m"
+    },
+    "built_in_checks": {
+      "description": "True if the mission had no rules of its own."
+    },
+    "curve": {
+      "description": "Every nominal flight the solve flew."
+    },
+    "exact_kg": {
+      "description": "Mass that hits the target exactly.",
+      "units": "kg"
+    },
+    "gradient_m_per_100g": {
+      "description": "Apogee change per 100 g added, locally.",
+      "units": "m"
+    },
+    "increment_kg": {
+      "description": "One increment.",
+      "units": "kg"
+    },
+    "increments": {
+      "description": "How many increments that is."
+    },
+    "recommended_kg": {
+      "description": "Rounded to the increment.",
+      "units": "kg"
+    },
+    "report": {
+      "description": "Every rule, judged at the recommended mass."
+    },
+    "samples": {
+      "description": "Monte Carlo flights at the recommended mass."
+    },
+    "status": {
+      "description": "ok: solved. too_low: apogee is under the target even with no ballast. too_high: still over it with the bay full."
+    },
+    "target_apogee_m": {
+      "description": "The target, above the pad.",
+      "units": "m"
+    },
+    "target_source": {
+      "description": "Where the target came from."
+    }
+  },
   "Board": {
     "profile": {
       "description": "The competition profile, if any."
@@ -95,6 +196,11 @@ export const fields = {
   "Body_uploadAsset": {
     "file": {},
     "kind": {}
+  },
+  "Body_uploadFlightLog": {
+    "file": {
+      "description": "CSV log."
+    }
   },
   "CampaignBasis": {
     "campaign_id": {
@@ -195,6 +301,20 @@ export const fields = {
     },
     "units": {
       "description": "Units of the values."
+    }
+  },
+  "Comparison": {
+    "a": {
+      "description": "The first run."
+    },
+    "b": {
+      "description": "The second run."
+    },
+    "differences": {
+      "description": "Mission settings that differ, a to b (campaign settings and rules left out)."
+    },
+    "settings_known": {
+      "description": "Whether both runs recorded their mission (older runs didn't)."
     }
   },
   "Condition": {
@@ -313,6 +433,16 @@ export const fields = {
       "description": "Units of both values."
     }
   },
+  "CurvePoint": {
+    "apogee_agl_m": {
+      "description": "Nominal apogee with it.",
+      "units": "m"
+    },
+    "mass_kg": {
+      "description": "Ballast added.",
+      "units": "kg"
+    }
+  },
   "DescentRequest": {
     "mission": {
       "description": "The mission, saved or not."
@@ -365,6 +495,17 @@ export const fields = {
     "top_agl_m": {
       "description": "Where it takes over: its deployment height. None for apogee without a flight.",
       "units": "m"
+    }
+  },
+  "Difference": {
+    "a": {
+      "description": "Value in the first mission (None if absent)."
+    },
+    "b": {
+      "description": "Value in the second mission (None if absent)."
+    },
+    "path": {
+      "description": "Where in the mission, e.g. 'rocket.drag.multiplier'."
     }
   },
   "Distribution": {
@@ -444,12 +585,79 @@ export const fields = {
       "description": "A measured surface wind to blend into the atmosphere near the ground."
     }
   },
+  "FitCurve": {
+    "altitude_agl_m": {
+      "description": "Above the pad, m."
+    },
+    "t": {
+      "description": "Time since launch, s."
+    }
+  },
+  "FitRequest": {
+    "altitude_column": {
+      "description": "Column holding altitude."
+    },
+    "altitude_units": {
+      "description": "Units of the altitude column."
+    },
+    "fit_impulse": {
+      "description": "Also fit the total-impulse scale."
+    },
+    "log_sha256": {
+      "description": "The uploaded log."
+    },
+    "mission": {
+      "description": "The mission as flown."
+    },
+    "time_column": {
+      "description": "Column holding time, in seconds."
+    }
+  },
+  "FitRun": {
+    "error": {
+      "description": "Why it failed."
+    },
+    "job_id": {
+      "description": "Job to poll while not done."
+    },
+    "result_id": {
+      "description": "Where the fit is (or will be) stored."
+    },
+    "status": {
+      "description": "Fit status."
+    }
+  },
   "FlightBasis": {
     "available": {
       "description": "Whether that flight has been run."
     },
     "result_id": {
       "description": "The single flight's result id for this mission."
+    }
+  },
+  "FlightLookup": {
+    "available": {
+      "description": "Whether that flight has been run."
+    },
+    "result_id": {
+      "description": "The mission's single-flight result id."
+    }
+  },
+  "FlightPath": {
+    "altitude_agl_m": {
+      "description": "Above the pad, m."
+    },
+    "east_m": {
+      "description": "East of the pad, m."
+    },
+    "north_m": {
+      "description": "North of the pad, m."
+    },
+    "speed_ms": {
+      "description": "Speed, m/s."
+    },
+    "t": {
+      "description": "Time since ignition, s."
     }
   },
   "FlightRequest": {
@@ -776,6 +984,29 @@ export const fields = {
       "description": "Landing longitude, WGS84."
     }
   },
+  "LogPreview": {
+    "altitude_column": {
+      "description": "Guessed altitude column."
+    },
+    "altitude_units": {
+      "description": "Guessed altitude units."
+    },
+    "columns": {
+      "description": "Column names from the header."
+    },
+    "filename": {
+      "description": "Original filename."
+    },
+    "rows": {
+      "description": "The first rows, as text."
+    },
+    "sha256": {
+      "description": "The stored log; pass it to the fit."
+    },
+    "time_column": {
+      "description": "Guessed time column."
+    }
+  },
   "ManualProfile": {
     "kind": {
       "description": "Wind entered by hand, e.g. from a range safety officer's briefing."
@@ -824,7 +1055,7 @@ export const fields = {
       "description": "Content-addressed files, keyed by sha256: thrust curves, drag tables, .ork originals."
     },
     "ballast": {
-      "description": "Not modelled yet: accepted as-is so configs round-trip."
+      "description": "Ballast installed and to solve for."
     },
     "constraints": {
       "description": "Competition profile and team rules the go/no-go board checks."
@@ -1064,6 +1295,56 @@ export const fields = {
     "triggered_s": {
       "description": "Time the trigger fired.",
       "units": "s"
+    }
+  },
+  "PostflightFit": {
+    "drag_multiplier": {
+      "description": "Fitted rocket.drag.multiplier (absolute)."
+    },
+    "drag_multiplier_before": {
+      "description": "The mission's multiplier before the fit."
+    },
+    "fitted": {
+      "description": "The ascent with the fitted values."
+    },
+    "fitted_apogee_m": {
+      "description": "With the fitted values.",
+      "units": "m"
+    },
+    "fitted_impulse": {
+      "description": "Whether the impulse scale was fitted."
+    },
+    "flights": {
+      "description": "Ascent-only flights the fit flew."
+    },
+    "impulse_scale": {
+      "description": "Fitted total-impulse scale (1 if not fitted)."
+    },
+    "launch_s": {
+      "description": "When the log leaves the pad, in the log's own time, as fitted.",
+      "units": "s"
+    },
+    "measured": {
+      "description": "The log, aligned and downsampled."
+    },
+    "measured_apogee_m": {
+      "description": "Highest altitude in the log, above the pad.",
+      "units": "m"
+    },
+    "predicted": {
+      "description": "The ascent as it stands."
+    },
+    "predicted_apogee_m": {
+      "description": "The mission as it stands.",
+      "units": "m"
+    },
+    "rms_after_m": {
+      "description": "RMS altitude error with the fitted values.",
+      "units": "m"
+    },
+    "rms_before_m": {
+      "description": "RMS altitude error over the ascent, as it stands.",
+      "units": "m"
     }
   },
   "Probability": {
@@ -1614,6 +1895,24 @@ export const fields = {
     },
     "units": {
       "description": "Units."
+    }
+  },
+  "StoreUsage": {
+    "bytes": {
+      "description": "Space used.",
+      "units": "bytes"
+    },
+    "items": {
+      "description": "Entries in it."
+    },
+    "label": {
+      "description": "What it holds."
+    },
+    "name": {
+      "description": "Store name."
+    },
+    "recomputable": {
+      "description": "Whether everything in it can be computed again (and so may be cleared)."
     }
   },
   "SurfaceWind": {

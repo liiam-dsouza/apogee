@@ -72,3 +72,41 @@ def test_descent_rates_use_the_flight_for_apogee(client: TestClient) -> None:
 def test_descent_needs_a_rocket(client: TestClient) -> None:
     r = client.post("/api/recovery/descent", json={"mission": {"meta": {"name": "x"}}})
     assert r.status_code == 422
+
+
+def test_storage_lists_stores_and_clears_only_recomputable_ones(client: TestClient) -> None:
+    client.post("/api/imports/motor", files={"file": ("M1670.eng", ENG)})
+    stores = {s["name"]: s for s in client.get("/api/system/storage").json()}
+    assert stores["assets"]["items"] == 1 and stores["assets"]["recomputable"] is False
+    assert client.delete("/api/system/storage/assets").status_code == 409
+    assert client.delete("/api/system/storage/results").status_code == 204
+    assert client.delete("/api/system/storage/nope").status_code == 404
+
+
+def test_flight_path_is_aligned_and_lookup_runs_nothing(client: TestClient) -> None:
+    mission = _calisto(client)
+    before = client.post("/api/sim/flight/lookup", json={"mission": mission}).json()
+    assert before["available"] is False
+    client.post("/api/sim/flight", json={"mission": mission}, params={"wait_s": 60})
+    after = client.post("/api/sim/flight/lookup", json={"mission": mission}).json()
+    assert after == {"result_id": before["result_id"], "available": True}
+    path = client.get(f"/api/results/{after['result_id']}/path", params={"max_points": 300}).json()
+    n = len(path["t"])
+    assert 10 < n <= 300
+    assert len(path["east_m"]) == len(path["north_m"]) == len(path["altitude_agl_m"]) == n
+    assert max(path["altitude_agl_m"]) == pytest.approx(3305, abs=2)  # apogee survives downsampling
+
+
+def test_runs_are_listed_and_compared_with_their_settings(client: TestClient) -> None:
+    mission = _calisto(client)
+    a = client.post("/api/sim/flight", json={"mission": mission}, params={"wait_s": 60}).json()
+    mission["rocket"]["drag"]["multiplier"] = 1.2
+    b = client.post("/api/sim/flight", json={"mission": mission}, params={"wait_s": 60}).json()
+    listed = client.get("/api/results", params={"mission_id": mission["meta"]["id"]}).json()
+    assert [r["id"] for r in listed] == [b["result_id"], a["result_id"]]  # newest first
+    cmp = client.get(f"/api/results/compare/{a['result_id']}/{b['result_id']}").json()
+    assert cmp["settings_known"] is True
+    assert [(d["path"], d["a"], d["b"]) for d in cmp["differences"]] == [
+        ("rocket.drag.multiplier", 1.0, 1.2)
+    ]
+    assert cmp["b"]["summary"]["apogee_agl_m"] < cmp["a"]["summary"]["apogee_agl_m"]

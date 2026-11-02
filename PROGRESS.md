@@ -3,6 +3,67 @@
 Running log of what's built against the project brief. Newest first.
 Frontend paths are relative to `apps/web/`.
 
+## 2026-11-02: Theme, ballast, settings and units, 3D trajectory, compare, post-flight
+
+**Done**
+- **Theme:**
+  - Pure neutral greys: #0D0D0D canvas with lighter panels on dark; very light grey with
+    darker panels on light.
+  - The brand gradient (#FF0030 to #FF4F00) marks the logo, primary buttons, the active
+    section, links, focus, selection and native form controls.
+  - Charts and data on the map use the accent. Hazard zones are gold. Status keeps an
+    icon and a word.
+  - Chart colours were validated with the dataviz palette checker. Compare's second
+    series is a dashed neutral grey.
+- **Ballast** (`simcore.ballast`, [method](docs/methods/ballast.md)):
+  - `ballast` is modelled: installed mass, bay position, increment, maximum and target
+    (or the competition category's). Installed ballast is part of every flight.
+  - The solve: Brent's method on ascent-only flights, rounded to plates, then a full
+    flight and 100 Monte Carlo flights at the answer.
+  - The recommendation always comes with the 90% band, the sensitivity and the constraint
+    report; a hard failure shows "Do not fly this as it stands". It runs as a job, cached
+    by mission hash.
+  - Calisto, AURC 10k: 28 × 50 g, 3,045 m.
+- **Settings:**
+  - Theme and units: Metric/Imperial presets, plus a unit choice for every quantity a
+    flight reports (e.g. acceleration in m/s², ft/s² or g). Coarse units get extra decimals.
+  - A "Ready for the field?" checklist for the open mission.
+  - Versions, workers and queue.
+  - Storage, with clearing for re-computable results only.
+- **Trajectory 3D:**
+  - The flight path to scale (react-three-fiber), with its ground track and an apogee
+    drop line.
+  - Labels are projected DOM that hide rather than overlap; drei's `Html` crashed on
+    unmount.
+  - Playback in real time to apogee, then 8× for the descent; 3D / side / top cameras.
+  - New API: `GET /api/results/{id}/path` (aligned downsampling that keeps apogee) and
+    `POST /api/sim/flight/lookup`.
+- **Compare:**
+  - Runs now store the mission they flew (`mission.json`); older cached runs are
+    backfilled the next time the same mission asks for them.
+  - Two runs side by side: key numbers with differences, the settings that differ
+    (campaign settings and rules left out), and overlaid altitude, speed and vertical
+    velocity.
+- **Post-flight** ([method](docs/methods/post-flight.md)):
+  - Upload a CSV log (columns guessed, feet or metres, above the pad or above sea level).
+  - Fit the drag multiplier (and optionally impulse) with a ±1 s time offset by least
+    squares on ascent-only flights.
+  - Shows the log, prediction and fit overlaid, and RMS error before and after. **Use
+    the fitted drag multiplier** writes it to the mission.
+  - Recovers a 15% drag change within 3% from a noisy feet-ASL log.
+- **e2e:** the Calisto journey now also covers ballast, a second flight, Compare and
+  Post-flight.
+
+**Bugs found while doing this (fixed)**
+- The ballast page recorded a solve before it finished, got a 404 and never asked again.
+- Leaving the 3D view crashed (`removeChild`) in drei's `Html` labels.
+
+**Known gaps**
+- Hardware in the loop: waiting on the avionics team's flight computer plans.
+- Post-flight fits the ascent only (no descent or GPS) and doesn't yet feed the
+  validation record.
+- The brief's general solver (any free variable) isn't built; ballast only.
+
 ## 2026-11-02: Motor and Recovery editors
 
 **Done**

@@ -10,6 +10,7 @@ import shutil
 import tempfile
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import pyarrow as pa
@@ -18,7 +19,7 @@ from pydantic import BaseModel, Field
 
 from simcore.engine.result import TRAJECTORY_CHANNELS, FlightResult, FlightSummary
 from simcore.mission import Mission, canonical_json
-from simcore.results.downsample import lttb
+from simcore.results.downsample import lttb, lttb_indices
 from simcore.versions import rocketpy_version, simcore_version
 
 
@@ -159,6 +160,8 @@ def write_flight(
     table = pa.table({k: pa.array(v, type=pa.float64()) for k, v in result.trajectory.items()})
     pq.write_table(table, tmp / "trajectory.parquet", compression="zstd")
     (tmp / "result.json").write_text(record.model_dump_json(indent=2))
+    # The mission exactly as flown, so two runs' settings can be compared later.
+    (tmp / "mission.json").write_text(canonical_json(mission.model_dump(mode="json")))
     try:
         tmp.rename(final)
     except OSError:
@@ -192,3 +195,65 @@ def read_series(
         ts, ys = lttb(t[finite], y[finite], max_points)
         out.append(Series(name=name, units=known[name].units, t=ts.tolist(), y=ys.tolist()))
     return out
+
+
+class FlightPath(BaseModel):
+    """The trajectory in 3D, every channel at the same instants."""
+
+    t: list[float] = Field(description="Time since ignition, s.")
+    east_m: list[float] = Field(description="East of the pad, m.")
+    north_m: list[float] = Field(description="North of the pad, m.")
+    altitude_agl_m: list[float] = Field(description="Above the pad, m.")
+    speed_ms: list[float] = Field(description="Speed, m/s.")
+
+
+def read_path(root: Path, result_id: str, *, max_points: int = 1500) -> FlightPath:
+    """The flight path, downsampled to at most about ``max_points`` aligned samples.
+
+    The kept instants are the union of what LTTB keeps for altitude, east and
+    north, so the apogee and every turn in plan view survive.
+    """
+    read_record(root, result_id)  # raises ResultNotFound
+    cols = ["time_s", "east_m", "north_m", "altitude_agl_m", "speed_ms"]
+    table = pq.read_table(root / result_id / "trajectory.parquet", columns=cols)
+    data = {c: table.column(c).to_numpy() for c in cols}
+    t = data["time_s"]
+    each = max(max_points // 3, 3)
+    keep = np.unique(np.concatenate([lttb_indices(t, data[c], each) for c in cols[1:4]]))
+    return FlightPath(
+        t=t[keep].tolist(),
+        east_m=data["east_m"][keep].tolist(),
+        north_m=data["north_m"][keep].tolist(),
+        altitude_agl_m=data["altitude_agl_m"][keep].tolist(),
+        speed_ms=data["speed_ms"][keep].tolist(),
+    )
+
+
+def read_flown_mission(root: Path, result_id: str) -> dict[str, Any] | None:
+    """The mission a result was flown with; None for results stored before this was kept."""
+    read_record(root, result_id)  # raises ResultNotFound
+    path = root / result_id / "mission.json"
+    if not path.exists():
+        return None
+    data: dict[str, Any] = json.loads(path.read_text())
+    return data
+
+
+def list_records(
+    root: Path, *, mission_id: str | None = None, limit: int = 50
+) -> list[ResultRecord]:
+    """Stored flights, newest first, optionally for one mission only."""
+    if not root.is_dir():
+        return []
+    records = []
+    for d in root.iterdir():
+        if d.name.startswith(".") or not (d / "result.json").exists():
+            continue
+        try:
+            record = read_record(root, d.name)
+        except (ResultNotFound, ValueError):
+            continue
+        if mission_id is None or record.provenance.mission_id == mission_id:
+            records.append(record)
+    records.sort(key=lambda r: r.provenance.computed_utc, reverse=True)
+    return records[:limit]

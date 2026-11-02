@@ -519,6 +519,39 @@ class MonteCarlo(_Strict):
     )
 
 
+# --- Ballast ----------------------------------------------------------------------
+
+
+class Ballast(_Strict):
+    """Ballast to trim apogee: what is installed, and what the solver may use."""
+
+    installed_kg: float = quantity(
+        "kg", "Ballast in the rocket now. Every flight includes it.", default=0.0, ge=0
+    )
+    position_m: float | None = quantity(
+        "m",
+        "Centre of the ballast bay, aft of the nose tip. Needed for any ballast.",
+        default=None,
+        ge=0,
+    )
+    target_apogee_m: float | None = quantity(
+        "m",
+        "Apogee to trim to, above the pad. Unset: the competition category's target.",
+        default=None,
+        gt=0,
+    )
+    increment_kg: float = quantity(
+        "kg", "Smallest step you can add: one plate, or a measure of shot.", default=0.05, gt=0
+    )
+    max_kg: float = quantity("kg", "Most the bay holds.", default=2.0, gt=0)
+
+    @model_validator(mode="after")
+    def _position_if_installed(self) -> "Ballast":
+        if self.installed_kg > 0 and self.position_m is None:
+            raise ValueError("installed ballast needs position_m")
+        return self
+
+
 # --- Constraints ------------------------------------------------------------------
 
 #: Result metrics a constraint can test. Each is computed from a flight summary
@@ -655,7 +688,9 @@ class Mission(_Strict):
     recovery: Recovery = Field(
         default_factory=Recovery, description="Parachutes and other recovery devices."
     )
-    ballast: OpenSection
+    ballast: Ballast = Field(
+        default_factory=Ballast, description="Ballast installed and to solve for."
+    )
     site: Site | None = Field(default=None, description="Launch site and range geometry.")
     environment: Environment = Field(
         default_factory=Environment, description="Atmosphere and wind."

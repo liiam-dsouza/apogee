@@ -59,6 +59,18 @@ async def monte_carlo_chunk(ctx: dict[str, Any], **kwargs: Any) -> str:
     return await loop.run_in_executor(ctx["pool"], partial(jobs.monte_carlo_chunk, **kwargs))
 
 
+async def solve_ballast(ctx: dict[str, Any], **kwargs: Any) -> str:
+    """Ballast solve with its checks; returns the stored solution id."""
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(ctx["pool"], partial(jobs.solve_ballast, **kwargs))
+
+
+async def fit_postflight(ctx: dict[str, Any], **kwargs: Any) -> str:
+    """Fit the mission to a flight log; returns the stored fit id."""
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(ctx["pool"], partial(jobs.fit_postflight, **kwargs))
+
+
 async def _heartbeat(ctx: dict[str, Any]) -> None:
     key = ctx["heartbeat_key"]
     while True:
@@ -81,7 +93,14 @@ async def shutdown(ctx: dict[str, Any]) -> None:
 
 
 class WorkerSettings:
-    functions: ClassVar = [ping, simulate_flight, openrocket_cross_check, monte_carlo_chunk]
+    functions: ClassVar = [
+        ping,
+        simulate_flight,
+        openrocket_cross_check,
+        monte_carlo_chunk,
+        solve_ballast,
+        fit_postflight,
+    ]
     on_startup = startup
     on_shutdown = shutdown
     redis_settings = RedisSettings.from_dsn(settings.redis_url)

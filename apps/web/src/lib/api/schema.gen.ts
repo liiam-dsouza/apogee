@@ -58,6 +58,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/ballast/solve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Solve Ballast
+         * @description Start a solve, or return the stored solution for this exact mission.
+         */
+        post: operations["solveBallast"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ballast/{result_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Ballast */
+        get: operations["getBallast"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/campaigns/{campaign_id}": {
         parameters: {
             query?: never;
@@ -339,6 +376,63 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/postflight/fit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start Fit
+         * @description Fit the drag multiplier (and impulse) to the log, or return the stored fit.
+         */
+        post: operations["fitPostflight"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/postflight/fits/{result_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Fit */
+        get: operations["getPostflightFit"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/postflight/logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Upload Log
+         * @description Store a flight log and show its columns, with a guess at time and altitude.
+         */
+        post: operations["uploadFlightLog"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/profiles": {
         parameters: {
             query?: never;
@@ -379,6 +473,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/results": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Results
+         * @description Stored single flights, newest first.
+         */
+        get: operations["listResults"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/results/compare/{a}/{b}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Compare Results
+         * @description Two runs, and what differs between the missions that produced them.
+         */
+        get: operations["compareResults"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/results/{result_id}": {
         parameters: {
             query?: never;
@@ -391,6 +525,26 @@ export interface paths {
          * @description Summary, provenance and available channels for a result.
          */
         get: operations["getResult"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/results/{result_id}/path": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Path
+         * @description The trajectory in 3D: east, north, altitude and speed at the same instants.
+         */
+        get: operations["getResultPath"];
         put?: never;
         post?: never;
         delete?: never;
@@ -443,6 +597,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/sim/flight/lookup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Lookup Flight
+         * @description Where this exact mission's flight result is, and whether it exists. Runs nothing.
+         */
+        post: operations["lookupFlight"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/sim/montecarlo": {
         parameters: {
             query?: never;
@@ -476,6 +650,46 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/system/storage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Storage
+         * @description What the data directory holds. Missions live in the database and aren't listed.
+         */
+        get: operations["getStorage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/system/storage/{name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Clear Store
+         * @description Delete a store of computed results. Only stores that can be recomputed may be cleared.
+         */
+        delete: operations["clearStore"];
         options?: never;
         head?: never;
         patch?: never;
@@ -615,6 +829,145 @@ export interface components {
              */
             kind: "apogee";
         };
+        /**
+         * Ballast
+         * @description Ballast to trim apogee: what is installed, and what the solver may use.
+         */
+        Ballast: {
+            /**
+             * Increment Kg
+             * @description Smallest step you can add: one plate, or a measure of shot.
+             * @default 0.05
+             */
+            increment_kg: number;
+            /**
+             * Installed Kg
+             * @description Ballast in the rocket now. Every flight includes it.
+             * @default 0
+             */
+            installed_kg: number;
+            /**
+             * Max Kg
+             * @description Most the bay holds.
+             * @default 2
+             */
+            max_kg: number;
+            /**
+             * Position M
+             * @description Centre of the ballast bay, aft of the nose tip. Needed for any ballast.
+             */
+            position_m?: number | null;
+            /**
+             * Target Apogee M
+             * @description Apogee to trim to, above the pad. Unset: the competition category's target.
+             */
+            target_apogee_m?: number | null;
+        };
+        /** BallastRequest */
+        BallastRequest: {
+            /** @description The mission, with its ballast settings. */
+            mission: components["schemas"]["Mission"];
+        };
+        /** BallastRun */
+        BallastRun: {
+            /**
+             * Error
+             * @description Why it failed.
+             */
+            error?: string | null;
+            /**
+             * Job Id
+             * @description Job to poll while not done.
+             */
+            job_id: string | null;
+            /**
+             * Result Id
+             * @description Where the solution is (or will be) stored.
+             */
+            result_id: string;
+            /**
+             * Status
+             * @description Solve status.
+             * @enum {string}
+             */
+            status: "queued" | "running" | "done" | "failed";
+        };
+        /** BallastSolution */
+        BallastSolution: {
+            /**
+             * Apogee Agl M
+             * @description Nominal apogee at the recommended mass.
+             */
+            apogee_agl_m: number | null;
+            /**
+             * Apogee P5 M
+             * @description 5th percentile of the Monte Carlo apogee.
+             */
+            apogee_p5_m: number | null;
+            /**
+             * Apogee P95 M
+             * @description 95th percentile of the Monte Carlo apogee.
+             */
+            apogee_p95_m: number | null;
+            /**
+             * Built In Checks
+             * @description True if the mission had no rules of its own.
+             */
+            built_in_checks: boolean;
+            /**
+             * Curve
+             * @description Every nominal flight the solve flew.
+             */
+            curve: components["schemas"]["CurvePoint"][];
+            /**
+             * Exact Kg
+             * @description Mass that hits the target exactly.
+             */
+            exact_kg: number | null;
+            /**
+             * Gradient M Per 100G
+             * @description Apogee change per 100 g added, locally.
+             */
+            gradient_m_per_100g: number | null;
+            /**
+             * Increment Kg
+             * @description One increment.
+             */
+            increment_kg: number;
+            /**
+             * Increments
+             * @description How many increments that is.
+             */
+            increments: number | null;
+            /**
+             * Recommended Kg
+             * @description Rounded to the increment.
+             */
+            recommended_kg: number | null;
+            /** @description Every rule, judged at the recommended mass. */
+            report: components["schemas"]["Board"] | null;
+            /**
+             * Samples
+             * @description Monte Carlo flights at the recommended mass.
+             */
+            samples: number;
+            /**
+             * Status
+             * @description ok: solved. too_low: apogee is under the target even with no ballast. too_high: still over it with the bay full.
+             * @enum {string}
+             */
+            status: "ok" | "too_low" | "too_high";
+            /**
+             * Target Apogee M
+             * @description The target, above the pad.
+             */
+            target_apogee_m: number;
+            /**
+             * Target Source
+             * @description Where the target came from.
+             */
+            target_source: string;
+        };
         /** Board */
         Board: {
             /** @description The competition profile, if any. */
@@ -681,6 +1034,14 @@ export interface components {
              * @enum {string}
              */
             kind: "thrust_curve" | "drag_table";
+        };
+        /** Body_uploadFlightLog */
+        Body_uploadFlightLog: {
+            /**
+             * File
+             * @description CSV log.
+             */
+            file: string;
         };
         /** CampaignBasis */
         CampaignBasis: {
@@ -829,6 +1190,23 @@ export interface components {
              * @description Units of the values.
              */
             units: string;
+        };
+        /** Comparison */
+        Comparison: {
+            /** @description The first run. */
+            a: components["schemas"]["ResultRecord"];
+            /** @description The second run. */
+            b: components["schemas"]["ResultRecord"];
+            /**
+             * Differences
+             * @description Mission settings that differ, a to b (campaign settings and rules left out).
+             */
+            differences: components["schemas"]["Difference"][];
+            /**
+             * Settings Known
+             * @description Whether both runs recorded their mission (older runs didn't).
+             */
+            settings_known: boolean;
         };
         /**
          * Condition
@@ -1033,6 +1411,19 @@ export interface components {
              */
             units: string;
         };
+        /** CurvePoint */
+        CurvePoint: {
+            /**
+             * Apogee Agl M
+             * @description Nominal apogee with it.
+             */
+            apogee_agl_m: number;
+            /**
+             * Mass Kg
+             * @description Ballast added.
+             */
+            mass_kg: number;
+        };
         /** DescentRequest */
         DescentRequest: {
             /** @description The mission, saved or not. */
@@ -1105,6 +1496,24 @@ export interface components {
              * @description Where it takes over: its deployment height. None for apogee without a flight.
              */
             top_agl_m: number | null;
+        };
+        /** Difference */
+        Difference: {
+            /**
+             * A
+             * @description Value in the first mission (None if absent).
+             */
+            a: unknown;
+            /**
+             * B
+             * @description Value in the second mission (None if absent).
+             */
+            b: unknown;
+            /**
+             * Path
+             * @description Where in the mission, e.g. 'rocket.drag.multiplier'.
+             */
+            path: string;
         };
         /** Distribution */
         Distribution: {
@@ -1217,6 +1626,75 @@ export interface components {
             /** @description A measured surface wind to blend into the atmosphere near the ground. */
             surface_wind?: components["schemas"]["SurfaceWind"] | null;
         };
+        /** FitCurve */
+        FitCurve: {
+            /**
+             * Altitude Agl M
+             * @description Above the pad, m.
+             */
+            altitude_agl_m: number[];
+            /**
+             * T
+             * @description Time since launch, s.
+             */
+            t: number[];
+        };
+        /** FitRequest */
+        FitRequest: {
+            /**
+             * Altitude Column
+             * @description Column holding altitude.
+             */
+            altitude_column: string;
+            /**
+             * Altitude Units
+             * @description Units of the altitude column.
+             * @enum {string}
+             */
+            altitude_units: "m" | "ft";
+            /**
+             * Fit Impulse
+             * @description Also fit the total-impulse scale.
+             * @default false
+             */
+            fit_impulse: boolean;
+            /**
+             * Log Sha256
+             * @description The uploaded log.
+             */
+            log_sha256: string;
+            /** @description The mission as flown. */
+            mission: components["schemas"]["Mission"];
+            /**
+             * Time Column
+             * @description Column holding time, in seconds.
+             */
+            time_column: string;
+        };
+        /** FitRun */
+        FitRun: {
+            /**
+             * Error
+             * @description Why it failed.
+             */
+            error?: string | null;
+            /**
+             * Job Id
+             * @description Job to poll while not done.
+             */
+            job_id: string | null;
+            /**
+             * Result Id
+             * @description Where the fit is (or will be) stored.
+             */
+            result_id: string;
+            /**
+             * Status
+             * @description Fit status.
+             * @enum {string}
+             */
+            status: "queued" | "running" | "done" | "failed";
+        };
         /** FlightBasis */
         FlightBasis: {
             /**
@@ -1229,6 +1707,50 @@ export interface components {
              * @description The single flight's result id for this mission.
              */
             result_id: string;
+        };
+        /** FlightLookup */
+        FlightLookup: {
+            /**
+             * Available
+             * @description Whether that flight has been run.
+             */
+            available: boolean;
+            /**
+             * Result Id
+             * @description The mission's single-flight result id.
+             */
+            result_id: string;
+        };
+        /**
+         * FlightPath
+         * @description The trajectory in 3D, every channel at the same instants.
+         */
+        FlightPath: {
+            /**
+             * Altitude Agl M
+             * @description Above the pad, m.
+             */
+            altitude_agl_m: number[];
+            /**
+             * East M
+             * @description East of the pad, m.
+             */
+            east_m: number[];
+            /**
+             * North M
+             * @description North of the pad, m.
+             */
+            north_m: number[];
+            /**
+             * Speed Ms
+             * @description Speed, m/s.
+             */
+            speed_ms: number[];
+            /**
+             * T
+             * @description Time since ignition, s.
+             */
+            t: number[];
         };
         /** FlightRequest */
         FlightRequest: {
@@ -1685,6 +2207,45 @@ export interface components {
              */
             longitude_deg: number;
         };
+        /** LogPreview */
+        LogPreview: {
+            /**
+             * Altitude Column
+             * @description Guessed altitude column.
+             */
+            altitude_column: string | null;
+            /**
+             * Altitude Units
+             * @description Guessed altitude units.
+             * @enum {string}
+             */
+            altitude_units: "m" | "ft";
+            /**
+             * Columns
+             * @description Column names from the header.
+             */
+            columns: string[];
+            /**
+             * Filename
+             * @description Original filename.
+             */
+            filename: string;
+            /**
+             * Rows
+             * @description The first rows, as text.
+             */
+            rows: string[][];
+            /**
+             * Sha256
+             * @description The stored log; pass it to the fit.
+             */
+            sha256: string;
+            /**
+             * Time Column
+             * @description Guessed time column.
+             */
+            time_column: string | null;
+        };
         /** ManualProfile */
         ManualProfile: {
             /**
@@ -1744,13 +2305,8 @@ export interface components {
             assets?: {
                 [key: string]: components["schemas"]["Asset"];
             };
-            /**
-             * Ballast
-             * @description Not modelled yet: accepted as-is so configs round-trip.
-             */
-            ballast?: {
-                [key: string]: unknown;
-            };
+            /** @description Ballast installed and to solve for. */
+            ballast?: components["schemas"]["Ballast"];
             /** @description Competition profile and team rules the go/no-go board checks. */
             constraints?: components["schemas"]["ConstraintSettings"];
             /** @description Atmosphere and wind. */
@@ -2052,6 +2608,70 @@ export interface components {
              * @description Time the trigger fired.
              */
             triggered_s: number;
+        };
+        /** PostflightFit */
+        PostflightFit: {
+            /**
+             * Drag Multiplier
+             * @description Fitted rocket.drag.multiplier (absolute).
+             */
+            drag_multiplier: number;
+            /**
+             * Drag Multiplier Before
+             * @description The mission's multiplier before the fit.
+             */
+            drag_multiplier_before: number;
+            /** @description The ascent with the fitted values. */
+            fitted: components["schemas"]["FitCurve"];
+            /**
+             * Fitted Apogee M
+             * @description With the fitted values.
+             */
+            fitted_apogee_m: number;
+            /**
+             * Fitted Impulse
+             * @description Whether the impulse scale was fitted.
+             */
+            fitted_impulse: boolean;
+            /**
+             * Flights
+             * @description Ascent-only flights the fit flew.
+             */
+            flights: number;
+            /**
+             * Impulse Scale
+             * @description Fitted total-impulse scale (1 if not fitted).
+             */
+            impulse_scale: number;
+            /**
+             * Launch S
+             * @description When the log leaves the pad, in the log's own time, as fitted.
+             */
+            launch_s: number;
+            /** @description The log, aligned and downsampled. */
+            measured: components["schemas"]["FitCurve"];
+            /**
+             * Measured Apogee M
+             * @description Highest altitude in the log, above the pad.
+             */
+            measured_apogee_m: number;
+            /** @description The ascent as it stands. */
+            predicted: components["schemas"]["FitCurve"];
+            /**
+             * Predicted Apogee M
+             * @description The mission as it stands.
+             */
+            predicted_apogee_m: number;
+            /**
+             * Rms After M
+             * @description RMS altitude error with the fitted values.
+             */
+            rms_after_m: number;
+            /**
+             * Rms Before M
+             * @description RMS altitude error over the ascent, as it stands.
+             */
+            rms_before_m: number;
         };
         /** Probability */
         Probability: {
@@ -2878,6 +3498,34 @@ export interface components {
              */
             units: string;
         };
+        /** StoreUsage */
+        StoreUsage: {
+            /**
+             * Bytes
+             * @description Space used.
+             */
+            bytes: number;
+            /**
+             * Items
+             * @description Entries in it.
+             */
+            items: number;
+            /**
+             * Label
+             * @description What it holds.
+             */
+            label: string;
+            /**
+             * Name
+             * @description Store name.
+             */
+            name: string;
+            /**
+             * Recomputable
+             * @description Whether everything in it can be computed again (and so may be cleared).
+             */
+            recomputable: boolean;
+        };
         /**
          * SurfaceWind
          * @description A measured surface wind, blended into the profile near the ground.
@@ -3265,6 +3913,88 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    solveBallast: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BallastRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BallastRun"];
+                };
+            };
+            /** @description The mission can't be solved for yet. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description No job queue. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    getBallast: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                result_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BallastSolution"];
+                };
+            };
+            /** @description Not solved (yet). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -3984,6 +4714,121 @@ export interface operations {
             };
         };
     };
+    fitPostflight: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FitRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FitRun"];
+                };
+            };
+            /** @description The mission can't be flown, or no such log. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description No job queue. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    getPostflightFit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                result_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PostflightFit"];
+                };
+            };
+            /** @description Not fitted (yet). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    uploadFlightLog: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_uploadFlightLog"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LogPreview"];
+                };
+            };
+            /** @description Not a readable log. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     listProfiles: {
         parameters: {
             query?: never;
@@ -4037,6 +4882,80 @@ export interface operations {
             };
         };
     };
+    listResults: {
+        parameters: {
+            query?: {
+                /** @description Only this mission's flights. */
+                mission_id?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResultRecord"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    compareResults: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                a: string;
+                b: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Comparison"];
+                };
+            };
+            /** @description No result with that id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     getResult: {
         parameters: {
             query?: never;
@@ -4055,6 +4974,48 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ResultRecord"];
+                };
+            };
+            /** @description No result with that id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    getResultPath: {
+        parameters: {
+            query?: {
+                max_points?: number;
+            };
+            header?: never;
+            path: {
+                result_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FlightPath"];
                 };
             };
             /** @description No result with that id. */
@@ -4175,6 +5136,39 @@ export interface operations {
             };
         };
     };
+    lookupFlight: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FlightRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FlightLookup"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     runMonteCarlo: {
         parameters: {
             query?: never;
@@ -4233,6 +5227,73 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SystemInfo"];
+                };
+            };
+        };
+    };
+    getStorage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StoreUsage"][];
+                };
+            };
+        };
+    };
+    clearStore: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

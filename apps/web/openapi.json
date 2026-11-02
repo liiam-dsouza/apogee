@@ -124,6 +124,299 @@
         "title": "AtApogee",
         "type": "object"
       },
+      "Ballast": {
+        "additionalProperties": false,
+        "description": "Ballast to trim apogee: what is installed, and what the solver may use.",
+        "properties": {
+          "increment_kg": {
+            "default": 0.05,
+            "description": "Smallest step you can add: one plate, or a measure of shot.",
+            "exclusiveMinimum": 0.0,
+            "title": "Increment Kg",
+            "type": "number",
+            "units": "kg"
+          },
+          "installed_kg": {
+            "default": 0.0,
+            "description": "Ballast in the rocket now. Every flight includes it.",
+            "minimum": 0.0,
+            "title": "Installed Kg",
+            "type": "number",
+            "units": "kg"
+          },
+          "max_kg": {
+            "default": 2.0,
+            "description": "Most the bay holds.",
+            "exclusiveMinimum": 0.0,
+            "title": "Max Kg",
+            "type": "number",
+            "units": "kg"
+          },
+          "position_m": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Centre of the ballast bay, aft of the nose tip. Needed for any ballast.",
+            "title": "Position M",
+            "units": "m"
+          },
+          "target_apogee_m": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Apogee to trim to, above the pad. Unset: the competition category's target.",
+            "title": "Target Apogee M",
+            "units": "m"
+          }
+        },
+        "title": "Ballast",
+        "type": "object"
+      },
+      "BallastRequest": {
+        "properties": {
+          "mission": {
+            "$ref": "#/components/schemas/Mission",
+            "description": "The mission, with its ballast settings."
+          }
+        },
+        "required": [
+          "mission"
+        ],
+        "title": "BallastRequest",
+        "type": "object"
+      },
+      "BallastRun": {
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Why it failed.",
+            "title": "Error"
+          },
+          "job_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Job to poll while not done.",
+            "title": "Job Id"
+          },
+          "result_id": {
+            "description": "Where the solution is (or will be) stored.",
+            "title": "Result Id",
+            "type": "string"
+          },
+          "status": {
+            "description": "Solve status.",
+            "enum": [
+              "queued",
+              "running",
+              "done",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "result_id",
+          "job_id"
+        ],
+        "title": "BallastRun",
+        "type": "object"
+      },
+      "BallastSolution": {
+        "properties": {
+          "apogee_agl_m": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Nominal apogee at the recommended mass.",
+            "title": "Apogee Agl M",
+            "units": "m"
+          },
+          "apogee_p5_m": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "5th percentile of the Monte Carlo apogee.",
+            "title": "Apogee P5 M",
+            "units": "m"
+          },
+          "apogee_p95_m": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "95th percentile of the Monte Carlo apogee.",
+            "title": "Apogee P95 M",
+            "units": "m"
+          },
+          "built_in_checks": {
+            "description": "True if the mission had no rules of its own.",
+            "title": "Built In Checks",
+            "type": "boolean"
+          },
+          "curve": {
+            "description": "Every nominal flight the solve flew.",
+            "items": {
+              "$ref": "#/components/schemas/CurvePoint"
+            },
+            "title": "Curve",
+            "type": "array"
+          },
+          "exact_kg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Mass that hits the target exactly.",
+            "title": "Exact Kg",
+            "units": "kg"
+          },
+          "gradient_m_per_100g": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Apogee change per 100 g added, locally.",
+            "title": "Gradient M Per 100G",
+            "units": "m"
+          },
+          "increment_kg": {
+            "description": "One increment.",
+            "title": "Increment Kg",
+            "type": "number",
+            "units": "kg"
+          },
+          "increments": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "How many increments that is.",
+            "title": "Increments"
+          },
+          "recommended_kg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Rounded to the increment.",
+            "title": "Recommended Kg",
+            "units": "kg"
+          },
+          "report": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Board"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Every rule, judged at the recommended mass."
+          },
+          "samples": {
+            "description": "Monte Carlo flights at the recommended mass.",
+            "title": "Samples",
+            "type": "integer"
+          },
+          "status": {
+            "description": "ok: solved. too_low: apogee is under the target even with no ballast. too_high: still over it with the bay full.",
+            "enum": [
+              "ok",
+              "too_low",
+              "too_high"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "target_apogee_m": {
+            "description": "The target, above the pad.",
+            "title": "Target Apogee M",
+            "type": "number",
+            "units": "m"
+          },
+          "target_source": {
+            "description": "Where the target came from.",
+            "title": "Target Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "target_apogee_m",
+          "target_source",
+          "exact_kg",
+          "recommended_kg",
+          "increments",
+          "increment_kg",
+          "apogee_agl_m",
+          "apogee_p5_m",
+          "apogee_p95_m",
+          "samples",
+          "gradient_m_per_100g",
+          "curve",
+          "report",
+          "built_in_checks"
+        ],
+        "title": "BallastSolution",
+        "type": "object"
+      },
       "Board": {
         "properties": {
           "profile": {
@@ -300,6 +593,21 @@
           "kind"
         ],
         "title": "Body_uploadAsset",
+        "type": "object"
+      },
+      "Body_uploadFlightLog": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "description": "CSV log.",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_uploadFlightLog",
         "type": "object"
       },
       "CampaignBasis": {
@@ -583,6 +891,39 @@
           "description"
         ],
         "title": "ChannelInfo",
+        "type": "object"
+      },
+      "Comparison": {
+        "properties": {
+          "a": {
+            "$ref": "#/components/schemas/ResultRecord",
+            "description": "The first run."
+          },
+          "b": {
+            "$ref": "#/components/schemas/ResultRecord",
+            "description": "The second run."
+          },
+          "differences": {
+            "description": "Mission settings that differ, a to b (campaign settings and rules left out).",
+            "items": {
+              "$ref": "#/components/schemas/Difference"
+            },
+            "title": "Differences",
+            "type": "array"
+          },
+          "settings_known": {
+            "description": "Whether both runs recorded their mission (older runs didn't).",
+            "title": "Settings Known",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "a",
+          "b",
+          "settings_known",
+          "differences"
+        ],
+        "title": "Comparison",
         "type": "object"
       },
       "Condition": {
@@ -1031,6 +1372,28 @@
         "title": "CrossCheck",
         "type": "object"
       },
+      "CurvePoint": {
+        "properties": {
+          "apogee_agl_m": {
+            "description": "Nominal apogee with it.",
+            "title": "Apogee Agl M",
+            "type": "number",
+            "units": "m"
+          },
+          "mass_kg": {
+            "description": "Ballast added.",
+            "title": "Mass Kg",
+            "type": "number",
+            "units": "kg"
+          }
+        },
+        "required": [
+          "mass_kg",
+          "apogee_agl_m"
+        ],
+        "title": "CurvePoint",
+        "type": "object"
+      },
       "DescentRequest": {
         "properties": {
           "mission": {
@@ -1179,6 +1542,30 @@
           "cd_s_for_target_m2"
         ],
         "title": "DeviceDescent",
+        "type": "object"
+      },
+      "Difference": {
+        "properties": {
+          "a": {
+            "description": "Value in the first mission (None if absent).",
+            "title": "A"
+          },
+          "b": {
+            "description": "Value in the second mission (None if absent).",
+            "title": "B"
+          },
+          "path": {
+            "description": "Where in the mission, e.g. 'rocket.drag.multiplier'.",
+            "title": "Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "a",
+          "b"
+        ],
+        "title": "Difference",
         "type": "object"
       },
       "Distribution": {
@@ -1416,6 +1803,130 @@
         "title": "Environment",
         "type": "object"
       },
+      "FitCurve": {
+        "properties": {
+          "altitude_agl_m": {
+            "description": "Above the pad, m.",
+            "items": {
+              "type": "number"
+            },
+            "title": "Altitude Agl M",
+            "type": "array"
+          },
+          "t": {
+            "description": "Time since launch, s.",
+            "items": {
+              "type": "number"
+            },
+            "title": "T",
+            "type": "array"
+          }
+        },
+        "required": [
+          "t",
+          "altitude_agl_m"
+        ],
+        "title": "FitCurve",
+        "type": "object"
+      },
+      "FitRequest": {
+        "properties": {
+          "altitude_column": {
+            "description": "Column holding altitude.",
+            "title": "Altitude Column",
+            "type": "string"
+          },
+          "altitude_units": {
+            "description": "Units of the altitude column.",
+            "enum": [
+              "m",
+              "ft"
+            ],
+            "title": "Altitude Units",
+            "type": "string"
+          },
+          "fit_impulse": {
+            "default": false,
+            "description": "Also fit the total-impulse scale.",
+            "title": "Fit Impulse",
+            "type": "boolean"
+          },
+          "log_sha256": {
+            "description": "The uploaded log.",
+            "title": "Log Sha256",
+            "type": "string"
+          },
+          "mission": {
+            "$ref": "#/components/schemas/Mission",
+            "description": "The mission as flown."
+          },
+          "time_column": {
+            "description": "Column holding time, in seconds.",
+            "title": "Time Column",
+            "type": "string"
+          }
+        },
+        "required": [
+          "mission",
+          "log_sha256",
+          "time_column",
+          "altitude_column",
+          "altitude_units"
+        ],
+        "title": "FitRequest",
+        "type": "object"
+      },
+      "FitRun": {
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Why it failed.",
+            "title": "Error"
+          },
+          "job_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Job to poll while not done.",
+            "title": "Job Id"
+          },
+          "result_id": {
+            "description": "Where the fit is (or will be) stored.",
+            "title": "Result Id",
+            "type": "string"
+          },
+          "status": {
+            "description": "Fit status.",
+            "enum": [
+              "queued",
+              "running",
+              "done",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "result_id",
+          "job_id"
+        ],
+        "title": "FitRun",
+        "type": "object"
+      },
       "FlightBasis": {
         "properties": {
           "available": {
@@ -1434,6 +1945,80 @@
           "available"
         ],
         "title": "FlightBasis",
+        "type": "object"
+      },
+      "FlightLookup": {
+        "properties": {
+          "available": {
+            "description": "Whether that flight has been run.",
+            "title": "Available",
+            "type": "boolean"
+          },
+          "result_id": {
+            "description": "The mission's single-flight result id.",
+            "title": "Result Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "result_id",
+          "available"
+        ],
+        "title": "FlightLookup",
+        "type": "object"
+      },
+      "FlightPath": {
+        "description": "The trajectory in 3D, every channel at the same instants.",
+        "properties": {
+          "altitude_agl_m": {
+            "description": "Above the pad, m.",
+            "items": {
+              "type": "number"
+            },
+            "title": "Altitude Agl M",
+            "type": "array"
+          },
+          "east_m": {
+            "description": "East of the pad, m.",
+            "items": {
+              "type": "number"
+            },
+            "title": "East M",
+            "type": "array"
+          },
+          "north_m": {
+            "description": "North of the pad, m.",
+            "items": {
+              "type": "number"
+            },
+            "title": "North M",
+            "type": "array"
+          },
+          "speed_ms": {
+            "description": "Speed, m/s.",
+            "items": {
+              "type": "number"
+            },
+            "title": "Speed Ms",
+            "type": "array"
+          },
+          "t": {
+            "description": "Time since ignition, s.",
+            "items": {
+              "type": "number"
+            },
+            "title": "T",
+            "type": "array"
+          }
+        },
+        "required": [
+          "t",
+          "east_m",
+          "north_m",
+          "altitude_agl_m",
+          "speed_ms"
+        ],
+        "title": "FlightPath",
         "type": "object"
       },
       "FlightRequest": {
@@ -2183,6 +2768,83 @@
         "title": "LandingPoint",
         "type": "object"
       },
+      "LogPreview": {
+        "properties": {
+          "altitude_column": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Guessed altitude column.",
+            "title": "Altitude Column"
+          },
+          "altitude_units": {
+            "description": "Guessed altitude units.",
+            "enum": [
+              "m",
+              "ft"
+            ],
+            "title": "Altitude Units",
+            "type": "string"
+          },
+          "columns": {
+            "description": "Column names from the header.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Columns",
+            "type": "array"
+          },
+          "filename": {
+            "description": "Original filename.",
+            "title": "Filename",
+            "type": "string"
+          },
+          "rows": {
+            "description": "The first rows, as text.",
+            "items": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "sha256": {
+            "description": "The stored log; pass it to the fit.",
+            "title": "Sha256",
+            "type": "string"
+          },
+          "time_column": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Guessed time column.",
+            "title": "Time Column"
+          }
+        },
+        "required": [
+          "sha256",
+          "filename",
+          "columns",
+          "rows",
+          "time_column",
+          "altitude_column",
+          "altitude_units"
+        ],
+        "title": "LogPreview",
+        "type": "object"
+      },
       "ManualProfile": {
         "additionalProperties": false,
         "properties": {
@@ -2294,10 +2956,8 @@
             "type": "object"
           },
           "ballast": {
-            "additionalProperties": true,
-            "description": "Not modelled yet: accepted as-is so configs round-trip.",
-            "title": "Ballast",
-            "type": "object"
+            "$ref": "#/components/schemas/Ballast",
+            "description": "Ballast installed and to solve for."
           },
           "constraints": {
             "$ref": "#/components/schemas/ConstraintSettings",
@@ -2886,6 +3546,101 @@
           "triggered_agl_m"
         ],
         "title": "ParachuteEvent",
+        "type": "object"
+      },
+      "PostflightFit": {
+        "properties": {
+          "drag_multiplier": {
+            "description": "Fitted rocket.drag.multiplier (absolute).",
+            "title": "Drag Multiplier",
+            "type": "number"
+          },
+          "drag_multiplier_before": {
+            "description": "The mission's multiplier before the fit.",
+            "title": "Drag Multiplier Before",
+            "type": "number"
+          },
+          "fitted": {
+            "$ref": "#/components/schemas/FitCurve",
+            "description": "The ascent with the fitted values."
+          },
+          "fitted_apogee_m": {
+            "description": "With the fitted values.",
+            "title": "Fitted Apogee M",
+            "type": "number",
+            "units": "m"
+          },
+          "fitted_impulse": {
+            "description": "Whether the impulse scale was fitted.",
+            "title": "Fitted Impulse",
+            "type": "boolean"
+          },
+          "flights": {
+            "description": "Ascent-only flights the fit flew.",
+            "title": "Flights",
+            "type": "integer"
+          },
+          "impulse_scale": {
+            "description": "Fitted total-impulse scale (1 if not fitted).",
+            "title": "Impulse Scale",
+            "type": "number"
+          },
+          "launch_s": {
+            "description": "When the log leaves the pad, in the log's own time, as fitted.",
+            "title": "Launch S",
+            "type": "number",
+            "units": "s"
+          },
+          "measured": {
+            "$ref": "#/components/schemas/FitCurve",
+            "description": "The log, aligned and downsampled."
+          },
+          "measured_apogee_m": {
+            "description": "Highest altitude in the log, above the pad.",
+            "title": "Measured Apogee M",
+            "type": "number",
+            "units": "m"
+          },
+          "predicted": {
+            "$ref": "#/components/schemas/FitCurve",
+            "description": "The ascent as it stands."
+          },
+          "predicted_apogee_m": {
+            "description": "The mission as it stands.",
+            "title": "Predicted Apogee M",
+            "type": "number",
+            "units": "m"
+          },
+          "rms_after_m": {
+            "description": "RMS altitude error with the fitted values.",
+            "title": "Rms After M",
+            "type": "number",
+            "units": "m"
+          },
+          "rms_before_m": {
+            "description": "RMS altitude error over the ascent, as it stands.",
+            "title": "Rms Before M",
+            "type": "number",
+            "units": "m"
+          }
+        },
+        "required": [
+          "launch_s",
+          "measured_apogee_m",
+          "predicted_apogee_m",
+          "fitted_apogee_m",
+          "drag_multiplier",
+          "drag_multiplier_before",
+          "impulse_scale",
+          "fitted_impulse",
+          "rms_before_m",
+          "rms_after_m",
+          "flights",
+          "measured",
+          "predicted",
+          "fitted"
+        ],
+        "title": "PostflightFit",
         "type": "object"
       },
       "Probability": {
@@ -4331,6 +5086,45 @@
         "title": "Stat",
         "type": "object"
       },
+      "StoreUsage": {
+        "properties": {
+          "bytes": {
+            "description": "Space used.",
+            "title": "Bytes",
+            "type": "integer",
+            "units": "bytes"
+          },
+          "items": {
+            "description": "Entries in it.",
+            "title": "Items",
+            "type": "integer"
+          },
+          "label": {
+            "description": "What it holds.",
+            "title": "Label",
+            "type": "string"
+          },
+          "name": {
+            "description": "Store name.",
+            "title": "Name",
+            "type": "string"
+          },
+          "recomputable": {
+            "description": "Whether everything in it can be computed again (and so may be cleared).",
+            "title": "Recomputable",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name",
+          "label",
+          "items",
+          "bytes",
+          "recomputable"
+        ],
+        "title": "StoreUsage",
+        "type": "object"
+      },
       "SurfaceWind": {
         "additionalProperties": false,
         "description": "A measured surface wind, blended into the profile near the ground.",
@@ -4935,6 +5729,110 @@
         "summary": "Thrust Curve",
         "tags": [
           "assets"
+        ]
+      }
+    },
+    "/api/ballast/solve": {
+      "post": {
+        "description": "Start a solve, or return the stored solution for this exact mission.",
+        "operationId": "solveBallast",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BallastRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BallastRun"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The mission can't be solved for yet."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No job queue."
+          }
+        },
+        "summary": "Solve Ballast",
+        "tags": [
+          "ballast"
+        ]
+      }
+    },
+    "/api/ballast/{result_id}": {
+      "get": {
+        "operationId": "getBallast",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "result_id",
+            "required": true,
+            "schema": {
+              "title": "Result Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BallastSolution"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not solved (yet)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Ballast",
+        "tags": [
+          "ballast"
         ]
       }
     },
@@ -5836,6 +6734,152 @@
         ]
       }
     },
+    "/api/postflight/fit": {
+      "post": {
+        "description": "Fit the drag multiplier (and impulse) to the log, or return the stored fit.",
+        "operationId": "fitPostflight",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FitRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FitRun"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The mission can't be flown, or no such log."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No job queue."
+          }
+        },
+        "summary": "Start Fit",
+        "tags": [
+          "post-flight"
+        ]
+      }
+    },
+    "/api/postflight/fits/{result_id}": {
+      "get": {
+        "operationId": "getPostflightFit",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "result_id",
+            "required": true,
+            "schema": {
+              "title": "Result Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PostflightFit"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not fitted (yet)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Fit",
+        "tags": [
+          "post-flight"
+        ]
+      }
+    },
+    "/api/postflight/logs": {
+      "post": {
+        "description": "Store a flight log and show its columns, with a guess at time and altitude.",
+        "operationId": "uploadFlightLog",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_uploadFlightLog"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogPreview"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not a readable log."
+          }
+        },
+        "summary": "Upload Log",
+        "tags": [
+          "post-flight"
+        ]
+      }
+    },
     "/api/profiles": {
       "get": {
         "description": "Every competition profile, with its rules.",
@@ -5904,6 +6948,136 @@
         ]
       }
     },
+    "/api/results": {
+      "get": {
+        "description": "Stored single flights, newest first.",
+        "operationId": "listResults",
+        "parameters": [
+          {
+            "description": "Only this mission's flights.",
+            "in": "query",
+            "name": "mission_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only this mission's flights.",
+              "title": "Mission Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ResultRecord"
+                  },
+                  "title": "Response Listresults",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Results",
+        "tags": [
+          "results"
+        ]
+      }
+    },
+    "/api/results/compare/{a}/{b}": {
+      "get": {
+        "description": "Two runs, and what differs between the missions that produced them.",
+        "operationId": "compareResults",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "a",
+            "required": true,
+            "schema": {
+              "title": "A",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "b",
+            "required": true,
+            "schema": {
+              "title": "B",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Comparison"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No result with that id."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Compare Results",
+        "tags": [
+          "results"
+        ]
+      }
+    },
     "/api/results/{result_id}": {
       "get": {
         "description": "Summary, provenance and available channels for a result.",
@@ -5952,6 +7126,71 @@
           }
         },
         "summary": "Get Result",
+        "tags": [
+          "results"
+        ]
+      }
+    },
+    "/api/results/{result_id}/path": {
+      "get": {
+        "description": "The trajectory in 3D: east, north, altitude and speed at the same instants.",
+        "operationId": "getResultPath",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "result_id",
+            "required": true,
+            "schema": {
+              "title": "Result Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "max_points",
+            "required": false,
+            "schema": {
+              "default": 1500,
+              "maximum": 20000,
+              "minimum": 10,
+              "title": "Max Points",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FlightPath"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No result with that id."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Path",
         "tags": [
           "results"
         ]
@@ -6115,6 +7354,48 @@
         ]
       }
     },
+    "/api/sim/flight/lookup": {
+      "post": {
+        "description": "Where this exact mission's flight result is, and whether it exists. Runs nothing.",
+        "operationId": "lookupFlight",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FlightRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FlightLookup"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Lookup Flight",
+        "tags": [
+          "simulation"
+        ]
+      }
+    },
     "/api/sim/montecarlo": {
       "post": {
         "description": "Start a campaign, or resume one: chunks without a finished result or a live job\nare (re)queued. The same mission and versions always give the same campaign.",
@@ -6183,6 +7464,88 @@
           }
         },
         "summary": "System Info",
+        "tags": [
+          "system"
+        ]
+      }
+    },
+    "/api/system/storage": {
+      "get": {
+        "description": "What the data directory holds. Missions live in the database and aren't listed.",
+        "operationId": "getStorage",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/StoreUsage"
+                  },
+                  "title": "Response Getstorage",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Storage",
+        "tags": [
+          "system"
+        ]
+      }
+    },
+    "/api/system/storage/{name}": {
+      "delete": {
+        "description": "Delete a store of computed results. Only stores that can be recomputed may be cleared.",
+        "operationId": "clearStore",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Clear Store",
         "tags": [
           "system"
         ]
