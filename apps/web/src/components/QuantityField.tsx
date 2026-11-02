@@ -44,7 +44,7 @@ export function QuantityField({
   decimals?: number
 }) {
   const id = useId()
-  const system = usePrefs((s) => s.units)
+  const system = usePrefs((s) => s.display)
   const unit = unitFor(quantity, system)
   const { description, units } = meta(schema, name)
   const issues = useIssuesAt(path)

@@ -38,7 +38,7 @@ const SHOWN = [
 ]
 
 function useFormat() {
-  const units = usePrefs((s) => s.units)
+  const units = usePrefs((s) => s.display)
   return (name: string) => {
     const d = DISPLAY[name] ?? { quantity: null, digits: 2 }
     const symbol = d.quantity ? unitFor(d.quantity, units).symbol : d.symbol

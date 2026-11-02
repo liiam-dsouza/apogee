@@ -103,7 +103,7 @@ function ProfilePlot({
   measured?: { h: number; value: number; label: string }
 }) {
   const [host, width] = useWidth<HTMLDivElement>()
-  const units = usePrefs((s) => s.units)
+  const units = usePrefs((s) => s.display)
   const [hoverH, setHoverH] = useState<number | null>(null)
   const w = Math.max(width - PAD.left - PAD.right, 10)
   const h = HEIGHT - PAD.top - PAD.bottom
@@ -236,7 +236,7 @@ function Tooltip({ top, left, children }: { top: number; left: number; children:
  */
 function Hodograph({ series, maxH, labelHeights }: { series: ProfileSeries[]; maxH: number; labelHeights: number[] }) {
   const [host, width] = useWidth<HTMLDivElement>()
-  const units = usePrefs((s) => s.units)
+  const units = usePrefs((s) => s.display)
   const [hover, setHover] = useState<{ p: WindPoint; s: ProfileSeries } | null>(null)
   const size = Math.min(width, HEIGHT)
   const inRange = series.map((s) => ({ ...s, points: clip(s.points, maxH) }))
@@ -328,7 +328,7 @@ export function WindCharts({
   maxH: number
   measured?: { h: number; speed: number; from: number }
 }) {
-  const units = usePrefs((s) => s.units)
+  const units = usePrefs((s) => s.display)
   const maxSpeed = useMemo(
     () => Math.max(1, ...series.flatMap((s) => s.points.filter((p) => p.h <= maxH).map((p) => p.speed))),
     [series, maxH],

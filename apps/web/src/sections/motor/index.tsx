@@ -50,7 +50,7 @@ export function Centre() {
 function MotorCentre() {
   const motor = useMotor()
   const curve = useThrustCurve(motor?.thrust_curve)
-  const units = usePrefs((s) => s.units)
+  const units = usePrefs((s) => s.display)
 
   if (!motor) {
     return (

@@ -12,7 +12,7 @@ import { Map, MapControls, MapGeoJSON, MapMarker, MarkerContent, useMap } from '
 import { api, type CampaignResult, type MonteCarloParameters, type Probability } from '@/lib/api'
 import { useCampaign, useRunCampaign } from '@/lib/campaign'
 import { overlayColors } from '@/lib/mapStyles'
-import { formatSI } from '@/lib/units'
+import { formatSI, systemOf, unitFor } from '@/lib/units'
 import { cn } from '@/lib/utils'
 import { useMissionStore } from '@/stores/mission'
 import { usePrefs } from '@/stores/prefs'
@@ -26,7 +26,7 @@ export function Centre() {
 function DispersionMap() {
   const missionId = useMissionStore((s) => s.draft?.meta.id)
   const site = useMissionStore((s) => s.draft?.site ?? null)
-  const units = usePrefs((s) => s.units)
+  const units = usePrefs((s) => s.display)
   const campaign = useCampaign(missionId)
   const result = campaign.data
 
@@ -39,7 +39,7 @@ function DispersionMap() {
         zoom={site ? 12 : 1.5}
       >
         <MapControls position="bottom-right" showCompass />
-        <MapScale unit={units} />
+        <MapScale unit={systemOf(units)} />
         {site && <SiteLayers site={site} />}
         {result && <CampaignLayers result={result} />}
       </Map>
@@ -68,7 +68,7 @@ function DispersionMap() {
 
 function CampaignLayers({ result }: { result: CampaignResult }) {
   const { resolvedTheme } = useMap()
-  const units = usePrefs((s) => s.units)
+  const units = usePrefs((s) => s.display)
   const c = overlayColors[resolvedTheme]
   const [hover, setHover] = useState<{ properties: { index: number; apogee: number }; x: number; y: number } | null>(
     null,
@@ -90,7 +90,7 @@ function CampaignLayers({ result }: { result: CampaignResult }) {
       'circle-color': c.primary,
       'circle-opacity': 0.75,
       'circle-stroke-width': 1,
-      'circle-stroke-color': resolvedTheme === 'dark' ? '#0f1720' : '#ffffff',
+      'circle-stroke-color': resolvedTheme === 'dark' ? '#0d0d0d' : '#f5f5f5',
     }),
     [c.primary, resolvedTheme],
   )
@@ -191,7 +191,7 @@ function EllipseLegend() {
 }
 
 function CampaignTiles({ result }: { result: CampaignResult }) {
-  const units = usePrefs((s) => s.units)
+  const units = usePrefs((s) => s.display)
   const { state, summary } = result
   const ellipse95 = summary.ellipses[1]
   const running = state.status === 'running'
@@ -205,7 +205,7 @@ function CampaignTiles({ result }: { result: CampaignResult }) {
           </span>
         </p>
         <div className="h-1.5 overflow-hidden rounded-full bg-background" role="progressbar" aria-valuenow={state.samples_done} aria-valuemax={state.samples} aria-label="Campaign progress">
-          <div className="h-full bg-chart-1 transition-[width]" style={{ width: `${(100 * state.samples_done) / state.samples}%` }} />
+          <div className="h-full bg-brand transition-[width]" style={{ width: `${(100 * state.samples_done) / state.samples}%` }} />
         </div>
         {summary.failed > 0 && (
           <p className="text-xs text-caution">
@@ -423,21 +423,21 @@ function SigmaField({
   disabled: boolean
   onChange: (sigma: number) => void
 }) {
-  const system = usePrefs((s) => s.units)
+  const system = usePrefs((s) => s.display)
   const [editing, setEditing] = useState<string | null>(null)
   const { toShown, fromShown, suffix } = useMemo(() => {
     if (display === 'percent') return { toShown: (v: number) => v * 100, fromShown: (v: number) => v / 100, suffix: '%' }
     if (display === 'deg') return { toShown: (v: number) => v, fromShown: (v: number) => v, suffix: '°' }
     if (display === 'seconds') return { toShown: (v: number) => v, fromShown: (v: number) => v, suffix: 's' }
     const quantity = display === 'length' ? 'length' : display === 'altitude' ? 'altitude' : 'speed'
-    const metric = system === 'metric'
-    // length in metric is metres; show millimetres for the centre of mass.
-    if (quantity === 'length' && metric) return { toShown: (v: number) => v * 1000, fromShown: (v: number) => v / 1000, suffix: 'mm' }
-    const factor = metric ? 1 : quantity === 'length' ? 0.0254 : 0.3048
+    const unit = unitFor(quantity, system)
+    // Centre-of-mass spreads are millimetres; show metres as mm.
+    if (quantity === 'length' && unit.symbol === 'm')
+      return { toShown: (v: number) => v * 1000, fromShown: (v: number) => v / 1000, suffix: 'mm' }
     return {
-      toShown: (v: number) => v / factor,
-      fromShown: (v: number) => v * factor,
-      suffix: metric ? (quantity === 'speed' ? 'm/s' : 'm') : quantity === 'length' ? 'in' : quantity === 'speed' ? 'ft/s' : 'ft',
+      toShown: (v: number) => unit.fromSI(v) - unit.fromSI(0),
+      fromShown: (v: number) => unit.toSI(v) - unit.toSI(0),
+      suffix: unit.symbol,
     }
   }, [display, system])
   const text = editing ?? `${Number(toShown(sigma).toPrecision(3))}`
@@ -473,7 +473,7 @@ const KEY_OUTPUTS: { name: string; quantity: 'altitude' | 'speed' | 'distance' |
 
 function CampaignStats() {
   const missionId = useMissionStore((s) => s.draft?.meta.id)
-  const units = usePrefs((s) => s.units)
+  const units = usePrefs((s) => s.display)
   const { data } = useCampaign(missionId)
   if (!data || data.summary.done === 0) return null
   const fmt = (v: number, q: (typeof KEY_OUTPUTS)[number]) =>

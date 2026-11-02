@@ -31,7 +31,7 @@ export function Centre() {
 function RecoveryCentre() {
   const draft = useMissionStore((s) => s.draft!)
   const edit = useMissionStore((s) => s.edit)
-  const units = usePrefs((s) => s.units)
+  const units = usePrefs((s) => s.display)
   // Wanted descent rate per device, in SI; asks the API for the CdS that gives it.
   const [targets, setTargets] = useState<Record<string, number>>({})
   const ready = Boolean(draft.rocket && draft.motor && draft.site)
@@ -153,7 +153,7 @@ function RecoveryCentre() {
 }
 
 function TargetInput({ label, unit, onChange }: { label: string; unit: string; onChange: (si: number | null) => void }) {
-  const units = usePrefs((s) => s.units)
+  const units = usePrefs((s) => s.display)
   const [text, setText] = useState('')
   return (
     <span className="flex h-8 w-28 items-center rounded-md border border-border bg-background">

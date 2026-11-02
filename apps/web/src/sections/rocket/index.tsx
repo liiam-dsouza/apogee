@@ -8,7 +8,7 @@ import { RequireMission } from '@/components/RequireMission'
 import { RocketSideView } from '@/components/RocketSideView'
 import { Button } from '@/components/ui/button'
 import { api, type CrossCheck, type ImportReport, type OpenRocketImport } from '@/lib/api'
-import { formatSI } from '@/lib/units'
+import { formatSI, systemOf } from '@/lib/units'
 import { cn } from '@/lib/utils'
 import { useMissionStore } from '@/stores/mission'
 import { usePrefs } from '@/stores/prefs'
@@ -54,7 +54,7 @@ function RocketCentre() {
 
 function RocketSummary() {
   const rocket = useMissionStore((s) => s.draft!.rocket!)
-  const units = usePrefs((s) => s.units)
+  const units = usePrefs((s) => s.display)
   const length = Math.max(
     rocket.nose.length_m,
     rocket.motor_position_m,
@@ -63,7 +63,7 @@ function RocketSummary() {
   )
   const facts: [string, string][] = [
     ['Length', formatSI(length, 'distance', units, 2)],
-    ['Diameter', formatSI(rocket.radius_m * 2, 'length', units, units === 'metric' ? 3 : 2)],
+    ['Diameter', formatSI(rocket.radius_m * 2, 'length', units, systemOf(units) === 'metric' ? 3 : 2)],
     ['Dry mass', formatSI(rocket.dry_mass_kg, 'mass', units, 2)],
     ['Dry centre of mass', `${formatSI(rocket.dry_cg_m, 'distance', units, 3)} from the tip`],
     ['Nose', `${rocket.nose.kind.replace('_', ' ')}, ${formatSI(rocket.nose.length_m, 'distance', units, 2)}`],

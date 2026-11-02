@@ -6,7 +6,7 @@ import { ProblemNotice } from '@/components/ProblemNotice'
 import { RequireMission } from '@/components/RequireMission'
 import { Button } from '@/components/ui/button'
 import type { FlightSummary, ResultRecord, Series } from '@/lib/api'
-import { formatSI, fromSI, unitFor, type Quantity, type UnitSystem } from '@/lib/units'
+import { formatSI, fromSI, unitFor, type Quantity, type Units } from '@/lib/units'
 import { useMissionStore } from '@/stores/mission'
 import { usePrefs } from '@/stores/prefs'
 import { useFlightRuns, useResult, useRunFlight, useSeries } from './run'
@@ -63,7 +63,7 @@ function FlightResults() {
   const { run, stale } = useCurrentRun()
   const result = useResult(run?.resultId)
   const series = useSeries(run?.resultId, CHANNELS.map((c) => c.name))
-  const units = usePrefs((s) => s.units)
+  const units = usePrefs((s) => s.display)
 
   if (!run) {
     return (
@@ -100,7 +100,7 @@ function FlightResults() {
   )
 }
 
-function Headline({ summary, units, ascentOnly }: { summary: FlightSummary; units: UnitSystem; ascentOnly: boolean }) {
+function Headline({ summary, units, ascentOnly }: { summary: FlightSummary; units: Units; ascentOnly: boolean }) {
   const apogee = unitFor('altitude', units)
   const landing = summary.landing
   const ascent: [string, string][] = [
@@ -157,7 +157,7 @@ function TileGroup({ title, tiles }: { title: string; tiles: [string, string][] 
   )
 }
 
-function Events({ summary, units }: { summary: FlightSummary; units: UnitSystem }) {
+function Events({ summary, units }: { summary: FlightSummary; units: Units }) {
   const rows: [string, number, string][] = [
     ['Ignition', 0, ''],
     ['Burnout', summary.burnout_time_s, ''],
@@ -193,7 +193,7 @@ function Events({ summary, units }: { summary: FlightSummary; units: UnitSystem 
   )
 }
 
-function convert(s: Series, ch: Channel, units: UnitSystem, tMax: number) {
+function convert(s: Series, ch: Channel, units: Units, tMax: number) {
   const t: number[] = []
   const y: number[] = []
   for (let i = 0; i < s.t.length; i++) {
@@ -204,7 +204,7 @@ function convert(s: Series, ch: Channel, units: UnitSystem, tMax: number) {
   return { t, y, unit: ch.quantity ? unitFor(ch.quantity, units).symbol : (ch.unit ?? '') }
 }
 
-function Charts({ series, summary, units }: { series: Series[]; summary: FlightSummary; units: UnitSystem }) {
+function Charts({ series, summary, units }: { series: Series[]; summary: FlightSummary; units: Units }) {
   const events = useMemo<ChartEvent[]>(
     () => [
       { t: summary.burnout_time_s, label: 'Burnout' },
@@ -243,7 +243,7 @@ function Charts({ series, summary, units }: { series: Series[]; summary: FlightS
 }
 
 /** The charts' table-view twin: every channel at common times, so no value is hover-only. */
-function DataTable({ series, units }: { series: Series[]; units: UnitSystem }) {
+function DataTable({ series, units }: { series: Series[]; units: Units }) {
   const [open, setOpen] = useState(false)
   const rows = useMemo(() => {
     if (!open) return []

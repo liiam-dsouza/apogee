@@ -217,7 +217,7 @@ function LevelTable({
   elevation: number
   maxH: number
 }) {
-  const units = usePrefs((s) => s.units)
+  const units = usePrefs((s) => s.display)
   const rows = toWindPoints(levels, elevation)
     .map((p, i) => ({ p, lv: levels[i] }))
     .filter(({ p }) => p.h >= 0 && p.h <= maxH)
@@ -336,7 +336,7 @@ function ManualProfileEditor() {
   const atmosphere = useEnvironment()?.atmosphere
   const elevation = useMissionStore((s) => s.draft?.site?.elevation_m ?? 0)
   const editEnvironment = useEditEnvironment()
-  const units = usePrefs((s) => s.units)
+  const units = usePrefs((s) => s.display)
   const issues = useIssuesAt('environment.atmosphere', { nested: true })
 
   if (atmosphere?.kind !== 'manual') {
@@ -505,7 +505,7 @@ function OptionalQuantity({
   value: number | null
   onChange: (si: number | null) => void
 }) {
-  const units = usePrefs((s) => s.units)
+  const units = usePrefs((s) => s.display)
   const [editing, setEditing] = useState<string | null>(null)
   const text = editing ?? (value == null ? '' : Number(fromSI(value, quantity, units).toFixed(1)).toString())
   return (

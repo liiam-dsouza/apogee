@@ -23,6 +23,7 @@ test('create a mission, place the site, draw the range and save it', async ({ pa
     await page.evaluate(() => {
       const prefs = JSON.parse(localStorage.getItem('apogee.prefs') ?? '{"state":{}}')
       prefs.state.units = 'imperial'
+      prefs.state.display = { system: 'imperial', choice: {} }
       localStorage.setItem('apogee.prefs', JSON.stringify(prefs))
     })
     await page.reload()

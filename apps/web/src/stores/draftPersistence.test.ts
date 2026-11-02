@@ -6,7 +6,7 @@ import { useMissionStore } from './mission'
 const mission: Mission = {
   schema_version: 3,
   meta: { name: 'Lanius', id: '01JC', created_utc: '2026-11-01T09:14:00Z', authors: [], notes: '' },
-  rocket: null, motor: null, recovery: { devices: [] }, ballast: {}, site: null,
+  rocket: null, motor: null, recovery: { devices: [] }, ballast: { installed_kg: 0, increment_kg: 0.05, max_kg: 2 }, site: null,
   environment: { atmosphere: { kind: 'standard' } },
   monte_carlo: { samples: 200, seed: 1, wind_correlation_m: 750 }, constraints: {}, solver: {}, assets: {},
 }

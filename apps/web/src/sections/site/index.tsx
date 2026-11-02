@@ -11,6 +11,7 @@ import type { Issue, Site } from '@/lib/api'
 import { basemapSource, overlayColors, satelliteAvailable, satelliteStyle } from '@/lib/mapStyles'
 import { useIssuesAt } from '@/lib/mission/validation'
 import { useMissionStore } from '@/stores/mission'
+import { systemOf } from '@/lib/units'
 import { usePrefs } from '@/stores/prefs'
 import { DRAW_LABEL, MIN_POINTS, useDrawing } from './drawing'
 
@@ -66,7 +67,7 @@ export function Centre() {
 function SiteMap() {
   const missionId = useMissionStore((s) => s.draft?.meta.id)
   const site = useSite()
-  const units = usePrefs((s) => s.units)
+  const units = usePrefs((s) => s.display)
   const editSite = useEditSite()
   const drawing = useDrawing((s) => s.target !== null)
   const satellite = usePrefs((s) => s.satellite) && satelliteAvailable
@@ -87,7 +88,7 @@ function SiteMap() {
         theme={satellite ? 'dark' : undefined}
       >
         <MapControls position="bottom-right" showCompass />
-        <MapScale unit={units} />
+        <MapScale unit={systemOf(units)} />
         {site && (
           <SiteLayers
             site={site}
@@ -109,7 +110,7 @@ function SiteMap() {
           type="button"
           aria-pressed={satellite}
           onClick={() => setSatellite(!satellite)}
-          className={`absolute top-4 right-4 flex h-8 items-center gap-1.5 rounded-md border border-border px-2.5 text-sm shadow-sm transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${satellite ? 'bg-primary text-primary-foreground' : 'bg-background hover:bg-accent'}`}
+          className={`absolute top-4 right-4 flex h-8 items-center gap-1.5 rounded-md border border-border px-2.5 text-sm shadow-sm transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${satellite ? 'bg-brand text-primary-foreground' : 'bg-background hover:bg-accent'}`}
         >
           <Satellite className="size-4" /> Satellite
         </button>
@@ -169,7 +170,7 @@ function DrawingPreview() {
   const target = useDrawing((s) => s.target)
   const points = useDrawing((s) => s.points)
   const c = overlayColors[resolvedTheme]
-  const color = target?.kind === 'hazard' ? c.nogo : target?.kind === 'road' ? c.foreground : c.primary
+  const color = target?.kind === 'hazard' ? c.hazard : target?.kind === 'road' ? c.foreground : c.primary
   const paint = useMemo(
     () => ({
       fill: { 'fill-color': color, 'fill-opacity': 0.15 },
