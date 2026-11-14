@@ -3,7 +3,7 @@
     uv run python scripts/lanius_test_mission.py
 
 Reads data/Lanius.ork (the team's design; not in git) and writes
-data/lanius-white-cliffs.mission.zip, ready to import in Missions.
+data/lanius-white-cliffs.apg, ready to import in Missions.
 
 What is real and what is not:
 - Rocket, recovery: imported from the .ork (see the import report in the app).
@@ -29,7 +29,7 @@ from simcore.mission import load_mission, validate_mission
 ROOT = Path(__file__).parents[1]
 ORK = ROOT / "data" / "Lanius.ork"
 ENG = ROOT / "tests" / "fixtures" / "motors" / "AeroTech_M1340W.eng"
-OUT = ROOT / "data" / "lanius-white-cliffs.mission.zip"
+OUT = ROOT / "data" / "lanius-white-cliffs.apg"
 
 PAD_LAT = -(30 + 39 / 60 + 53.316 / 3600)  # 30°39'53.316" S
 PAD_LON = 143 + 11 / 60 + 46.686 / 3600  # 143°11'46.686" E

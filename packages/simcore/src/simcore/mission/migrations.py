@@ -7,7 +7,7 @@ register it in MIGRATIONS. Each migration takes and returns a plain dict.
 from collections.abc import Callable
 from typing import Any, Final
 
-CURRENT_SCHEMA_VERSION: Final = 3
+CURRENT_SCHEMA_VERSION: Final = 4
 
 Migration = Callable[[dict[str, Any]], dict[str, Any]]
 
@@ -33,8 +33,19 @@ def v2_to_v3(data: dict[str, Any]) -> dict[str, Any]:
     return data
 
 
+def v3_to_v4(data: dict[str, Any]) -> dict[str, Any]:
+    """Fin sets become a tagged union; every v3 fin set was trapezoidal."""
+    rocket = data.get("rocket")
+    if isinstance(rocket, dict) and isinstance(fins := rocket.get("fins"), list):
+        rocket["fins"] = [
+            {"kind": "trapezoidal", **f} if isinstance(f, dict) and "kind" not in f else f
+            for f in fins
+        ]
+    return data
+
+
 #: from-version -> function producing the next version
-MIGRATIONS: dict[int, Migration] = {1: v1_to_v2, 2: v2_to_v3}
+MIGRATIONS: dict[int, Migration] = {1: v1_to_v2, 2: v2_to_v3, 3: v3_to_v4}
 
 
 class MigrationError(ValueError):

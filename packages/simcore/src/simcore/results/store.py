@@ -19,6 +19,7 @@ from pydantic import BaseModel, Field
 
 from simcore.engine.result import TRAJECTORY_CHANNELS, FlightResult, FlightSummary
 from simcore.mission import Mission, canonical_json
+from simcore.mission.models import FLIGHT_IRRELEVANT
 from simcore.results.downsample import lttb, lttb_indices
 from simcore.versions import rocketpy_version, simcore_version
 
@@ -69,10 +70,10 @@ class Series(BaseModel):
 
 def result_key(mission: Mission, *, ascent_only: bool) -> str:
     """Cache key: same mission, versions and mode give the same id."""
-    # Campaign settings and constraints don't change a single flight, so not its key.
+    # Campaign settings, constraints and charges don't change a single flight, so not its key.
     payload = "\n".join(
         [
-            canonical_json(mission.model_dump(mode="json", exclude={"monte_carlo", "constraints"})),
+            canonical_json(mission.model_dump(mode="json", exclude=set(FLIGHT_IRRELEVANT))),
             rocketpy_version(),
             simcore_version(),
             "ascent" if ascent_only else "full",
@@ -114,7 +115,12 @@ def _describe_drag(mission: Mission) -> str:
     d = mission.rocket.drag
     parts = []
     for label, curve in (("off", d.power_off), ("on", d.power_on)):
-        src = f"table {curve.table[:12]}" if curve.table else f"constant {curve.constant_cd}"
+        if curve.estimate:
+            src = f"estimated ({mission.rocket.surface_finish} finish)"
+        elif curve.table:
+            src = f"table {curve.table[:12]}"
+        else:
+            src = f"constant {curve.constant_cd}"
         parts.append(f"power {label}: {src}")
     return f"{'; '.join(parts)}; multiplier {d.multiplier:g}"
 
@@ -147,7 +153,7 @@ def write_flight(
         channels=[
             ChannelInfo(name=n, units=u, description=d)
             for n, (u, d) in TRAJECTORY_CHANNELS.items()
-            if n != "time_s"
+            if n != "time_s" and n in result.trajectory
         ],
         points=len(result.trajectory["time_s"]),
         warnings=result.warnings,

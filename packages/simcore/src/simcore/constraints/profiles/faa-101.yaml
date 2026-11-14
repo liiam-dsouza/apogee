@@ -1,0 +1,47 @@
+# Launch conditions for high-power rockets in the US: 14 CFR 101.25 (Class 2
+# and 3 rockets) and the NAR and Tripoli safety codes' wind limit. `verified`
+# stays false until a team member has checked each rule against the current
+# eCFR text and the codes. A new revision gets a new id, as for competitions.
+id: faa-101
+kind: launch
+name: "US launch conditions (FAA Part 101, NAR/Tripoli)"
+source: "14 CFR 101.25 (ecfr.gov); NAR High Power Rocket Safety Code; Tripoli Safety Code"
+rules_version: "14 CFR 101.25 as amended 2008; the codes' 20 mph wind limit"
+verified: false
+notes: >-
+  Judged on the mission's launch conditions (Weather section), which can come
+  from the forecast hour or the range's briefing. Cloud cover is the whole
+  sky's, stricter than 101.25(a)'s "at any altitude" the rocket reaches.
+  A forecast's cloud base is estimated from the dew point; check it on the
+  day. Wind is the stronger of the sustained wind and the gusts. A launch
+  under an FAA waiver or authorization (night launches, controlled airspace,
+  an altitude ceiling) follows its own terms: override or drop a rule to
+  match. Not checked: distance from airports (101.25(e)), controlled
+  airspace (101.25(f)), spectator distances (101.25(g)).
+constraints:
+  - id: faa_cloud_cover
+    label: "Cloud cover no more than half the sky"
+    metric: cloud_cover_pct
+    max: 50
+    reference: "14 CFR 101.25(a)"
+  - id: faa_visibility
+    label: "Horizontal visibility at least 5 miles"
+    metric: visibility_m
+    min: 8046.72
+    reference: "14 CFR 101.25(b)"
+  - id: faa_into_cloud
+    label: "Apogee below the cloud base"
+    metric: cloud_clearance_m
+    min: 0
+    evaluate_on: worst
+    reference: "14 CFR 101.25(c)"
+  - id: faa_daylight
+    label: "Launch between sunrise and sunset"
+    metric: sun_elevation_deg
+    min: -0.833
+    reference: "14 CFR 101.25(d)"
+  - id: safety_code_wind
+    label: "Surface wind, gusts included, at most 20 mph"
+    metric: surface_wind_ms
+    max: 8.9408
+    reference: "NAR HPR Safety Code; Tripoli Safety Code"

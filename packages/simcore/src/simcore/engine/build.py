@@ -4,19 +4,23 @@ The only module that imports RocketPy. Mission positions are metres aft of
 the nose tip (ADR 0002), which RocketPy calls ``nose_to_tail``.
 """
 
+import functools
 import warnings
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
 import numpy as np
 import rocketpy
 
+from simcore.aero.drag import DragModel, model_for
 from simcore.assets import AssetStore
 from simcore.ballast.mass import as_flown
 from simcore.engine.result import FlightResult, FlightSummary, Landing, ParachuteEvent
 from simcore.importers.drag import parse_drag_csv
 from simcore.importers.thrust import parse_eng
 from simcore.mission.models import DragCurve, GenericMotor, Mission
+from simcore.structures.flutter import check_flutter
 from simcore.weather.blend import effective_levels
 
 #: Our nose names -> RocketPy's (it lower-cases and strips spaces).
@@ -149,7 +153,17 @@ def build_motor(
     )
 
 
-def _drag(curve: DragCurve, multiplier: float, assets: AssetStore) -> float | rocketpy.Function:
+def _drag(
+    curve: DragCurve,
+    multiplier: float,
+    assets: AssetStore,
+    model: Callable[[], DragModel],
+    *,
+    power_on: bool,
+) -> float | rocketpy.Function | Callable[..., float]:
+    if curve.estimate:
+        # A 7-argument function: RocketPy passes angle of attack, Mach and Reynolds each step.
+        return model().for_rocketpy(power_on=power_on, multiplier=multiplier)
     if curve.table is not None:
         points = [[mach, cd * multiplier] for mach, cd in parse_drag_csv(assets.read(curve.table))]
         # Explicitly linear. RocketPy builds a *list* drag source with a cubic
@@ -165,18 +179,28 @@ def build_rocket(
 ) -> rocketpy.Rocket:
     assert mission.rocket is not None
     r = mission.rocket
+    model = functools.cache(lambda: model_for(mission))
     rocket = rocketpy.Rocket(
         radius=r.radius_m,
         mass=r.dry_mass_kg,
         inertia=r.dry_inertia,
-        power_off_drag=_drag(r.drag.power_off, r.drag.multiplier, assets),
-        power_on_drag=_drag(r.drag.power_on, r.drag.multiplier, assets),
+        power_off_drag=_drag(r.drag.power_off, r.drag.multiplier, assets, model, power_on=False),
+        power_on_drag=_drag(r.drag.power_on, r.drag.multiplier, assets, model, power_on=True),
         center_of_mass_without_motor=r.dry_cg_m,
         coordinate_system_orientation="nose_to_tail",
     )
     rocket.add_motor(build_motor(mission, assets, motor_scale), position=r.motor_position_m)
     rocket.add_nose(length=r.nose.length_m, kind=_NOSE_KIND[r.nose.kind], position=0.0)
     for i, fins in enumerate(r.fins):
+        if fins.kind == "free_form":
+            rocket.add_free_form_fins(
+                n=fins.count,
+                shape_points=fins.points,
+                position=fins.position_m,
+                cant_angle=fins.cant_angle_deg,
+                name=f"Fins {i + 1}",
+            )
+            continue
         rocket.add_trapezoidal_fins(
             n=fins.count,
             root_chord=fins.root_chord_m,
@@ -219,12 +243,7 @@ def rocket_length_m(mission: Mission) -> float:
     assert r is not None
     ends = [r.nose.length_m, r.motor_position_m]
     for fins in r.fins:
-        sweep = (
-            fins.sweep_length_m
-            if fins.sweep_length_m is not None
-            else (fins.root_chord_m - fins.tip_chord_m) / 2
-        )
-        ends += [fins.position_m + fins.root_chord_m, fins.position_m + sweep + fins.tip_chord_m]
+        ends.append(fins.position_m + max(x for x, _ in fins.outline()))
     if r.tail:
         ends.append(r.tail.position_m + r.tail.length_m)
     return max(ends)
@@ -283,6 +302,8 @@ def run_flight(
         "acceleration_ms2": _array(flight.acceleration, times),
         "mach": _array(flight.mach_number, times),
         "dynamic_pressure_pa": _array(flight.dynamic_pressure, times),
+        "thrust_n": _array(flight.rocket.motor.thrust, times),
+        "mass_kg": _array(flight.rocket.total_mass, times),
         "stability_margin_cal": _array(flight.stability_margin, times),
         "east_m": _array(flight.x, times),
         "north_m": _array(flight.y, times),
@@ -309,6 +330,7 @@ def run_flight(
             name=parachute.name,
             triggered_s=float(t),
             triggered_agl_m=float(flight.z(t)) - ground,
+            speed_ms=float(flight.speed(t)),
         )
         for t, parachute in flight.parachute_events
     ]
@@ -323,6 +345,27 @@ def run_flight(
     descent_rate = None
     if len(events) >= 2:
         descent_rate = abs(float(flight.vz(events[-1].triggered_s)))
+
+    coast = times[(times >= float(motor.burn_out_time)) & (times <= float(flight.apogee_time))]
+    coast_drag = (
+        float(
+            np.max(_array(flight.aerodynamic_drag, coast) / _array(flight.rocket.total_mass, coast))
+        )
+        if coast.size
+        else None
+    )
+
+    flutter, flutter_speed = check_flutter(
+        rocket.fins,
+        time_s=times,
+        altitude_agl_m=trajectory["altitude_agl_m"],
+        speed_ms=trajectory["speed_ms"],
+        pressure_pa=_array(flight.pressure, times),
+        speed_of_sound_ms=_array(flight.speed_of_sound, times),
+        apogee_time_s=float(flight.apogee_time),
+    )
+    if flutter_speed is not None:
+        trajectory["fin_flutter_speed_ms"] = flutter_speed
 
     summary = FlightSummary(
         apogee_agl_m=float(flight.apogee) - ground,
@@ -344,6 +387,8 @@ def run_flight(
         drogue_descent_rate_ms=descent_rate,
         landing=landing,
         parachute_events=events,
+        fin_flutter=flutter,
+        max_coast_drag_deceleration_ms2=coast_drag,
     )
     return FlightResult(
         summary=summary,

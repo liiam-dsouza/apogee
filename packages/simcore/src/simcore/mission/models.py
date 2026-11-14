@@ -137,7 +137,40 @@ class NoseCone(_Strict):
     length_m: float = quantity("m", "Nose cone length, tip to shoulder.", gt=0)
 
 
+#: A point on a fin outline: [x aft of the root leading edge, y outward from the body tube], m.
+FinPoint = tuple[float, float]
+
+
+FinCrossSection = Literal["square", "rounded", "airfoil"]
+
+#: OpenRocket's surface finishes, smoothest first (roughness heights in simcore.aero.drag).
+SurfaceFinish = Literal[
+    "mirror",
+    "polished",
+    "sheet_metal",
+    "optimum",
+    "smooth",
+    "normal",
+    "unfinished",
+    "rough_unfinished",
+    "rough",
+]
+
+
+class FinMaterial(_Strict):
+    """What the fins are made of, as far as flutter cares: the shear modulus."""
+
+    name: str = Field(min_length=1, description="Material name, for display.")
+    shear_modulus_pa: float = quantity(
+        "Pa",
+        "Shear modulus G of the fin as built. Composite layups vary a lot: use a measured "
+        "or supplier value where there is one.",
+        gt=0,
+    )
+
+
 class TrapezoidalFins(_Strict):
+    kind: Literal["trapezoidal"] = Field(description="Fin set defined by chords, span and sweep.")
     count: int = Field(ge=2, le=8, description="Number of fins in the set.")
     root_chord_m: float = quantity("m", "Chord length at the body tube.", gt=0)
     tip_chord_m: float = quantity("m", "Chord length at the fin tip.", ge=0)
@@ -148,10 +181,91 @@ class TrapezoidalFins(_Strict):
     sweep_length_m: float | None = quantity(
         "m",
         "Axial distance from root leading edge to tip leading edge. "
-        "Unset means the tip chord is centred on the root chord.",
+        "Unset means the trailing edge is square: the tip ends level with the root "
+        "(sweep = root chord - tip chord), as RocketPy flies it.",
         default=None,
     )
     cant_angle_deg: float = quantity("deg", "Fin cant angle.", default=0.0, ge=-10, le=10)
+    thickness_m: float | None = quantity(
+        "m", "Fin thickness. With a material, every flight checks fin flutter.", default=None, gt=0
+    )
+    cross_section: FinCrossSection = Field(
+        default="square",
+        description="Shape of the fin edges, for the drag estimate: square, rounded or airfoil.",
+    )
+    material: FinMaterial | None = Field(
+        default=None, description="Fin material, for the flutter check. Unset: not checked."
+    )
+
+    def outline(self) -> list[FinPoint]:
+        """One fin's outline, from the root leading edge: x aft, y outward."""
+        sweep = (
+            self.sweep_length_m
+            if self.sweep_length_m is not None
+            else self.root_chord_m - self.tip_chord_m
+        )
+        return [
+            (0.0, 0.0),
+            (sweep, self.span_m),
+            (sweep + self.tip_chord_m, self.span_m),
+            (self.root_chord_m, 0.0),
+        ]
+
+
+class FreeFormFins(_Strict):
+    kind: Literal["free_form"] = Field(description="Fin set with an arbitrary outline.")
+    count: int = Field(ge=2, le=8, description="Number of fins in the set.")
+    points: list[FinPoint] = Field(
+        min_length=3,
+        description=(
+            "One fin's outline as [x, y] in metres: x aft of the root leading edge, "
+            "y outward from the body tube. Starts at [0, 0] (root leading edge) and ends "
+            "on the body tube at the root trailing edge, [root chord, 0]."
+        ),
+        json_schema_extra={"units": "m"},
+    )
+    position_m: float = quantity(
+        "m", "Position of the root chord's leading edge, aft of the nose tip.", ge=0
+    )
+    cant_angle_deg: float = quantity("deg", "Fin cant angle.", default=0.0, ge=-10, le=10)
+    thickness_m: float | None = quantity(
+        "m", "Fin thickness. With a material, every flight checks fin flutter.", default=None, gt=0
+    )
+    cross_section: FinCrossSection = Field(
+        default="square",
+        description="Shape of the fin edges, for the drag estimate: square, rounded or airfoil.",
+    )
+    material: FinMaterial | None = Field(
+        default=None, description="Fin material, for the flutter check. Unset: not checked."
+    )
+
+    @field_validator("points")
+    @classmethod
+    def _outline_sits_on_the_body(cls, v: list[FinPoint]) -> list[FinPoint]:
+        if v[0] != (0.0, 0.0):
+            raise ValueError("the outline must start at the root leading edge, [0, 0]")
+        if v[-1][1] != 0 or v[-1][0] <= 0:
+            raise ValueError("the outline must end on the body tube, at [root chord, 0]")
+        if any(y < 0 for _, y in v):
+            raise ValueError("no point may be inside the body tube (y < 0)")
+        if max(y for _, y in v) <= 0:
+            raise ValueError("the fin needs some span: at least one point with y > 0")
+        return v
+
+    @property
+    def root_chord_m(self) -> float:
+        return self.points[-1][0]
+
+    @property
+    def span_m(self) -> float:
+        return max(y for _, y in self.points)
+
+    def outline(self) -> list[FinPoint]:
+        """One fin's outline, from the root leading edge: x aft, y outward."""
+        return list(self.points)
+
+
+FinSet = Annotated[TrapezoidalFins | FreeFormFins, Field(discriminator="kind")]
 
 
 class Tail(_Strict):
@@ -172,11 +286,19 @@ class RailButtons(_Strict):
 
 
 class DragCurve(_Strict):
-    """Drag coefficient against Mach: a table asset, or a constant."""
+    """Drag coefficient: estimated from the rocket's shape, a table asset, or a constant."""
+
+    estimate: bool = Field(
+        default=False,
+        description=(
+            "Estimate drag from the rocket's shape (component build-up, as OpenRocket does). "
+            "Depends on Mach, Reynolds number and angle of attack."
+        ),
+    )
 
     table: AssetRef | None = Field(
         default=None,
-        description="CSV asset of (Mach, CD) rows. Takes precedence over constant_cd.",
+        description="CSV asset of (Mach, CD) rows.",
     )
     constant_cd: float | None = Field(
         default=None, gt=0, description="A constant drag coefficient, if there is no table."
@@ -184,14 +306,21 @@ class DragCurve(_Strict):
 
     @model_validator(mode="after")
     def _one_source(self) -> "DragCurve":
-        if (self.table is None) == (self.constant_cd is None):
-            raise ValueError("give exactly one of table or constant_cd")
+        given = [self.estimate, self.table is not None, self.constant_cd is not None]
+        if sum(given) != 1:
+            raise ValueError("give exactly one of estimate, table or constant_cd")
         return self
 
 
+# Plain defaults rather than factories, so the schema (and the generated types)
+# carry them. Pydantic copies a model default for each instance.
 class Drag(_Strict):
-    power_off: DragCurve = Field(description="Drag coefficient after burnout.")
-    power_on: DragCurve = Field(description="Drag coefficient while the motor burns.")
+    power_off: DragCurve = Field(
+        default=DragCurve(estimate=True), description="Drag coefficient after burnout."
+    )
+    power_on: DragCurve = Field(
+        default=DragCurve(estimate=True), description="Drag coefficient while the motor burns."
+    )
     multiplier: float = Field(
         default=1.0,
         gt=0,
@@ -208,7 +337,9 @@ class Rocket(_Strict):
     dry_inertia: Inertia
     dry_cg_m: float = quantity("m", "Centre of mass without the motor, aft of the nose tip.")
     nose: NoseCone = Field(description="Nose cone.")
-    fins: list[TrapezoidalFins] = Field(min_length=1, description="Fin sets.")
+    fins: list[FinSet] = Field(
+        min_length=1, description="Fin sets: trapezoidal, or free-form with any outline."
+    )
     tail: Tail | None = Field(default=None, description="Boat-tail, if any.")
     rail_buttons: RailButtons | None = Field(
         default=None, description="Rail buttons. Without them the rail is a single point."
@@ -216,7 +347,14 @@ class Rocket(_Strict):
     motor_position_m: float = quantity(
         "m", "Position of the motor's nozzle exit, aft of the nose tip.", gt=0
     )
-    drag: Drag = Field(description="Aerodynamic drag.")
+    surface_finish: SurfaceFinish = Field(
+        default="normal",
+        description="Outside surface finish, for the drag estimate's skin friction. "
+        "normal is regular paint.",
+    )
+    drag: Drag = Field(
+        default=Drag(), description="Aerodynamic drag. Unset: estimated from the shape."
+    )
 
     def length_m(self) -> float:
         """Overall length: the furthest-aft point of any component."""
@@ -327,6 +465,202 @@ class Recovery(_Strict):
     devices: list[RecoveryDevice] = Field(
         default_factory=list,
         description="Recovery devices. None means a ballistic descent.",
+    )
+
+
+#: A common starting point for the pressure that pushes a section off, over what
+#: breaks the pins: 15 psi. Ground testing sets the real charge.
+DEFAULT_SEPARATION_PRESSURE_PA = 103_421.0
+
+
+class EjectionBay(_Strict):
+    """A compartment a black-powder charge pressurises to separate the rocket."""
+
+    name: str = Field(min_length=1, description="Bay name, e.g. 'Drogue bay'.")
+    device: str | None = Field(
+        default=None, description="The recovery device it releases, by name. For display."
+    )
+    inner_diameter_m: float = quantity(
+        "m", "Inside diameter of the bay: the bulkhead the gas pushes on.", gt=0, le=1
+    )
+    free_length_m: float = quantity(
+        "m",
+        "Length of the empty space the gas fills: the bay's length less what is packed in it.",
+        gt=0,
+        le=5,
+    )
+    forward_mass_kg: float | None = quantity(
+        "kg",
+        "Mass the joint holds on to during coast: everything on the far side from the motor, "
+        "e.g. the nose and payload for a forward bay. Unset: drag separation isn't checked.",
+        default=None,
+        gt=0,
+    )
+    shear_pins: int = Field(default=0, ge=0, le=24, description="Shear pins across the joint.")
+    pin_strength_n: float = quantity(
+        "N", "Shear strength of one pin. Use a tested or de-rated value.", default=0.0, ge=0
+    )
+    separation_pressure_pa: float = quantity(
+        "Pa",
+        "Pressure the charge must reach over what breaks the pins, to push the section off "
+        "against friction and the packed recovery gear. 15 psi is a common start.",
+        default=DEFAULT_SEPARATION_PRESSURE_PA,
+        gt=0,
+    )
+    backup_factor: float = quantity(
+        "1", "Backup charge as a multiple of the primary.", default=1.25, ge=1, le=3
+    )
+
+    @model_validator(mode="after")
+    def _pins_have_a_strength(self) -> "EjectionBay":
+        if self.shear_pins > 0 and self.pin_strength_n <= 0:
+            raise ValueError("shear pins need a pin_strength_n")
+        return self
+
+
+class Ejection(_Strict):
+    bays: list[EjectionBay] = Field(
+        default_factory=list, description="Separation joints and their charges."
+    )
+
+
+# --- Structure (airframe vibration) ----------------------------------------------
+
+
+class AirframeShell(_Strict):
+    """A length of tube that carries bending: body tube, coupler, motor tube, piece of nose.
+
+    Shells that overlap (a coupler inside two body tubes) add their stiffness.
+    The outer radius goes linearly from the forward end to the aft end.
+    """
+
+    name: str = Field(min_length=1, description="Part name, for display.")
+    position_m: float = quantity("m", "Forward end, aft of the nose tip.", ge=0)
+    length_m: float = quantity("m", "Length along the axis.", gt=0)
+    forward_radius_m: float = quantity("m", "Outer radius at the forward end.", ge=0, le=1)
+    aft_radius_m: float = quantity("m", "Outer radius at the aft end.", ge=0, le=1)
+    wall_thickness_m: float = quantity("m", "Wall thickness.", gt=0, le=0.1)
+    material: str = Field(default="", description="Material name, for display.")
+    youngs_modulus_pa: float = quantity(
+        "Pa", "Young's modulus along the axis. A layup's own or a tap-tested value is best.", gt=0
+    )
+    shear_modulus_pa: float = quantity(
+        "Pa",
+        "In-plane shear modulus of the wall. Composite tubes are soft in shear, which lowers "
+        "the higher bending modes.",
+        gt=0,
+    )
+
+
+class StructuralMass(_Strict):
+    """Mass the airframe carries, spread evenly over its length (zero length: a point)."""
+
+    name: str = Field(min_length=1, description="Part name, for display.")
+    mass_kg: float = quantity("kg", "Mass.", ge=0)
+    position_m: float = quantity("m", "Forward end, aft of the nose tip.")
+    length_m: float = quantity("m", "Length it is spread over.", default=0.0, ge=0)
+
+
+#: How far a joint bends compared with the tube either side, in calibers of that
+#: tube: a slip-fit or riveted coupler is softer than solid tube. Fitted to the
+#: first bending mode of two flown rockets (docs/methods/vibration.md).
+DEFAULT_JOINT_FLEXIBILITY_CAL = 1.25
+
+
+class AirframeJoint(_Strict):
+    """Where two airframe sections meet: a coupler, a nose shoulder, a switch band."""
+
+    name: str = Field(min_length=1, description="Joint name, for display.")
+    position_m: float = quantity("m", "Where the sections meet, aft of the nose tip.", ge=0)
+    flexibility_cal: float = quantity(
+        "cal",
+        "Extra bending at the joint, as the length of the tube beside it that would bend as "
+        "much, in calibers. 0 is as stiff as the tube.",
+        default=DEFAULT_JOINT_FLEXIBILITY_CAL,
+        ge=0,
+        le=20,
+    )
+
+
+class VibrationStation(_Strict):
+    """A place on the airframe whose vibration is predicted: a payload, a flight computer."""
+
+    name: str = Field(min_length=1, description="Station name, e.g. 'Payload'.")
+    position_m: float = quantity("m", "Position, aft of the nose tip.", ge=0)
+
+
+class Excitation(_Strict):
+    """What shakes the airframe, as fractions of the load that drives each source.
+
+    Defaults are fitted to one flight log (Luke, a 5" rocket on a CTI K940;
+    docs/methods/vibration.md). Motor roughness depends on the propellant, so
+    fit it to a log of the same motor where there is one.
+    """
+
+    motor_roughness: float = quantity(
+        "1",
+        "Axial thrust fluctuation, RMS over the band, as a fraction of the thrust.",
+        default=0.0064,
+        ge=0,
+        le=0.5,
+    )
+    motor_side_load: float = quantity(
+        "1",
+        "Side force at the nozzle, RMS over the band, as a fraction of the thrust.",
+        default=0.0016,
+        ge=0,
+        le=0.5,
+    )
+    aero_load: float = quantity(
+        "1",
+        "Random side load along the airframe, RMS per metre, over dynamic pressure times "
+        "the projected width.",
+        default=0.0031,
+        ge=0,
+        le=1,
+    )
+    transonic_factor: float = quantity(
+        "1",
+        "How much stronger the aerodynamic load is at Mach 1 than either side of it "
+        "(shocks moving on the airframe). 0 is no transonic rise.",
+        default=2.0,
+        ge=0,
+        le=20,
+    )
+    band_hz: float = quantity(
+        "Hz", "Motor roughness is spread evenly from 0 to this frequency.", default=2000, gt=0
+    )
+
+
+class Structure(_Strict):
+    """The airframe as a free beam, for its vibration modes and the vibration in flight.
+
+    Imported from OpenRocket. Masses here are everything but the motor, which is
+    added from the mission's motor as it burns.
+    """
+
+    shells: list[AirframeShell] = Field(
+        default_factory=list, description="Tubes that carry bending."
+    )
+    masses: list[StructuralMass] = Field(
+        default_factory=list, description="Every part's mass, the tubes' own included."
+    )
+    joints: list[AirframeJoint] = Field(
+        default_factory=list, description="Where airframe sections meet."
+    )
+    stations: list[VibrationStation] = Field(
+        default_factory=list, description="Where vibration is predicted."
+    )
+    damping_ratio: float = quantity(
+        "1",
+        "Damping of every mode, as a fraction of critical. 0.02 to 0.05 for a bonded composite "
+        "airframe with joints.",
+        default=0.04,
+        gt=0,
+        le=0.3,
+    )
+    excitation: Excitation = Field(
+        default_factory=Excitation, description="What shakes the airframe."
     )
 
 
@@ -444,6 +778,38 @@ class SurfaceWind(_Strict):
         if self.blend_depth_m <= self.height_m:
             raise ValueError("blend_depth_m must be above the anemometer height")
         return self
+
+
+class LaunchConditions(_Strict):
+    """The sky at launch, for launch-condition rules. A flight doesn't depend on it."""
+
+    launch_utc: datetime | None = Field(
+        default=None,
+        description="Planned launch time, UTC. Unset: the forecast hour the atmosphere is from.",
+    )
+    cloud_cover_pct: float | None = quantity(
+        "%", "Share of the sky covered by cloud.", default=None, ge=0, le=100
+    )
+    cloud_base_m: float | None = quantity(
+        "m", "Height of the lowest cloud base above the pad.", default=None, ge=0, le=30_000
+    )
+    visibility_m: float | None = quantity(
+        "m", "Horizontal visibility.", default=None, ge=0, le=200_000
+    )
+    wind_speed_ms: float | None = quantity(
+        "m/s",
+        "Sustained surface wind. Unset: the flight's wind at the surface.",
+        default=None,
+        ge=0,
+        le=80,
+    )
+    wind_gust_ms: float | None = quantity(
+        "m/s", "Strongest surface gust.", default=None, ge=0, le=100
+    )
+    source: str = Field(
+        default="",
+        description="Where the numbers came from, e.g. a forecast or the RSO's briefing.",
+    )
 
 
 class Environment(_Strict):
@@ -576,6 +942,12 @@ Metric = Literal[
     "descent_time_s",
     "drift_m",
     "flight_time_s",
+    "min_fin_flutter_margin",
+    "cloud_clearance_m",
+    "cloud_cover_pct",
+    "visibility_m",
+    "surface_wind_ms",
+    "sun_elevation_deg",
 ]
 
 EvaluateOn = Literal["nominal", "p50", "p95", "p99", "worst"]
@@ -666,18 +1038,33 @@ class ConstraintSettings(_Strict):
     additional: list[Constraint] = Field(
         default_factory=list, description="The team's own rules, on top of the profile's."
     )
+    launch_rules: str | None = Field(
+        default=None,
+        description="Launch-condition rules id, e.g. 'faa-101'. None: conditions not checked.",
+    )
+
+
+#: Mission sections a single flight doesn't depend on: left out of its cache key.
+FLIGHT_IRRELEVANT = frozenset(
+    {"monte_carlo", "constraints", "ejection", "structure", "launch_conditions"}
+)
+#: Mission sections a Monte Carlo campaign doesn't depend on.
+CAMPAIGN_IRRELEVANT = frozenset({"constraints", "ejection", "structure", "launch_conditions"})
 
 
 class Mission(_Strict):
     """A complete mission config. Serialised as YAML (or JSON)."""
 
-    schema_version: Literal[3] = Field(
+    schema_version: Literal[4] = Field(
         default=CURRENT_SCHEMA_VERSION,
         description="Config schema version. Older configs are migrated on load.",
     )
     extends: str | None = Field(
         default=None,
-        description="Path of a base config this one overrides (not yet supported).",
+        description=(
+            "Reserved for config inheritance, which is not supported: must be unset. "
+            "To reuse a launch site, save it as a site preset."
+        ),
     )
     meta: MissionMeta = Field(description="Name, id, authorship.")
     rocket: Rocket | None = Field(default=None, description="Airframe, without the motor.")
@@ -691,9 +1078,21 @@ class Mission(_Strict):
     ballast: Ballast = Field(
         default_factory=Ballast, description="Ballast installed and to solve for."
     )
+    ejection: Ejection = Field(
+        default_factory=Ejection,
+        description="Ejection charges and shear pins. A flight doesn't depend on them.",
+    )
+    structure: Structure = Field(
+        default_factory=Structure,
+        description="The airframe as a beam, for vibration. A flight doesn't depend on it.",
+    )
     site: Site | None = Field(default=None, description="Launch site and range geometry.")
     environment: Environment = Field(
         default_factory=Environment, description="Atmosphere and wind."
+    )
+    launch_conditions: LaunchConditions = Field(
+        default_factory=LaunchConditions,
+        description="Cloud, visibility, gusts and launch time, for launch-condition rules.",
     )
     monte_carlo: MonteCarlo = Field(
         default_factory=MonteCarlo, description="Monte Carlo campaign settings."

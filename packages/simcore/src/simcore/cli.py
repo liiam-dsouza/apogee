@@ -26,7 +26,7 @@ def main(argv: list[str] | None = None) -> int:
         help="directory holding the thrust curve and drag tables (default: the mission's)",
     )
     run.add_argument("--ascent-only", action="store_true", help="stop at apogee")
-    bundle = sub.add_parser("bundle", help="write a .mission.zip with every referenced asset")
+    bundle = sub.add_parser("bundle", help="write an .apg bundle with every referenced asset")
     bundle.add_argument("path", type=Path)
     bundle.add_argument("-o", "--output", type=Path, required=True)
     bundle.add_argument("--assets", type=Path, help="asset directory (default: the mission's)")

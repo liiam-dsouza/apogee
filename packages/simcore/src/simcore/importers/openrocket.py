@@ -12,39 +12,53 @@ except wind direction (radians).
 
 import gzip
 import io
+import itertools
 import math
 import zipfile
+from collections import Counter
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any, Literal
 from xml.etree.ElementTree import Element
 
 import defusedxml.ElementTree as SafeET
 import numpy as np
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 
 from simcore.assets import sha256_hex
+from simcore.importers.drag import parse_drag_csv
 from simcore.importers.ork_geometry import (
     MassProps,
     combine,
     cylinder_props,
     nose_profile,
+    polygon_fin_set,
     shell_of_revolution,
     trapezoid_fin_set,
     tube,
 )
 from simcore.mission.models import (
+    AirframeJoint,
+    AirframeShell,
     AtAltitude,
     AtApogee,
     Drag,
     DragCurve,
+    FinSet,
+    FreeFormFins,
     NoseCone,
     RailButtons,
     Recovery,
     RecoveryDevice,
     Rocket,
+    StructuralMass,
+    Structure,
+    SurfaceFinish,
     Tail,
     TrapezoidalFins,
+    VibrationStation,
 )
+from simcore.structures.materials import TUBE_MATERIALS, match_material, match_tube_material
 
 MAX_ORK_BYTES = 64 * 1024 * 1024
 
@@ -152,9 +166,12 @@ class OrkImport:
     motor: MotorReference | None
     assets: dict[str, tuple[str, bytes]]  # sha256 -> (filename, bytes)
     report: ImportReport
+    structure: Structure = field(default_factory=Structure)
     reference: dict[str, float] = field(
         default_factory=dict
     )  # OpenRocket numbers for job cross-checks
+    #: OpenRocket's own drag tables (in ``assets``), for the cross-check flight only.
+    cross_check_drag: Drag | None = None
 
 
 # --- Reading ------------------------------------------------------------------
@@ -215,6 +232,103 @@ def _material(e: Element, tag: str = "material") -> tuple[float, str]:
     return float(m.get("density", "0") or 0), (m.text or "unknown").strip()
 
 
+def _with_fin_structure(fin: FinSet, e: Element, name: str, target: str, w: "_Walker") -> FinSet:
+    """The fin set with its thickness, and a material if the name is one we know."""
+    thickness = _f(e, "thickness", 0.0) or 0.0
+    if thickness <= 0:
+        return fin
+    _, material_name = _material(e)
+    preset = match_material(material_name)
+    if preset is None:
+        w.approximated.append(
+            ReportItem(
+                component=name,
+                target=f"{target}.material",
+                detail=f"Material '{material_name}' has no known shear modulus, so fin flutter "
+                "isn't checked. Set the fin material in the Rocket section.",
+            )
+        )
+        return fin.model_copy(update={"thickness_m": thickness})
+    w.approximated.append(
+        ReportItem(
+            component=name,
+            target=f"{target}.material",
+            detail=f"'{material_name}' read as {preset.name}, shear modulus "
+            f"{preset.shear_modulus_pa / 1e9:g} GPa (a typical value: check yours).",
+        )
+    )
+    return fin.model_copy(update={"thickness_m": thickness, "material": preset.material()})
+
+
+#: OpenRocket finish names (as saved in the .ork) -> ours.
+_FINISH: dict[str, SurfaceFinish] = {
+    "mirror": "mirror",
+    "finishpolished": "polished",
+    "polished": "sheet_metal",
+    "optimum": "optimum",
+    "smooth": "smooth",
+    "normal": "normal",
+    "unfinished": "unfinished",
+    "roughunfinished": "rough_unfinished",
+    "rough": "rough",
+}
+
+
+def _surface_finish(w: "_Walker") -> SurfaceFinish:
+    """The finish most of the rocket's parts have: the estimate takes one for the whole rocket."""
+    found = [
+        _FINISH[f]
+        for p in w.parts
+        if (f := (p.element.findtext("finish") or "").strip()) in _FINISH
+    ]
+    if not found:
+        return "normal"
+    finish = Counter(found).most_common(1)[0][0]
+    if len(set(found)) > 1:
+        w.approximated.append(
+            ReportItem(
+                component="Surface finish",
+                target="rocket.surface_finish",
+                detail=f"Parts have different finishes; the drag estimate uses the most common, "
+                f"{finish.replace('_', ' ')}, for the whole rocket.",
+            )
+        )
+    return finish
+
+
+def _drag_comparison(
+    rocket: Rocket, ref: "_Sim | None", tables: tuple[bytes, bytes] | None, elevation_m: float
+) -> ReportItem:
+    """What the drag estimate says, next to OpenRocket's own drag where there is any."""
+    from simcore.aero.drag import DragModel, reference_reynolds
+
+    model = DragModel(rocket, 0.0)  # power off: the nozzle doesn't matter
+
+    def ours(mach: float) -> float:
+        return model.cd(mach, reference_reynolds(mach, model.length, elevation_m), power_on=False)
+
+    finish = rocket.surface_finish.replace("_", " ")
+    if ref is None or tables is None:
+        return ReportItem(
+            component="Drag",
+            target="rocket.drag",
+            detail=f"Estimated from the shape ({finish} finish): CD {ours(0.3):.2f} at Mach 0.3. "
+            "No OpenRocket simulation with drag data to compare it with.",
+        )
+    rows = parse_drag_csv(tables[1])
+    machs = [m for m in (0.3, 0.6, 0.9) if rows[0][0] <= m <= rows[-1][0]] or [rows[-1][0]]
+    mach, cd = [r[0] for r in rows], [r[1] for r in rows]
+    pairs = ", ".join(
+        f"Mach {m:g}: {ours(m):.2f} vs {float(np.interp(m, mach, cd)):.2f}" for m in machs
+    )
+    return ReportItem(
+        component="Drag",
+        target="rocket.drag",
+        detail=f"Estimated from the shape ({finish} finish). Power-off CD, ours vs OpenRocket's "
+        f"'{ref.summary.name}': {pairs}. OpenRocket's drag flies only the cross-check.",
+    )
+
+
 # --- Walking the component tree -------------------------------------------------
 
 _INTERNAL_LENGTH = {
@@ -257,10 +371,23 @@ class Part:
     children: list["Part"] = field(default_factory=list)
 
 
+def _fin_points(e: Element) -> list[tuple[float, float]]:
+    """A freeform fin's outline, shifted so the root leading edge is x = 0."""
+    raw = [(float(p.get("x") or 0), float(p.get("y") or 0)) for p in e.findall("finpoints/point")]
+    if not raw:
+        return []
+    x0 = raw[0][0]
+    # Root points can carry float noise off the tube surface; snap it to y = 0.
+    return [(x - x0, 0.0 if abs(y) < 1e-9 else y) for x, y in raw]
+
+
 def _component_length(e: Element) -> float:
     tag = e.tag
     if tag in _INTERNAL_LENGTH:
         return _f(e, _INTERNAL_LENGTH[tag], 0.0) or 0.0
+    if tag == "freeformfinset":
+        points = _fin_points(e)
+        return points[-1][0] if points else 0.0
     if tag in _FINSETS:
         return _f(e, "rootchord", 0.0) or 0.0
     if tag == "railbutton":
@@ -429,6 +556,16 @@ def _part_props(part: Part, body_r: float) -> MassProps | None:
             tip=_f(e, "tipchord", 0.0) or 0.0,
             span=_f(e, "height", 0.0) or 0.0,
             sweep=_f(e, "sweeplength", 0.0) or 0.0,
+            thickness=_f(e, "thickness", 0.0) or 0.0,
+            density=density,
+            body_r=body_r,
+            root_le_m=part.top_m,
+            mass_override=override,
+        )
+    elif part.tag == "freeformfinset" and len(_fin_points(e)) >= 3:
+        return polygon_fin_set(
+            count=int(_f(e, "fincount", 3) or 3),
+            points=_fin_points(e),
             thickness=_f(e, "thickness", 0.0) or 0.0,
             density=density,
             body_r=body_r,
@@ -611,6 +748,134 @@ def _nose(e: Element, length: float, w: _Walker) -> NoseCone:
     return NoseCone(kind=kind, length_m=length)
 
 
+# --- Structure (for vibration) ------------------------------------------------------
+
+#: Tubes that carry bending. A coupler adds to the tubes it sits in; a motor tube
+#: is held by its centering rings, so it adds too.
+_SHELLS = {"nosecone", "bodytube", "transition", "tubecoupler", "innertube"}
+#: Nose cones and transitions are cut into this many straight pieces.
+_TAPER_PIECES = 8
+#: Mass component names that mark a place worth predicting vibration at.
+_STATION_WORDS = ("payload", "avionics", "av ", "av-", "sled", "flight computer", "altimeter")
+_UNKNOWN_TUBE = TUBE_MATERIALS[1]  # fiberglass
+
+
+def _radius_along(p: Part) -> Callable[[float], float]:
+    """A shell part's outer radius at a distance aft of its forward end."""
+    e = p.element
+    if p.tag == "nosecone":
+        shape = (e.findtext("shape") or "ogive").strip()
+        profile = nose_profile(shape, _f(e, "shapeparameter", 1.0) or 0.0, p.length_m, p.outer_r)
+        if profile is not None:
+            return lambda x: float(profile(np.array([x]))[0])
+        fwd = 0.0
+    elif p.tag == "transition":
+        fwd = _f(e, "foreradius", p.outer_r) or p.outer_r
+    else:
+        fwd = p.outer_r
+    return lambda x: fwd + (p.outer_r - fwd) * x / p.length_m
+
+
+def _structure(w: _Walker, external: list[Part], dry: MassProps) -> Structure:
+    """The airframe as a beam: shells that carry bending, every part's mass, the joints."""
+    shells: list[AirframeShell] = []
+    masses: list[StructuralMass] = []
+    unknown: set[str] = set()
+    for p in w.parts:
+        tapered = p.tag in ("nosecone", "transition")
+        if p.tag in _SHELLS and p.length_m > 0:
+            _, material = _material(p.element)
+            preset = match_tube_material(material)
+            if preset is None:
+                unknown.add(material)
+                preset = _UNKNOWN_TUBE
+            wall = _f(p.element, "thickness", None) or (p.outer_r - p.inner_r)
+            radius = _radius_along(p)
+            pieces = list(
+                itertools.pairwise(
+                    np.linspace(0.0, p.length_m, _TAPER_PIECES + 1 if tapered else 2)
+                )
+            )
+            areas = []
+            for a, b in pieces:
+                ra, rb = radius(a), radius(b)
+                areas.append((ra + rb) * (b - a))
+                shells.append(
+                    AirframeShell(
+                        name=p.name,
+                        position_m=p.top_m + a,
+                        length_m=b - a,
+                        forward_radius_m=ra,
+                        aft_radius_m=rb,
+                        wall_thickness_m=max(min(wall, max(ra, rb)), 1e-4),
+                        material=material,
+                        youngs_modulus_pa=preset.youngs_modulus_pa,
+                        shear_modulus_pa=preset.shear_modulus_pa,
+                    )
+                )
+            if tapered and p.props is not None and sum(areas) > 0:
+                # A taper's mass follows its surface: more of it aft, where it is wider.
+                masses += [
+                    StructuralMass(
+                        name=p.name,
+                        mass_kg=p.props.mass_kg * area / sum(areas),
+                        position_m=p.top_m + a,
+                        length_m=b - a,
+                    )
+                    for (a, b), area in zip(pieces, areas, strict=True)
+                ]
+                continue
+        if p.props is None or p.props.mass_kg <= 0:
+            continue
+        # Spread over the part's length, centred on its CG and kept within the part.
+        half = min(
+            p.length_m / 2,
+            max(p.props.cg_m - p.top_m, 0.0),
+            max(p.top_m + p.length_m - p.props.cg_m, 0.0),
+        )
+        masses.append(
+            StructuralMass(
+                name=p.name,
+                mass_kg=p.props.mass_kg,
+                position_m=p.props.cg_m - half,
+                length_m=2 * half,
+            )
+        )
+
+    joints = [
+        AirframeJoint(name=f"{a.name} / {b.name}", position_m=b.top_m)
+        for a, b in itertools.pairwise(external)
+        if b.top_m > 0
+    ]
+    stations = [
+        VibrationStation(name=p.name, position_m=p.props.cg_m)
+        for p in w.parts
+        if p.tag == "masscomponent"
+        and p.props is not None
+        and any(word in f"{p.name.lower()} " for word in _STATION_WORDS)
+    ] or [VibrationStation(name="Dry CG", position_m=dry.cg_m)]
+
+    w.approximated.append(
+        ReportItem(
+            component="Structure",
+            target="structure",
+            detail=f"{len(shells)} shells, {len(joints)} joints, vibration at "
+            f"{', '.join(s.name for s in stations)}. Tube stiffness is a typical value for "
+            "each material; a tap test gives your airframe's own.",
+        )
+    )
+    if unknown:
+        w.approximated.append(
+            ReportItem(
+                component="Structure",
+                target="structure.shells",
+                detail=f"No known stiffness for {', '.join(sorted(unknown))}: taken as "
+                f"{_UNKNOWN_TUBE.name}, {_UNKNOWN_TUBE.youngs_modulus_pa / 1e9:g} GPa.",
+            )
+        )
+    return Structure(shells=shells, masses=masses, joints=joints, stations=stations)
+
+
 def import_openrocket(data: bytes) -> OrkImport:
     """Parse an .ork file into a draft rocket, recovery and an import report."""
     root = _read_xml(data)
@@ -715,35 +980,18 @@ def import_openrocket(data: bytes) -> OrkImport:
             "average wind. Cross-checks use its real settings."
         )
 
-    # Drag.
+    # Drag: estimated from the shape. OpenRocket's own drag, from its saved simulation,
+    # only flies the cross-check, so that check still tests the geometry and mass.
     assets: dict[str, tuple[str, bytes]] = {}
     tables = _drag_tables(ref) if ref is not None else None
-    if ref is not None and tables is not None:
+    cross_check_drag: Drag | None = None
+    if tables is not None:
         on_bytes, off_bytes = tables
         on_sha, off_sha = sha256_hex(on_bytes), sha256_hex(off_bytes)
         assets[on_sha] = ("openrocket-drag-power-on.csv", on_bytes)
         assets[off_sha] = ("openrocket-drag-power-off.csv", off_bytes)
-        drag = Drag(power_on=DragCurve(table=on_sha), power_off=DragCurve(table=off_sha))
-        machs = [
-            float(line.split(",")[0])
-            for line in on_bytes.decode().splitlines()[1:] + off_bytes.decode().splitlines()[1:]
-        ]
-        w.approximated.append(
-            ReportItem(
-                component=f"Simulation '{ref.summary.name}'",
-                target="rocket.drag",
-                detail="CD against Mach taken from OpenRocket's ascent data "
-                f"(Mach {min(machs):.2f} to {max(machs):.2f}, binned at 0.01). "
-                "Constant beyond that range. OpenRocket's drag is "
-                "decent subsonic and shaky transonic.",
-            )
-        )
-    else:
-        drag = Drag(power_on=DragCurve(constant_cd=0.5), power_off=DragCurve(constant_cd=0.5))
-        warnings.append(
-            "No up-to-date OpenRocket simulation with drag data, so drag is a placeholder constant "
-            "CD of 0.5. Run a simulation in OpenRocket and re-import, or load a drag table, before "
-            "trusting any result."
+        cross_check_drag = Drag(
+            power_on=DragCurve(table=on_sha), power_off=DragCurve(table=off_sha)
         )
 
     # Geometry.
@@ -756,15 +1004,17 @@ def import_openrocket(data: bytes) -> OrkImport:
                 detail=f"{p.length_m * 1000:.0f} mm tube, radius {p.outer_r * 1000:.1f} mm",
             )
         )
-    fins: list[TrapezoidalFins] = []
+    fins: list[FinSet] = []
     for p in w.parts:
         if p.tag not in _FINSETS:
             continue
         e = p.element
+        target = f"rocket.fins[{len(fins)}]"
         root_c = _f(e, "rootchord", 0.0) or 0.0
         span = _f(e, "height", 0.0) or 0.0
         cant = _f(e, "cant", 0.0) or 0.0
         n = int(_f(e, "fincount", 3) or 3)
+        fin: FinSet
         if p.tag == "trapezoidfinset":
             tip = _f(e, "tipchord", 0.0) or 0.0
             sweep = _f(e, "sweeplength", None)
@@ -772,26 +1022,62 @@ def import_openrocket(data: bytes) -> OrkImport:
                 f"{n} fins, root {root_c * 1000:.0f} mm, tip {tip * 1000:.0f} mm, "
                 f"span {span * 1000:.0f} mm"
             )
-            w.mapped.append(
-                ReportItem(component=p.name, target=f"rocket.fins[{len(fins)}]", detail=detail)
+            w.mapped.append(ReportItem(component=p.name, target=target, detail=detail))
+            fin = TrapezoidalFins(
+                kind="trapezoidal",
+                count=n,
+                root_chord_m=root_c,
+                tip_chord_m=tip,
+                span_m=span,
+                position_m=p.top_m,
+                sweep_length_m=sweep,
+                cant_angle_deg=cant,
             )
-            cross = (e.findtext("crosssection") or "").strip()
-            if cross and cross != "square":
-                w.approximated.append(
-                    ReportItem(
-                        component=p.name,
-                        target=f"rocket.fins[{len(fins)}]",
-                        detail=f"'{cross}' cross-section: RocketPy uses flat-plate fin lift; "
-                        "its drag is in the drag table.",
-                    )
-                )
         elif p.tag == "ellipticalfinset":
-            tip, sweep = root_c * (math.pi / 2 - 1), None
             w.approximated.append(
                 ReportItem(
                     component=p.name,
-                    target=f"rocket.fins[{len(fins)}]",
+                    target=target,
                     detail="Elliptical fins flown as a trapezoid of equal area and span.",
+                )
+            )
+            fin = TrapezoidalFins(
+                kind="trapezoidal",
+                count=n,
+                root_chord_m=root_c,
+                tip_chord_m=root_c * (math.pi / 2 - 1),
+                span_m=span,
+                position_m=p.top_m,
+                cant_angle_deg=cant,
+            )
+        elif p.tag == "freeformfinset":
+            points = _fin_points(e)
+            try:
+                fin = FreeFormFins(
+                    kind="free_form",
+                    count=n,
+                    points=points,
+                    position_m=p.top_m,
+                    cant_angle_deg=cant,
+                )
+            except ValidationError as err:
+                # Typically fins on a transition, whose root is not on a straight tube.
+                reason = err.errors()[0]["msg"].removeprefix("Value error, ")
+                w.unsupported.append(
+                    ReportItem(
+                        component=p.name,
+                        target=None,
+                        detail=f"Freeform outline can't be flown: {reason}. "
+                        "Its mass is counted but it adds no lift.",
+                    )
+                )
+                continue
+            w.mapped.append(
+                ReportItem(
+                    component=p.name,
+                    target=target,
+                    detail=f"{n} fins, root {fin.root_chord_m * 1000:.0f} mm, "
+                    f"span {fin.span_m * 1000:.0f} mm, {len(points)}-point outline",
                 )
             )
         else:
@@ -804,20 +1090,24 @@ def import_openrocket(data: bytes) -> OrkImport:
                 )
             )
             continue
-        fins.append(
-            TrapezoidalFins(
-                count=n,
-                root_chord_m=root_c,
-                tip_chord_m=tip,
-                span_m=span,
-                position_m=p.top_m,
-                sweep_length_m=sweep,
-                cant_angle_deg=cant,
+        fin = _with_fin_structure(fin, e, p.name, target, w)
+        cross = (e.findtext("crosssection") or "square").strip()
+        if cross in ("square", "rounded", "airfoil"):
+            fin = fin.model_copy(update={"cross_section": cross})
+        if cross != "square":
+            w.approximated.append(
+                ReportItem(
+                    component=p.name,
+                    target=f"{target}.cross_section",
+                    detail=f"'{cross}' cross-section: in the drag estimate; "
+                    "RocketPy's fin lift treats every fin as a flat plate.",
+                )
             )
-        )
+        fins.append(fin)
     if not fins:
         raise OrkError(
-            "no fins this importer can fly: the design needs a trapezoidal or elliptical fin set"
+            "no fins this importer can fly: the design needs a trapezoidal, elliptical "
+            "or freeform fin set"
         )
 
     transitions = [p for p in external if p.tag == "transition"]
@@ -866,8 +1156,8 @@ def import_openrocket(data: bytes) -> OrkImport:
             ReportItem(
                 component="Rail buttons",
                 target=None,
-                detail="Rail button drag is not modelled by RocketPy; "
-                "it is in OpenRocket's drag table.",
+                detail="Rail button drag is not in the drag estimate (usually under 2% "
+                "of the total).",
             )
         )
     elif buttons:
@@ -920,7 +1210,7 @@ def import_openrocket(data: bytes) -> OrkImport:
         tail=tail,
         rail_buttons=rail_buttons,
         motor_position_m=motor_aft,
-        drag=drag,
+        surface_finish=_surface_finish(w),
     )
 
     # Recovery.
@@ -1121,6 +1411,8 @@ def import_openrocket(data: bytes) -> OrkImport:
             )
         )
 
+    w.approximated.append(_drag_comparison(rocket, ref, tables, reference.get("site_alt", 0.0)))
+    structure = _structure(w, external, dry)
     report = ImportReport(
         openrocket_version=root.get("creator", "unknown"),
         rocket_name=(rocket_el.findtext("name") or "Rocket").strip(),
@@ -1141,7 +1433,9 @@ def import_openrocket(data: bytes) -> OrkImport:
         motor=motor,
         assets=assets,
         report=report,
+        structure=structure,
         reference=reference,
+        cross_check_drag=cross_check_drag,
     )
 
 
@@ -1162,8 +1456,12 @@ def cross_check_mission(
     motor: Any,
     assets: dict[str, Any],
     reference: dict[str, float],
+    drag: Drag | None = None,
 ) -> Any:
     """A mission that reproduces the reference simulation's conditions.
+
+    ``drag`` (OpenRocket's own, from the import) replaces the rocket's, so the
+    flight tests the translated geometry and mass, not the drag estimate.
 
     ISA atmosphere with OpenRocket's average wind, its launch site and rod.
     Wind direction does not matter for a vertical rod's apogee; it is applied
@@ -1175,7 +1473,9 @@ def cross_check_mission(
     return Mission.model_validate(
         {
             "meta": {"name": "OpenRocket cross-check"},
-            "rocket": rocket.model_dump(mode="json"),
+            "rocket": (rocket.model_copy(update={"drag": drag}) if drag else rocket).model_dump(
+                mode="json"
+            ),
             "motor": motor,
             "recovery": recovery.model_dump(mode="json"),
             "site": {

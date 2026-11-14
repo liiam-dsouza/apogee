@@ -127,8 +127,49 @@ def trapezoid_fin_set(
     # Centroid of a trapezoid, from the root leading edge (OpenRocket's formula).
     x_c = (sweep * (root + 2 * tip) + (root**2 + root * tip + tip**2)) / (3 * (root + tip))
     y_c = span * (root + 2 * tip) / (3 * (root + tip))  # spanwise centroid
+    return _fin_plates(mass, x_c, y_c, span, (root + tip) / 2, body_r, root_le_m)
+
+
+def polygon_fin_set(
+    count: int,
+    points: list[tuple[float, float]],
+    thickness: float,
+    density: float,
+    body_r: float,
+    root_le_m: float,
+    mass_override: float | None,
+) -> MassProps:
+    """Flat fins of any outline (x aft of the root leading edge, y outward).
+
+    Area and centroid by the shoelace formula; the outline closes along the root.
+    """
+    signed = cx = cy = 0.0
+    for (x0, y0), (x1, y1) in zip(points, points[1:] + points[:1], strict=True):
+        cross = x0 * y1 - x1 * y0
+        signed += cross
+        cx += (x0 + x1) * cross
+        cy += (y0 + y1) * cross
+    signed /= 2
+    area = abs(signed)
+    span = max(y for _, y in points)
+    mass = mass_override if mass_override is not None else count * area * thickness * density
+    if area == 0 or span <= 0:
+        return MassProps(mass, root_le_m, 0.0, 0.0)
+    x_c, y_c = cx / (6 * signed), cy / (6 * signed)
+    return _fin_plates(mass, x_c, y_c, span, area / span, body_r, root_le_m)
+
+
+def _fin_plates(
+    mass: float,
+    x_c: float,
+    y_c: float,
+    span: float,
+    mean_chord: float,
+    body_r: float,
+    root_le_m: float,
+) -> MassProps:
+    """A fin set as flat plates at radius, from one fin's area centroid."""
     r_c = body_r + y_c
-    mean_chord = (root + tip) / 2
     i_axial = mass * (r_c**2 + span**2 / 18)
     # A ring of plates: half the radial spread lands in each transverse axis.
     i_trans = mass * (r_c**2 / 2 + mean_chord**2 / 12)

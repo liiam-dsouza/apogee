@@ -7,6 +7,7 @@ import numpy as np
 from pydantic import BaseModel, Field
 
 from simcore.mission.models import quantity
+from simcore.structures.flutter import FinFlutter
 
 
 class Landing(BaseModel):
@@ -26,6 +27,12 @@ class ParachuteEvent(BaseModel):
     name: str = Field(description="Recovery device name, from the mission.")
     triggered_s: float = quantity("s", "Time the trigger fired.")
     triggered_agl_m: float = quantity("m", "Altitude above ground when the trigger fired.")
+    speed_ms: float | None = quantity(
+        "m/s",
+        "Rocket speed when the trigger fired: what the canopy opens into. None for results "
+        "stored before it was recorded.",
+        default=None,
+    )
 
 
 class FlightSummary(BaseModel):
@@ -71,9 +78,20 @@ class FlightSummary(BaseModel):
     parachute_events: list[ParachuteEvent] = Field(
         description="Recovery devices that deployed, in order."
     )
+    max_coast_drag_deceleration_ms2: float | None = quantity(
+        "m/s²",
+        "Highest deceleration from drag alone between burnout and apogee: what pulls a "
+        "separation joint apart. None for results stored before it was recorded.",
+        default=None,
+    )
+    fin_flutter: list[FinFlutter] = Field(
+        default_factory=list,
+        description="Flutter check per fin set with a thickness and material. Empty: not checked.",
+    )
 
 
 #: Trajectory channels: name -> (units, description). Arrays share the time base.
+#: A flight may lack an optional one (fin flutter, without a fin material).
 TRAJECTORY_CHANNELS: dict[str, tuple[str, str]] = {
     "time_s": ("s", "Time since ignition"),
     "altitude_agl_m": ("m", "Altitude above the pad"),
@@ -82,9 +100,12 @@ TRAJECTORY_CHANNELS: dict[str, tuple[str, str]] = {
     "acceleration_ms2": ("m/s²", "Acceleration magnitude"),
     "mach": ("1", "Mach number"),
     "dynamic_pressure_pa": ("Pa", "Dynamic pressure"),
+    "thrust_n": ("N", "Motor thrust"),
+    "mass_kg": ("kg", "Rocket mass, motor and propellant included"),
     "stability_margin_cal": ("cal", "Static stability margin"),
     "east_m": ("m", "Position east of the pad"),
     "north_m": ("m", "Position north of the pad"),
+    "fin_flutter_speed_ms": ("m/s", "Lowest fin flutter speed of any checked fin set"),
 }
 
 

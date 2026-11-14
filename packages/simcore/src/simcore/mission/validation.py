@@ -87,6 +87,16 @@ def _rocket_checks(mission: Mission) -> list[Issue]:
                 "cg_aft_of_rocket",
             )
         )
+    if r.drag.power_off.estimate or r.drag.power_on.estimate:
+        for i, fins in enumerate(r.fins):
+            if fins.thickness_m is None:
+                issues.append(
+                    _warning(
+                        f"rocket.fins[{i}].thickness_m",
+                        "No fin thickness: the drag estimate assumes 3 mm.",
+                        "fin_thickness_assumed",
+                    )
+                )
     if r.rail_buttons and r.rail_buttons.upper_position_m >= r.rail_buttons.lower_position_m:
         issues.append(
             _error(
@@ -167,27 +177,49 @@ def _environment_checks(mission: Mission) -> list[Issue]:
 
 
 def _constraint_checks(mission: Mission) -> list[Issue]:
-    from simcore.constraints import ProfileError, load_profiles  # imports the engine's metrics
+    from simcore.constraints import ProfileError, get_profile  # imports the engine's metrics
 
     settings = mission.constraints
-    if not settings.profile:
+    if not settings.profile and not settings.launch_rules:
         return []
-    try:
-        profile = load_profiles()[settings.profile]
-    except (KeyError, ProfileError):
-        return [
-            _error(
-                "constraints.profile", "There is no such competition profile.", "unknown_profile"
+    issues: list[Issue] = []
+    ids: set[str] = set()
+    profile = launch = None
+    if settings.profile:
+        try:
+            profile = get_profile(settings.profile)
+        except ProfileError:
+            issues.append(
+                _error(
+                    "constraints.profile",
+                    "There is no such competition profile.",
+                    "unknown_profile",
+                )
             )
-        ]
-    ids = {c.id for c in profile.constraints}
-    issues = [
+    if settings.launch_rules:
+        try:
+            launch = get_profile(settings.launch_rules, "launch")
+        except ProfileError:
+            issues.append(
+                _error(
+                    "constraints.launch_rules",
+                    "There are no such launch rules.",
+                    "unknown_launch_rules",
+                )
+            )
+    for rules in (profile, launch):
+        ids |= {c.id for c in rules.constraints} if rules else set()
+    if (settings.profile and profile is None) or (settings.launch_rules and launch is None):
+        return issues
+    issues += [
         _warning(
             f"constraints.overrides.{rule}", "The profile has no rule with this id.", "unknown_rule"
         )
         for rule in settings.overrides
         if rule not in ids
     ]
+    if profile is None:
+        return issues
     if settings.category and settings.category not in {c.id for c in profile.categories}:
         issues.append(
             _error("constraints.category", "The profile has no such category.", "unknown_category")
@@ -219,6 +251,16 @@ def physical_checks(mission: Mission) -> list[Issue]:
         + _environment_checks(mission)
         + _constraint_checks(mission)
     )
+    if mission.extends is not None:
+        # Rejected rather than ignored: a base file that silently does nothing
+        # would fly a different rocket than the author wrote.
+        issues.append(
+            _error(
+                "extends",
+                "Config inheritance is not supported yet. Copy the base config's sections in.",
+                "extends_unsupported",
+            )
+        )
     site = mission.site
     if (
         site

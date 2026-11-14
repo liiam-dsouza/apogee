@@ -1,7 +1,10 @@
-"""``.mission.zip`` bundles: the mission YAML plus every asset it references.
+"""``.apg`` bundles: the mission YAML plus every asset it references.
 
-A bundle works on a laptop that has never seen the project. Inside:
-``mission.yaml`` and ``assets/<sha256>``. Reading verifies every hash.
+An ``.apg`` is a zip under its own extension and media type, so the OS can
+give it Apogee's icon and open it in the installed app. A bundle works on a
+laptop that has never seen the project. Inside: ``mission.yaml`` and
+``assets/<sha256>``. Reading verifies every hash. Older ``.mission.zip``
+bundles have the same contents and still read.
 """
 
 import io
@@ -13,6 +16,8 @@ from simcore.assets import AssetStore, sha256_hex
 from simcore.mission import Mission, dump_yaml, parse_yaml
 
 MAX_BUNDLE_BYTES = 100 * 1024 * 1024
+BUNDLE_SUFFIX = ".apg"
+BUNDLE_MEDIA_TYPE = "application/vnd.apogee.mission+zip"
 _ASSET_NAME = re.compile(r"^assets/([0-9a-f]{64})$")
 
 

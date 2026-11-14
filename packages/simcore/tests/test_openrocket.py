@@ -75,10 +75,53 @@ def test_small_design_maps_geometry_and_masses() -> None:
     assert rocket.dry_mass_kg > 1.5
 
 
-def test_no_simulation_means_placeholder_drag_and_a_warning() -> None:
+TRAPEZOID_XML = (
+    b"<trapezoidfinset>",
+    b"<tipchord>0.05</tipchord><sweeplength>0.04</sweeplength><height>0.06</height>",
+    b"</trapezoidfinset>",
+)
+# The same trapezoid drawn as a freeform outline, starting off x = 0 as OpenRocket allows.
+FREEFORM = (
+    SMALL.replace(TRAPEZOID_XML[0], b"<freeformfinset>")
+    .replace(
+        TRAPEZOID_XML[1],
+        b"<finpoints><point x='0.01' y='0.0'/><point x='0.05' y='0.06'/>"
+        b"<point x='0.1' y='0.06'/><point x='0.11' y='0.0'/></finpoints>",
+    )
+    .replace(b"<rootchord>0.1</rootchord>", b"")
+    .replace(TRAPEZOID_XML[2], b"</freeformfinset>")
+)
+
+
+def test_freeform_fins_import_with_their_outline() -> None:
+    trapezoid = import_openrocket(SMALL)
+    freeform = import_openrocket(FREEFORM)
+    [fins] = freeform.rocket.fins
+    assert fins.kind == "free_form"
+    assert fins.points == [
+        (0.0, 0.0),
+        pytest.approx((0.04, 0.06)),
+        pytest.approx((0.09, 0.06)),
+        pytest.approx((0.1, 0.0)),
+    ]
+    assert fins.position_m == pytest.approx(1.2)
+    # Same shape, same material: the polygon mass model matches the trapezoid one.
+    assert freeform.rocket.dry_mass_kg == pytest.approx(trapezoid.rocket.dry_mass_kg, rel=1e-9)
+    assert freeform.rocket.dry_cg_m == pytest.approx(trapezoid.rocket.dry_cg_m, rel=1e-9)
+    assert not any("no mass model" in u.detail for u in freeform.report.unsupported)
+
+
+def test_freeform_fins_off_the_body_tube_are_reported_not_flown() -> None:
+    off_body = FREEFORM.replace(b"<point x='0.11' y='0.0'/>", b"<point x='0.11' y='0.01'/>")
+    with pytest.raises(OrkError, match="no fins this importer can fly"):
+        import_openrocket(off_body)
+
+
+def test_drag_is_estimated_even_without_a_simulation() -> None:
     r = import_openrocket(SMALL)
-    assert r.rocket.drag.power_off.constant_cd == 0.5
-    assert any("placeholder" in w for w in r.report.warnings)
+    assert r.rocket.drag.power_off.estimate and r.rocket.drag.power_on.estimate
+    assert r.cross_check_drag is None and r.assets == {}
+    assert any(a.target == "rocket.drag" for a in r.report.approximated)
     assert [c.status for c in r.report.cross_checks] == ["unavailable"]
 
 
@@ -142,7 +185,9 @@ def test_lanius_flies_like_openrocket(tmp_path: Path) -> None:
         "thrust_curve": tsha,
         **generic_motor_estimate(parse_eng(eng.decode())),
     }
-    mission = cross_check_mission(r.rocket, r.recovery, motor, assets, r.reference)
+    mission = cross_check_mission(
+        r.rocket, r.recovery, motor, assets, r.reference, drag=r.cross_check_drag
+    )
     rows = {
         row["quantity"]: row
         for row in openrocket_cross_check(
@@ -154,3 +199,17 @@ def test_lanius_flies_like_openrocket(tmp_path: Path) -> None:
     cp = next(v for k, v in rows.items() if k.startswith("Centre of pressure"))
     assert abs(cp["ours"] - cp["openrocket"]) < 0.01
     assert rows["Rail exit velocity"]["status"] == "explained"
+
+
+def test_fin_thickness_and_material_come_across() -> None:
+    unknown = import_openrocket(SMALL)
+    [fins] = unknown.rocket.fins
+    assert fins.thickness_m == pytest.approx(0.003) and fins.material is None
+    assert any("no known shear modulus" in i.detail for i in unknown.report.approximated)
+
+    fiberglass = SMALL.replace(
+        b'<material type="bulk" density="1000.0">Test</material>\n            <fincount>',
+        b'<material type="bulk" density="1850.0">Fiberglass</material>\n            <fincount>',
+    )
+    [fins] = import_openrocket(fiberglass).rocket.fins
+    assert fins.material is not None and fins.material.shear_modulus_pa == pytest.approx(3e9)

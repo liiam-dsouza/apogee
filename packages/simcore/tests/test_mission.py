@@ -88,6 +88,12 @@ def test_pad_inside_hazard_is_an_error() -> None:
     assert report.issues[0].path == "site.hazards[0]"
 
 
+def test_extends_is_an_error_not_ignored() -> None:
+    _, report = validate_mission(minimal(extends="base.mission.yaml"))
+    assert not report.valid
+    assert [(i.path, i.code) for i in report.issues] == [("extends", "extends_unsupported")]
+
+
 def test_future_schema_version_is_refused() -> None:
     with pytest.raises(MigrationError):
         migrate({"schema_version": 99})
@@ -213,3 +219,36 @@ def test_config_reference_page_is_current() -> None:
 
     page = Path(__file__).parents[3] / "docs" / "reference" / "mission-config.md"
     assert page.read_text() == render_reference(), "run `make codegen`"
+
+
+def test_v3_fins_migrate_to_tagged_trapezoidal_fins() -> None:
+    data = calisto()
+    data["schema_version"] = 3
+    for fins in data["rocket"]["fins"]:
+        del fins["kind"]
+    mission = load_mission(data)
+    assert mission.rocket is not None
+    assert [f.kind for f in mission.rocket.fins] == ["trapezoidal"]
+
+
+def test_free_form_fins_must_sit_on_the_body_tube() -> None:
+    data = calisto()
+    data["rocket"]["fins"] = [
+        {
+            "kind": "free_form",
+            "count": 4,
+            "position_m": 2.3,
+            "points": [[0, 0], [0.05, 0.1], [0.12, 0.01]],
+        }
+    ]
+    _, report = validate_mission(data)
+    assert not report.valid
+    assert report.issues[0].path.startswith("rocket.fins[0]")
+    assert "body tube" in report.issues[0].message
+
+
+def test_the_packaged_example_matches_missions_examples() -> None:
+    from simcore.examples import CALISTO_BUNDLE
+
+    repo = Path(__file__).parents[3] / "missions" / "examples" / "calisto.apg"
+    assert CALISTO_BUNDLE.read_bytes() == repo.read_bytes(), "run make example"
