@@ -12,6 +12,8 @@ export default defineConfig({
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)), '@docs': DOCS_DIR },
   },
+  // The YAML editor's language worker (see sections/missions/yaml/yaml.worker.ts).
+  optimizeDeps: { include: ['monaco-yaml/yaml.worker.js'] },
   build: {
     rolldownOptions: {
       output: {

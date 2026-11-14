@@ -1,7 +1,7 @@
 import itertools
 import json
 import math
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 import pytest
@@ -23,6 +23,8 @@ from simcore.weather import (
     blend_surface_wind,
     effective_levels,
     forecast_params,
+    has_upper_air,
+    history_params,
     isa_levels,
     isa_pressure_temperature,
     manual_levels,
@@ -59,6 +61,26 @@ def test_forecast_params_ask_for_si_and_every_level() -> None:
     params = forecast_params(-30.66481, 143.196302)
     assert params["wind_speed_unit"] == "ms"
     assert "geopotential_height_50hPa" in params["hourly"].split(",")
+
+
+def test_history_params_cover_the_day_in_any_time_zone() -> None:
+    params = history_params(-30.66, 143.19, date(2025, 6, 14), today=date(2026, 11, 5))
+    assert (params["start_date"], params["end_date"]) == ("2025-06-13", "2025-06-15")
+    assert "forecast_days" not in params
+    assert "wind_speed_100hPa" in params["hourly"].split(",")
+    # Yesterday: nothing after today is asked for.
+    params = history_params(-30.66, 143.19, date(2026, 11, 4), today=date(2026, 11, 5))
+    assert params["end_date"] == "2026-11-05"
+
+
+def test_upper_air_is_detected() -> None:
+    assert has_upper_air(RESPONSE)
+    surface_only = {
+        "hourly": {
+            k: ([None] * len(v) if k.endswith("hPa") else v) for k, v in RESPONSE["hourly"].items()
+        }
+    }
+    assert not has_upper_air(surface_only)
 
 
 def test_profile_starts_at_the_pad_and_climbs() -> None:
@@ -184,6 +206,13 @@ def test_cache_round_trips_and_finds_by_place(tmp_path: Path) -> None:
     assert [e.id for e in cache.near(-30.66, 143.19)] == [b.id, a.id]
     with pytest.raises(ForecastNotFound):
         cache.get("../etc/passwd")
+
+
+def test_cache_keeps_the_day_of_a_past_fetch(tmp_path: Path) -> None:
+    cache = ForecastCache(tmp_path)
+    past = cache.put(-30.66, 143.19, "Open-Meteo", RESPONSE, day=date(2025, 6, 14))
+    assert cache.get(past.id).day == date(2025, 6, 14)
+    assert cache.get(cache.put(-30.66, 143.19, "Open-Meteo", RESPONSE).id).day is None
 
 
 # --- Flight ---------------------------------------------------------------------

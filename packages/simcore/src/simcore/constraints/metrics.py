@@ -26,6 +26,12 @@ METRICS: dict[str, tuple[str, str]] = {
     "descent_time_s": ("s", "Descent time, apogee to touchdown"),
     "drift_m": ("m", "Drift from the pad"),
     "flight_time_s": ("s", "Flight time"),
+    "min_fin_flutter_margin": ("1", "Fin flutter speed over flight speed, lowest of any fin set"),
+    "cloud_clearance_m": ("m", "Cloud base above apogee"),
+    "cloud_cover_pct": ("%", "Cloud cover"),
+    "visibility_m": ("m", "Horizontal visibility"),
+    "surface_wind_ms": ("m/s", "Surface wind, gusts included"),
+    "sun_elevation_deg": ("deg", "Sun's elevation at launch"),
 }
 
 assert set(METRICS) == set(get_args(Metric)), "METRICS and Metric must list the same names"
@@ -52,6 +58,8 @@ def from_summary(summary: FlightSummary) -> dict[str, float]:
         values["main_deploy_agl_m"] = summary.main_deploy_agl_m
     if summary.drogue_descent_rate_ms is not None:
         values["drogue_descent_rate_ms"] = summary.drogue_descent_rate_ms
+    if summary.fin_flutter:
+        values["min_fin_flutter_margin"] = min(f.min_margin for f in summary.fin_flutter)
     if summary.landing:
         values |= {
             "landing_speed_ms": summary.landing.speed_ms,

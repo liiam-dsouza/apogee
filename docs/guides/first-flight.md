@@ -5,7 +5,7 @@ About ten minutes, with nothing installed except Docker.
 1. **Start the stack.** From the repository: `docker compose up --build`
    (or `make up`). Open http://localhost:4321.
 2. **Import the reference rocket.** In **Missions**, choose **Import mission
-   file** and pick `missions/examples/calisto.mission.zip`. A bundle carries the
+   file** and pick `missions/examples/calisto.apg`. A bundle carries the
    mission and its thrust curve and drag table, so it flies straight away.
 3. **Open it.** Select the Calisto card and choose **Open in editor**.
 4. **Fly it.** Go to **Single flight** and choose **Run flight**. It takes

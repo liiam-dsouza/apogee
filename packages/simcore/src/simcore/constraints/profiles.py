@@ -15,9 +15,12 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from ruamel.yaml import YAML
 
+from simcore.constraints.conditions import CONDITION_METRICS
 from simcore.mission.models import Constraint
 
 PROFILE_DIR = Path(__file__).parent / "profiles"
+#: What launch-condition rules may test: the conditions, and apogee against the cloud base.
+LAUNCH_METRICS = CONDITION_METRICS | {"cloud_clearance_m"}
 
 
 class Category(BaseModel):
@@ -57,7 +60,11 @@ class Scoring(BaseModel):
 class Profile(BaseModel):
     model_config = ConfigDict(extra="forbid")
     id: str = Field(description="Profile id, e.g. 'aurc-2027'.")
-    name: str = Field(description="Competition name.")
+    kind: Literal["competition", "launch"] = Field(
+        default="competition",
+        description="competition: a contest's rules. launch: launch-condition rules for a region.",
+    )
+    name: str = Field(description="Competition or rule set name.")
     source: str = Field(description="Where the rules document is.")
     rules_version: str = Field(description="Version of the rules this profile encodes.")
     verified: bool = Field(
@@ -76,6 +83,12 @@ class Profile(BaseModel):
         for c in self.constraints:
             if isinstance(c.target, str) and c.target != "$category.apogee_target_m":
                 raise ValueError(f"profile {self.id}: {c.id}: unknown target {c.target!r}")
+        if self.kind == "launch":
+            if self.categories or self.scoring:
+                raise ValueError(f"launch rules {self.id}: no categories or scoring")
+            for c in self.constraints:
+                if c.metric not in LAUNCH_METRICS:
+                    raise ValueError(f"launch rules {self.id}: {c.id} is not on a launch condition")
         return self
 
 
@@ -99,8 +112,11 @@ def load_profiles(directory: Path = PROFILE_DIR) -> dict[str, Profile]:
     return out
 
 
-def get_profile(profile_id: str) -> Profile:
+def get_profile(profile_id: str, kind: str = "competition") -> Profile:
     try:
-        return load_profiles()[profile_id]
+        profile = load_profiles()[profile_id]
     except KeyError as e:
-        raise ProfileError(f"no competition profile {profile_id!r}") from e
+        raise ProfileError(f"no {kind} rules {profile_id!r}") from e
+    if profile.kind != kind:
+        raise ProfileError(f"{profile_id!r} is {profile.kind} rules, not {kind} rules")
+    return profile

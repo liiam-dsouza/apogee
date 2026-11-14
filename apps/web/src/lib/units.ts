@@ -30,6 +30,12 @@ export type Quantity =
   | 'area'
   | 'time'
   | 'density'
+  /** Thin parts: fins, walls. */
+  | 'thickness'
+  /** Material stiffness, e.g. a shear modulus. */
+  | 'modulus'
+  /** Small masses: black powder. */
+  | 'charge'
 
 export interface Unit {
   symbol: string
@@ -70,6 +76,9 @@ const UNITS: Record<UnitSystem, Record<Quantity, Unit>> = {
     area: linear('m²', 1),
     time: linear('s', 1),
     density: linear('kg/m³', 1),
+    thickness: linear('mm', 0.001),
+    modulus: linear('GPa', 1e9),
+    charge: linear('g', 0.001),
   },
   imperial: {
     length: linear('in', FT / 12),
@@ -93,6 +102,9 @@ const UNITS: Record<UnitSystem, Record<Quantity, Unit>> = {
     area: linear('ft²', FT * FT),
     time: linear('s', 1),
     density: linear('lb/ft³', LB / FT ** 3),
+    thickness: linear('in', FT / 12),
+    modulus: linear('ksi', 6894757.293168),
+    charge: linear('g', 0.001),
   },
 }
 
@@ -123,6 +135,9 @@ export const UNIT_CHOICES: Record<Quantity, Unit[]> = {
   area: [linear('m²', 1), linear('ft²', FT * FT), linear('cm²', 1e-4), linear('in²', (FT / 12) ** 2)],
   time: [linear('s', 1)],
   density: [linear('kg/m³', 1), linear('lb/ft³', LB / FT ** 3), linear('g/cm³', 1000)],
+  thickness: [linear('mm', 0.001), linear('in', FT / 12)],
+  modulus: [linear('GPa', 1e9), linear('ksi', 6894757.293168), linear('MPa', 1e6)],
+  charge: [linear('g', 0.001), linear('gr', 0.00006479891)],
 }
 
 /** A display preference: a system, with any quantity set to its own unit (by symbol). */

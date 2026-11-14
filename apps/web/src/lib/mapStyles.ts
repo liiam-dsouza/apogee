@@ -42,9 +42,56 @@ export const basemapSource: BasemapSource = chooseSource()
  * as the accent.
  */
 export const overlayColors = {
-  dark: { primary: '#ff3b1a', hazard: '#f5c542', caution: '#e8b13a', foreground: '#ededed' },
-  light: { primary: '#e8002b', hazard: '#a07800', caution: '#8a5a00', foreground: '#0d0d0d' },
+  dark: { primary: '#ff3b1a', hazard: '#f5c542', caution: '#e8b13a', foreground: '#ededed', background: '#0d0d0d' },
+  light: { primary: '#e8002b', hazard: '#a07800', caution: '#8a5a00', foreground: '#0d0d0d', background: '#f5f5f5' },
+  pink: { primary: '#c4006a', hazard: '#a07800', caution: '#8a5a00', foreground: '#3d0020', background: '#ffd1e8' },
 } as const
+
+/** HSL lightness (0 to 1) and alpha of a CSS colour, or null if `value` isn't one MapLibre styles use. */
+function lightnessAndAlpha(value: string): [number, number] | null {
+  const s = value.trim().toLowerCase()
+  const hex = /^#([0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/.exec(s)?.[1]
+  if (hex) {
+    const full = hex.length <= 4 ? [...hex].map((c) => c + c).join('') : hex
+    const [r, g, b, a = 255] = (full.match(/../g) ?? []).map((h) => parseInt(h, 16))
+    return [(Math.max(r, g, b) + Math.min(r, g, b)) / 510, a / 255]
+  }
+  const fn = /^(rgba?|hsla?)\(([^)]*)\)$/.exec(s)
+  if (!fn) return null
+  const parts = fn[2].split(/[\s,/]+/).filter(Boolean).map((p) => parseFloat(p))
+  if (parts.length < 3 || parts.some(Number.isNaN)) return null
+  const alpha = parts[3] ?? 1
+  if (fn[1].startsWith('hsl')) return [parts[2] / 100, alpha]
+  return [(Math.max(...parts.slice(0, 3)) + Math.min(...parts.slice(0, 3))) / 510, alpha]
+}
+
+/** Every colour in a style value moved to pink, keeping its lightness (capped at the pink page's). */
+function pinkify(value: unknown): unknown {
+  if (typeof value === 'string') {
+    const la = lightnessAndAlpha(value)
+    if (!la) return value
+    const [l, a] = la
+    return `hsla(330, 100%, ${(Math.min(l, 0.91) * 100).toFixed(1)}%, ${a})`
+  }
+  if (Array.isArray(value)) return value.map(pinkify)
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, pinkify(v)]))
+  }
+  return value
+}
+
+/**
+ * The pink theme's basemap: whatever the light basemap is (local, online or
+ * blank), recoloured as it loads. Pass on every style load, since MapLibre
+ * otherwise keeps the last transform.
+ */
+export function basemapTransform(pink: boolean): MapLibreGL.TransformStyleFunction {
+  if (!pink) return (_previous, next) => next
+  return (_previous, next) => ({
+    ...next,
+    layers: next.layers.map((l) => ('paint' in l && l.paint ? { ...l, paint: pinkify(l.paint) } : l)),
+  }) as MapLibreGL.StyleSpecification
+}
 
 const blank: MapLibreGL.StyleSpecification = {
   version: 8,

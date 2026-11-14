@@ -71,9 +71,25 @@
   --chart-grid: #d9d9d9;
 }
 
+/* Easter egg: the status-bar toggle's third stop. Sits on top of the light theme. */
+:root[data-pink] {
+  --background: #ffd1e8;
+  --foreground: #3d0020;
+  --surface: #ffb8db;
+  --surface-2: #ff9fcf;
+  --border: #f060a8;
+  --muted-foreground: #7a1048;
+  --brand-from: #ff1f8f;
+  --brand-to: #ff5cb8;
+  --primary: #b8005f;
+  --chart-1: #c4006a;
+  --chart-2: #7a1048;
+  --chart-grid: #ff9fcf;
+}
+
 /* Short screens (laptops with browser chrome): the rail compacts in two steps. */
-@custom-variant short (@media (max-height: 860px));
-@custom-variant shorter (@media (max-height: 760px));
+@custom-variant short (@media (max-height: 960px));
+@custom-variant shorter (@media (max-height: 820px));
 
 /* Dark is the default; only an explicit light theme switches it off. */
 @custom-variant dark (&:where(:root:not([data-theme='light']), :root:not([data-theme='light']) *));
@@ -264,4 +280,49 @@
 
 ::selection {
   background: color-mix(in srgb, var(--brand-to) 35%, transparent);
+}
+
+/*
+ * Printing a flight report (post-flight): only the report prints. Its ancestors
+ * (the shell, the resizable panels, the scrolling centre) are flattened so it
+ * flows over pages; everything else is hidden. Paper is always light: the
+ * tokens here, and the report redraws its chart canvases in the light theme
+ * while printing.
+ */
+@media print {
+  :root,
+  :root[data-theme],
+  :root[data-pink] {
+    color-scheme: light;
+    --background: #ffffff;
+    --foreground: #0d0d0d;
+    --surface: #ffffff;
+    --surface-2: #e6e6e6;
+    --border: #a6a6a6;
+    --muted-foreground: #4d4d4d;
+    --primary: #c4002a;
+    --chart-1: #e8002b;
+    --chart-2: #5c5c5c;
+    --chart-grid: #d9d9d9;
+  }
+  @page {
+    margin: 14mm;
+  }
+  html:has([data-print-report]),
+  body:has([data-print-report]),
+  *:has([data-print-report]) {
+    display: block !important;
+    position: static !important;
+    height: auto !important;
+    width: auto !important;
+    overflow: visible !important;
+    background: none !important;
+  }
+  body:has([data-print-report]) *:not(:has([data-print-report])):not([data-print-report]):not([data-print-report] *) {
+    display: none !important;
+  }
+  [data-print-report] canvas {
+    max-width: 100%;
+    height: auto !important;
+  }
 }

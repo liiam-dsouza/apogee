@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from simcore.mission import Mission, canonical_json
+from simcore.mission.models import CAMPAIGN_IRRELEVANT
 from simcore.versions import rocketpy_version, simcore_version
 
 #: Samples per job. Small enough to spread over workers and show progress, large
@@ -24,9 +25,10 @@ CHUNK_SIZE = 20
 def campaign_key(mission: Mission) -> str:
     """Same mission (campaign settings included) and versions give the same campaign.
 
-    Constraints are judged on a campaign, not part of it, so they are left out.
+    Constraints are judged on a campaign, not part of it, so they are left out, as
+    are ejection charges, which no flight depends on.
     """
-    data = mission.model_dump(mode="json", exclude={"constraints"})
+    data = mission.model_dump(mode="json", exclude=set(CAMPAIGN_IRRELEVANT))
     payload = "\n".join([canonical_json(data), rocketpy_version(), simcore_version()])
     return hashlib.sha256(payload.encode()).hexdigest()[:32]
 

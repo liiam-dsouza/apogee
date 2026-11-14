@@ -23,7 +23,7 @@ import { X, Minus, Plus, Locate, Maximize, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 // apogee: bundle the worker and use offline basemaps (see lib/mapStyles.ts).
 import maplibreWorkerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url";
-import { mapStyles, registerMapProtocols } from "@/lib/mapStyles";
+import { basemapTransform, mapStyles, registerMapProtocols } from "@/lib/mapStyles";
 
 type MapLibreModule = typeof MapLibreGL;
 
@@ -110,13 +110,16 @@ function mergeHoverPaint<T extends Record<string, unknown>>(
   return merged as T;
 }
 
-type Theme = "light" | "dark";
+// apogee: "pink" is the status-bar easter egg: the light basemap recoloured
+// (basemapTransform), flagged by `data-pink` on the root.
+type Theme = "light" | "dark" | "pink";
 
 // Check the document for an explicit theme (works with next-themes, etc.).
 // Covers both `attribute="class"` (the default) and `attribute="data-theme"`.
 function getDocumentTheme(): Theme | null {
   if (typeof document === "undefined") return null;
   const root = document.documentElement;
+  if (root.dataset.pink !== undefined) return "pink";
   if (root.classList.contains("dark")) return "dark";
   if (root.classList.contains("light")) return "light";
   const dataTheme = root.dataset.theme;
@@ -132,7 +135,7 @@ function getSystemTheme(): Theme {
     : "light";
 }
 
-function useResolvedTheme(themeProp?: "light" | "dark"): Theme {
+function useResolvedTheme(themeProp?: Theme): Theme {
   const [detectedTheme, setDetectedTheme] = useState<Theme>(
     () => getDocumentTheme() ?? getSystemTheme(),
   );
@@ -150,7 +153,7 @@ function useResolvedTheme(themeProp?: "light" | "dark"): Theme {
     });
     observer.observe(document.documentElement, {
       attributes: true,
-      attributeFilter: ["class", "data-theme"],
+      attributeFilter: ["class", "data-theme", "data-pink"],
     });
 
     // Also watch for system preference changes
@@ -294,8 +297,10 @@ const Map = forwardRef<MapRef, MapProps>(function Map(
   const [mapInstance, setMapInstance] = useState<MapLibreGL.Map | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isStyleLoaded, setIsStyleLoaded] = useState(false);
-  const [pendingStyle, setPendingStyle] = useState<MapStyleOption | null>(null);
+  const [pendingStyle, setPendingStyle] = useState<{ style: MapStyleOption; pink: boolean } | null>(null);
   const currentStyleRef = useRef<MapStyleOption | null>(null);
+  // apogee: light and pink share a style; the pink flag tells them apart.
+  const currentPinkRef = useRef(false);
   const styleSwapInFlightRef = useRef(false);
   const internalUpdateRef = useRef(false);
   const resolvedTheme = useResolvedTheme(themeProp);
@@ -345,11 +350,13 @@ const Map = forwardRef<MapRef, MapProps>(function Map(
         const initialStyle =
           resolvedTheme === "dark" ? mapStyles.dark : mapStyles.light;
         currentStyleRef.current = initialStyle;
+        currentPinkRef.current = resolvedTheme === "pink";
 
         // Create the map (no painter means WebGL2 is unavailable)
         const instance = new lib.Map({
           container: containerRef.current,
           style: initialStyle,
+          transformStyle: basemapTransform(resolvedTheme === "pink"),
           renderWorldCopies: false,
           attributionControl: {
             compact: true,
@@ -430,11 +437,14 @@ const Map = forwardRef<MapRef, MapProps>(function Map(
     const newStyle =
       resolvedTheme === "dark" ? mapStyles.dark : mapStyles.light;
 
-    if (currentStyleRef.current === newStyle) return;
+    const pink = resolvedTheme === "pink";
+
+    if (currentStyleRef.current === newStyle && currentPinkRef.current === pink) return;
 
     currentStyleRef.current = newStyle;
+    currentPinkRef.current = pink;
     setIsStyleLoaded(false);
-    setPendingStyle(newStyle);
+    setPendingStyle({ style: newStyle, pink });
   }, [mapInstance, resolvedTheme, mapStyles]);
 
   useEffect(() => {
@@ -444,7 +454,10 @@ const Map = forwardRef<MapRef, MapProps>(function Map(
     styleSwapInFlightRef.current = true;
     // Full reload (no diff) so `style.load` fires deterministically. A
     // successful diff would never fire it, leaving isStyleLoaded stuck false.
-    mapInstance.setStyle(pendingStyle, { diff: false });
+    mapInstance.setStyle(pendingStyle.style, {
+      diff: false,
+      transformStyle: basemapTransform(pendingStyle.pink),
+    });
   }, [mapInstance, pendingStyle]);
 
   // Sync projection when the prop changes after mount.
@@ -1845,6 +1858,7 @@ type MapGeoJSONProps<
 const GEOJSON_DEFAULT_COLORS = {
   light: { fill: "#d4d4d4", line: "#ffffff" },
   dark: { fill: "#404040", line: "#171717" },
+  pink: { fill: "#ff9fcf", line: "#ffd1e8" },
 } satisfies Record<Theme, { fill: string; line: string }>;
 
 /**

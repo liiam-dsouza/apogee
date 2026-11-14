@@ -35,6 +35,7 @@ export function SectionView({ id }: { id: string }) {
 function SectionContent({ Centre }: { Centre: Lazy }) {
   return (
     <motion.div
+      data-tour="centre"
       className="relative min-h-0 flex-1 overflow-auto"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -113,7 +114,7 @@ function WideSectionView({ def }: { def: SectionDef }) {
             maxSize="480px"
             onResize={(size) => setPaneOpen(size.inPixels > 0)}
           >
-            <aside aria-label={`${def.label} settings`} className="h-full overflow-auto bg-surface">
+            <aside data-tour="pane" aria-label={`${def.label} settings`} className="h-full overflow-auto bg-surface">
               <Suspense fallback={null}>
                 <Pane />
               </Suspense>
@@ -165,6 +166,7 @@ function CompactSectionView({ def }: { def: SectionDef }) {
         {def.hasPane && (
           <aside
             id="section-pane"
+            data-tour="pane"
             role="tabpanel"
             aria-label={`${def.label} settings`}
             className={cn('min-h-0 flex-1 overflow-auto bg-surface', tab !== 'pane' && 'hidden')}

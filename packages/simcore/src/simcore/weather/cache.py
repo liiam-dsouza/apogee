@@ -4,7 +4,7 @@ import json
 import math
 import os
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
 
@@ -26,6 +26,8 @@ class CachedForecast:
     longitude: float
     source: str
     response: dict[str, Any]
+    #: The past day asked for, for a day from the archive; None for a forecast.
+    day: date | None = None
 
 
 def _distance_m(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -43,7 +45,12 @@ class ForecastCache:
         self.root = root
 
     def put(
-        self, latitude: float, longitude: float, source: str, response: dict[str, Any]
+        self,
+        latitude: float,
+        longitude: float,
+        source: str,
+        response: dict[str, Any],
+        day: date | None = None,
     ) -> CachedForecast:
         self.root.mkdir(parents=True, exist_ok=True)
         entry = CachedForecast(
@@ -53,9 +60,15 @@ class ForecastCache:
             longitude=longitude,
             source=source,
             response=response,
+            day=day,
         )
         body = json.dumps(
-            {**entry.__dict__, "fetched_utc": entry.fetched_utc.isoformat()}, separators=(",", ":")
+            {
+                **entry.__dict__,
+                "fetched_utc": entry.fetched_utc.isoformat(),
+                "day": day.isoformat() if day else None,
+            },
+            separators=(",", ":"),
         )
         tmp = self.root / f".{entry.id}.tmp"
         tmp.write_text(body)
@@ -69,7 +82,14 @@ class ForecastCache:
             raw = json.loads((self.root / f"{forecast_id}.json").read_text())
         except FileNotFoundError as e:
             raise ForecastNotFound(forecast_id) from e
-        return CachedForecast(**{**raw, "fetched_utc": datetime.fromisoformat(raw["fetched_utc"])})
+        day = raw.get("day")
+        return CachedForecast(
+            **{
+                **raw,
+                "fetched_utc": datetime.fromisoformat(raw["fetched_utc"]),
+                "day": date.fromisoformat(day) if day else None,
+            }
+        )
 
     def near(self, latitude: float, longitude: float) -> list[CachedForecast]:
         """Forecasts fetched for points near this one, newest first."""

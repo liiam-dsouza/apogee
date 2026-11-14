@@ -1,5 +1,5 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { CloudDownload, Plus, Trash2, Wind } from 'lucide-react'
+import { CloudDownload, History, Plus, Trash2, Wind } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router'
 import { Explainer } from '@/components/Explainer'
@@ -13,6 +13,7 @@ import { formatSI, fromSI, toSI, unitFor } from '@/lib/units'
 import { cn } from '@/lib/utils'
 import { useMissionStore } from '@/stores/mission'
 import { usePrefs } from '@/stores/prefs'
+import { LaunchConditionsEditor } from './LaunchConditions'
 import { WindCharts, type ProfileSeries } from './ProfileCharts'
 import { toWindPoints } from './wind'
 
@@ -60,6 +61,24 @@ function age(iso: string): string {
   if (h < 48) return `${Math.round(h)} h ago`
   return `${Math.round(h / 24)} days ago`
 }
+
+/** YYYY-MM-DD in the user's time zone. */
+function localDate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+/** A calendar day (YYYY-MM-DD) for reading, e.g. "Sat 14 Jun 2025". */
+const dayLabel = (day: string) =>
+  new Date(`${day}T12:00:00`).toLocaleDateString(undefined, {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  })
+
+/** Weather for an hour that had already passed when it was fetched: history, so its age doesn't matter. */
+const isPast = (p: { valid_utc?: string | null; fetched_utc?: string | null }) =>
+  Boolean(p.valid_utc && p.fetched_utc && new Date(p.valid_utc).getTime() < new Date(p.fetched_utc).getTime() - 3_600_000)
 
 const localTime = (iso: string, withDay = true) =>
   new Date(iso).toLocaleString(undefined, {
@@ -143,7 +162,7 @@ function WeatherCentre() {
         <h2 className="font-display text-2xl font-semibold">
           {profile
             ? profile.valid_utc
-              ? `Forecast for ${localTime(profile.valid_utc)}`
+              ? `${isPast(profile) ? 'Weather on' : 'Forecast for'} ${localTime(profile.valid_utc)}`
               : `Profile: ${profile.source}`
             : manual
               ? 'Wind entered by hand'
@@ -151,7 +170,7 @@ function WeatherCentre() {
               ? 'Measured surface wind, calm aloft'
               : 'Standard atmosphere, no wind'}
         </h2>
-        {profile?.fetched_utc && <AgeBadge fetched={profile.fetched_utc} />}
+        {profile?.fetched_utc && !isPast(profile) && <AgeBadge fetched={profile.fetched_utc} />}
         {profile && <p className="text-xs text-muted-foreground">{profile.source}</p>}
         {manual?.note && <p className="text-sm text-muted-foreground">{manual.note}</p>}
       </header>
@@ -312,9 +331,12 @@ function WeatherPane() {
             {atmosphere?.kind === 'profile' ? (
               <div className="space-y-1 rounded-md border border-border px-3 py-2">
                 <p className="text-sm">
-                  In use: {atmosphere.valid_utc ? `forecast for ${localTime(atmosphere.valid_utc)}` : atmosphere.source}
+                  In use:{' '}
+                  {atmosphere.valid_utc
+                    ? `${isPast(atmosphere) ? 'weather on' : 'forecast for'} ${localTime(atmosphere.valid_utc)}`
+                    : atmosphere.source}
                 </p>
-                {atmosphere.fetched_utc && <AgeBadge fetched={atmosphere.fetched_utc} />}
+                {atmosphere.fetched_utc && !isPast(atmosphere) && <AgeBadge fetched={atmosphere.fetched_utc} />}
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">Pick a forecast hour to fly in it.</p>
@@ -325,6 +347,7 @@ function WeatherPane() {
         {shown === 'manual' && <ManualProfileEditor />}
       </section>
       <SurfaceWindEditor />
+      <LaunchConditionsEditor />
     </div>
   )
 }
@@ -570,21 +593,35 @@ function NumberCell({
   )
 }
 
-/** Nearest forecast hour at or after now, else the last one. */
-function defaultHour(hours: string[]): string {
+/** Nearest forecast hour at or after now, else the last one; for a past day, its local noon. */
+function defaultHour(hours: string[], day?: string | null): string {
+  if (day) {
+    const noon = new Date(`${day}T12:00:00`).getTime()
+    return hours.reduce((best, h) =>
+      Math.abs(new Date(h).getTime() - noon) < Math.abs(new Date(best).getTime() - noon) ? h : best,
+    )
+  }
   const now = Date.now()
   return hours.find((h) => new Date(h).getTime() >= now - 30 * 60_000) ?? hours[hours.length - 1]
 }
 
+/** The hours to offer: for a past day, only those on that day in the user's time zone. */
+function offeredHours(f: ForecastInfo): string[] {
+  if (!f.day) return f.hours
+  const on = f.hours.filter((h) => localDate(new Date(h)) === f.day)
+  return on.length ? on : f.hours
+}
+
 function ForecastPicker({ latitude, longitude, elevation }: { latitude: number; longitude: number; elevation: number }) {
   const qc = useQueryClient()
-  const editEnvironment = useEditEnvironment()
   const cached = useQuery({
     queryKey: weatherKeys.forecasts(latitude, longitude),
     queryFn: () => api.listForecasts(latitude, longitude),
   })
+  const [today] = useState(() => localDate(new Date()))
+  const [pastDay, setPastDay] = useState('')
   const fetchNew = useMutation({
-    mutationFn: () => api.fetchForecast(latitude, longitude),
+    mutationFn: (day?: string) => api.fetchForecast(latitude, longitude, day),
     onSuccess: (info) => {
       qc.setQueryData<ForecastInfo[]>(weatherKeys.forecasts(latitude, longitude), (old) => [info, ...(old ?? [])])
       setForecastId(info.id)
@@ -594,37 +631,73 @@ function ForecastPicker({ latitude, longitude, elevation }: { latitude: number; 
   const forecast = cached.data?.find((f) => f.id === forecastId) ?? cached.data?.[0] ?? null
   // The hour picked applies to the forecast it was picked in.
   const [picked, setPicked] = useState<{ forecastId: string; hour: string } | null>(null)
+  const hours = useMemo(() => (forecast ? offeredHours(forecast) : []), [forecast])
   const chosenHour =
-    picked && picked.forecastId === forecast?.id ? picked.hour : forecast ? defaultHour(forecast.hours) : null
+    picked && picked.forecastId === forecast?.id
+      ? picked.hour
+      : forecast
+        ? defaultHour(hours, forecast.day)
+        : null
 
+  const edit = useMissionStore((s) => s.edit)
   const apply = useMutation({
-    mutationFn: () => api.forecastProfile(forecast!.id, chosenHour!, elevation),
-    onSuccess: (profile) =>
-      editEnvironment((env) => {
-        env.atmosphere = profile
+    mutationFn: () =>
+      Promise.all([
+        api.forecastProfile(forecast!.id, chosenHour!, elevation),
+        api.forecastConditions(forecast!.id, chosenHour!),
+      ]),
+    onSuccess: ([profile, conditions]) =>
+      edit((d) => {
+        ;(d.environment ??= {}).atmosphere = profile
+        d.launch_conditions = conditions
       }),
   })
 
   const days = useMemo(() => {
     const groups = new Map<string, string[]>()
-    for (const h of forecast?.hours ?? []) {
+    for (const h of hours) {
       const day = new Date(h).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'short' })
       groups.set(day, [...(groups.get(day) ?? []), h])
     }
     return [...groups]
-  }, [forecast])
+  }, [hours])
 
   return (
     <div className="space-y-3">
-      <Button size="sm" onClick={() => fetchNew.mutate()} disabled={fetchNew.isPending}>
-        <CloudDownload /> {fetchNew.isPending ? 'Fetching…' : 'Fetch forecast'}
+      <Button size="sm" onClick={() => fetchNew.mutate(undefined)} disabled={fetchNew.isPending}>
+        <CloudDownload /> {fetchNew.isPending && !fetchNew.variables ? 'Fetching…' : 'Fetch forecast'}
       </Button>
+      <div className="space-y-1">
+        <label htmlFor="weather-past-day" className="block text-sm">
+          Or a past launch day
+        </label>
+        <div className="flex gap-2">
+          <input
+            id="weather-past-day"
+            type="date"
+            value={pastDay}
+            max={today}
+            onChange={(e) => setPastDay(e.target.value)}
+            className="h-8 min-w-0 flex-1 rounded-md border border-border bg-background px-2 text-sm tabular-nums"
+          />
+          <Button
+            size="sm"
+            disabled={!pastDay || pastDay > today || fetchNew.isPending}
+            onClick={() => fetchNew.mutate(pastDay)}
+          >
+            <History /> {fetchNew.isPending && fetchNew.variables ? 'Fetching…' : 'Fetch day'}
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          What the weather models had for that day, from Open-Meteo&apos;s archive. Winds aloft from 2021 on.
+        </p>
+      </div>
       <ProblemNotice error={fetchNew.error} />
 
       {cached.data && cached.data.length > 0 && (
         <div className="space-y-3">
           <label className="block space-y-1 text-sm">
-            <span>Cached forecast</span>
+            <span>Cached weather</span>
             <select
               value={forecast?.id}
               onChange={(e) => setForecastId(e.target.value)}
@@ -632,7 +705,9 @@ function ForecastPicker({ latitude, longitude, elevation }: { latitude: number; 
             >
               {cached.data.map((f) => (
                 <option key={f.id} value={f.id}>
-                  Fetched {localTime(f.fetched_utc)} ({age(f.fetched_utc)})
+                  {f.day
+                    ? `${dayLabel(f.day)} (past day)`
+                    : `Forecast fetched ${localTime(f.fetched_utc)} (${age(f.fetched_utc)})`}
                 </option>
               ))}
             </select>
@@ -669,7 +744,7 @@ function ForecastPicker({ latitude, longitude, elevation }: { latitude: number; 
         </div>
       )}
       {cached.data?.length === 0 && (
-        <p className="text-xs text-muted-foreground">No forecasts cached for this site yet. Fetching needs internet.</p>
+        <p className="text-xs text-muted-foreground">No weather cached for this site yet. Fetching needs internet.</p>
       )}
     </div>
   )

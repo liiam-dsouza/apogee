@@ -21,12 +21,17 @@ from apogee_api.settings import Settings
 from simcore.mission import Mission, load_mission
 from simcore.montecarlo import OUTPUTS, CampaignSummary, summarize
 from simcore.montecarlo.store import CampaignStore, campaign_key, chunks
+from simcore.recovery import FailureMode, with_failure
 
 router = APIRouter(prefix="/api", tags=["monte carlo"])
 
 
 class CampaignRequest(BaseModel):
     mission: Mission = Field(description="The mission, with its monte_carlo settings.")
+    failure: FailureMode | None = Field(
+        default=None,
+        description="Fly every sample with this part of the recovery failed: where it lands then.",
+    )
 
 
 class CampaignState(BaseModel):
@@ -110,7 +115,7 @@ async def run_monte_carlo(
 ) -> CampaignState:
     """Start a campaign, or resume one: chunks without a finished result or a live job
     are (re)queued. The same mission and versions always give the same campaign."""
-    mission = body.mission
+    mission = body.mission if body.failure is None else with_failure(body.mission, body.failure)
     issues = _runnable_issues(mission, assets)
     if issues:
         raise ApiProblem(

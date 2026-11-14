@@ -17,7 +17,8 @@ notes: >-
   over the whole ascent, which includes that. Two-stage rockets are not
   simulated. Not checked here: fin span at least 0.8 calibers (DTEG 10.2.4),
   the 4.4 lb payload (R&R 3.1.1), dual-event recovery for apogees above
-  1,500 ft (DTEG 6.1.1) and fin flutter.
+  1,500 ft (DTEG 6.1.1). Fin-flutter velocity must be reported but has no
+  limit; add a team rule on min_fin_flutter_margin to judge it.
 categories:
   - {id: cots-10k, name: "COTS 10K", apogee_target_m: 3048}
   - {id: cots-30k, name: "COTS 30K", apogee_target_m: 9144}

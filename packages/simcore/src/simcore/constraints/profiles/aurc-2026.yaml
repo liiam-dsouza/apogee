@@ -11,8 +11,10 @@ notes: >-
   Every rule is judged at the 95th percentile of a Monte Carlo campaign by
   default, which is stricter than "as predicted by the trajectory simulation";
   override evaluate_on to nominal to judge the single flight as the rules word
-  it. Not checked here: fin flutter velocity at least 1.5 times max velocity
-  (Spec 4.2.1), the 5,000 ft category's 400 g payload (Spec 10.3.4), launch
+  it. Fin flutter (Spec 4.2.1) is judged point by point along the ascent:
+  flutter speed where the rocket is over its speed there, which needs the fin
+  thickness and material. Not checked here: the 5,000 ft category's 400 g
+  payload (Spec 10.3.4), launch
   rail inclination (Spec 2.3.4: Endeavour's launch operating procedures), and
   dual deployment of each independent piece (Spec 5.2.1). Stability limits
   cover powered and coasting flight to apogee. "Initial thrust" for
@@ -34,6 +36,11 @@ constraints:
     metric: apogee_agl_m
     max: 9753.6
     reference: "Spec 4.1.1"
+  - id: fin_flutter
+    label: "Fin flutter speed at least 1.5 times the rocket's speed"
+    metric: min_fin_flutter_margin
+    min: 1.5
+    reference: "Spec 4.2.1"
   - id: thrust_to_weight
     label: "Thrust to weight above 5"
     metric: thrust_to_weight

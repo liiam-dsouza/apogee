@@ -5,13 +5,18 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import { useCompact } from '@/lib/useMediaQuery'
 import { usePrefs } from '@/stores/prefs'
 import { Rail } from './Rail'
+import { Tour } from './tour/Tour'
 
 /** Three-zone shell: rail | section (centre + right pane). On a phone the rail becomes a menu in the section header. */
 export function Shell() {
   const theme = usePrefs((s) => s.theme)
   const compact = useCompact()
   useEffect(() => {
-    document.documentElement.dataset.theme = theme
+    // Pink is light underneath, so maps and the `dark:` variant treat it as light.
+    const root = document.documentElement
+    root.dataset.theme = theme === 'pink' ? 'light' : theme
+    if (theme === 'pink') root.dataset.pink = ''
+    else delete root.dataset.pink
   }, [theme])
 
   return (
@@ -23,6 +28,7 @@ export function Shell() {
             <Outlet />
           </main>
         </div>
+        <Tour />
       </TooltipProvider>
     </MotionConfig>
   )

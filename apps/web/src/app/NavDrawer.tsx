@@ -1,9 +1,10 @@
-import { Menu, X } from 'lucide-react'
+import { CircleHelp, Menu, X } from 'lucide-react'
 import { Dialog } from 'radix-ui'
 import { Fragment, useState } from 'react'
 import { NavLink } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { useMissionStore } from '@/stores/mission'
+import { useTour } from '@/stores/tour'
 import { RAIL_GROUP_LABEL, SECTIONS, type RailGroup } from './sections'
 
 const GROUPS: RailGroup[] = ['setup', 'analysis', 'field', 'hardware', 'footer']
@@ -12,6 +13,7 @@ const GROUPS: RailGroup[] = ['setup', 'analysis', 'field', 'hardware', 'footer']
 export function NavDrawer() {
   const [open, setOpen] = useState(false)
   const missionName = useMissionStore((s) => s.draft?.meta.name)
+  const startTour = useTour((s) => s.start)
 
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>
@@ -27,7 +29,9 @@ export function NavDrawer() {
           className="fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] flex-col border-r border-border bg-surface shadow-xl"
         >
           <div className="flex h-14 shrink-0 items-center gap-3 border-b border-border px-4">
-            <img src="/favicon.svg" alt="" className="size-7" />
+            <NavLink to="/" end onClick={() => setOpen(false)} aria-label="Home" className="-m-1 rounded-md p-1">
+              <img src="/favicon.svg" alt="" className="size-7" />
+            </NavLink>
             <Dialog.Title className="font-display text-xl font-semibold tracking-wide">Apogee</Dialog.Title>
             <Dialog.Close asChild>
               <Button variant="ghost" size="icon" className="-mr-2 ml-auto" aria-label="Close">
@@ -63,6 +67,21 @@ export function NavDrawer() {
                       </NavLink>
                     </li>
                   ))}
+                  {group === 'footer' && (
+                    <li>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setOpen(false)
+                          startTour()
+                        }}
+                        className="flex h-11 w-full items-center gap-3 rounded-md px-3 text-sm text-muted-foreground hover:bg-surface-2 hover:text-foreground"
+                      >
+                        <CircleHelp className="size-5 shrink-0" strokeWidth={1.75} aria-hidden />
+                        Help
+                      </button>
+                    </li>
+                  )}
                 </ul>
               </Fragment>
             ))}

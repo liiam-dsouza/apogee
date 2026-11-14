@@ -54,3 +54,49 @@ def test_motor_class() -> None:
     assert motor_class(200)[0] == "H"
     assert motor_class(160)[0] == "G"  # G tops out at 160 N·s
     assert curve.max_thrust_n >= curve.average_thrust_n > 0
+
+
+def test_failures_take_away_the_right_device(
+    calisto_run: tuple[Mission, FlightResult],
+) -> None:
+    from simcore.recovery import deployment_order, failure_modes, with_failure
+
+    mission, _ = calisto_run
+    assert [d.name for d in deployment_order(mission)] == ["Drogue", "Main"]
+    assert failure_modes(mission) == ["drogue_fails", "main_fails", "nothing_opens"]
+    names = {
+        m: [d.name for d in with_failure(mission, m).recovery.devices]
+        for m in failure_modes(mission)
+    }
+    assert names == {"drogue_fails": ["Main"], "main_fails": ["Drogue"], "nothing_opens": []}
+    assert len(mission.recovery.devices) == 2  # the mission itself is untouched
+
+
+def test_failed_recovery_lands_harder(calisto_run: tuple[Mission, FlightResult]) -> None:
+    from simcore.assets import MemoryAssetStore
+    from simcore.engine import run_flight
+    from simcore.recovery import with_failure
+
+    mission, flight = calisto_run
+    store = MemoryAssetStore()
+    for name in ("Cesaroni_M1670.eng", "powerOffDragCurve.csv"):
+        store.put((CALISTO / name).read_bytes())
+    nominal = flight.summary.landing
+    assert nominal is not None
+    landed = {}
+    for mode in ("drogue_fails", "main_fails", "nothing_opens"):
+        s = run_flight(with_failure(mission, mode), store).summary
+        assert s.landing is not None
+        landed[mode] = s
+    # Under the drogue alone it lands at the drogue's rate; ballistic is far harder still.
+    assert landed["main_fails"].landing.speed_ms == pytest.approx(  # type: ignore[union-attr]
+        flight.summary.drogue_descent_rate_ms, rel=0.1
+    )
+    assert landed["nothing_opens"].landing.speed_ms > 3 * landed["main_fails"].landing.speed_ms  # type: ignore[union-attr]
+    # Drogue fails: the main opens into a fast fall, then lands like the nominal flight.
+    (main,) = landed["drogue_fails"].parachute_events
+    assert (
+        main.speed_ms is not None
+        and main.speed_ms > 2 * flight.summary.parachute_events[-1].speed_ms
+    )  # type: ignore[operator]
+    assert landed["drogue_fails"].landing.speed_ms == pytest.approx(nominal.speed_ms, rel=0.1)  # type: ignore[union-attr]

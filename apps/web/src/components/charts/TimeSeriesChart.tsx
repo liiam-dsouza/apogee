@@ -10,6 +10,12 @@ export interface ChartEvent {
 
 const HEIGHT = 168
 
+/** A second line on the same axes, e.g. a simulation against a log. */
+export interface CompareSeries {
+  y: number[]
+  label: string
+}
+
 function token(name: string): string {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim()
 }
@@ -33,6 +39,12 @@ export function TimeSeriesChart({
   events = [],
   markPeak = false,
   syncKey,
+  label,
+  compare,
+  height = HEIGHT,
+  zeroLine = false,
+  xUnit = 's',
+  xLabel = 'time',
 }: {
   title: string
   unit: string
@@ -42,15 +54,28 @@ export function TimeSeriesChart({
   /** Mark and label the maximum (e.g. apogee). Labels stay selective. */
   markPeak?: boolean
   syncKey: string
+  /** Name of the main series in the readout; needed with `compare`. */
+  label?: string
+  compare?: CompareSeries
+  height?: number
+  /** Draw y = 0, for residuals. */
+  zeroLine?: boolean
+  /** The x axis: seconds unless said otherwise, e.g. Mach (unit ''). */
+  xUnit?: string
+  xLabel?: string
 }) {
   const host = useRef<HTMLDivElement>(null)
   const theme = usePrefs((s) => s.theme)
-  const [readout, setReadout] = useState<{ t: number; y: number } | null>(null)
+  const [readout, setReadout] = useState<{ t: number; y: number; y2?: number } | null>(null)
+  const atX = (x: number) => (xUnit ? `${x.toFixed(2)} ${xUnit}` : `${xLabel} ${x.toFixed(2)}`)
 
   useEffect(() => {
     const el = host.current
     if (!el) return
     const series = token('--chart-1')
+    const series2 = token('--chart-2')
+    // With a comparison the main line is the reference (ink); alone, the series colour.
+    const main = compare ? token('--foreground') : series
     const grid = token('--chart-grid')
     const ink = token('--muted-foreground')
     const surface = token('--background')
@@ -62,21 +87,24 @@ export function TimeSeriesChart({
     const plot = new uPlot(
       {
         width: el.clientWidth,
-        height: HEIGHT,
+        height,
         legend: { show: false },
         cursor: {
           sync: { key: syncKey },
-          points: { size: 8, fill: series, stroke: surface, width: 2 },
+          points: { size: 8, fill: main, stroke: surface, width: 2 },
           y: false,
         },
         scales: { x: { time: false } },
         axes: [
-          { ...axis, values: (_, ticks) => ticks.map((v) => `${v} s`) },
+          { ...axis, values: (_, ticks) => ticks.map((v) => (xUnit ? `${v} ${xUnit}` : `${v}`)) },
           { ...axis, size: 56, values: (_, ticks) => ticks.map(formatValue) },
         ],
         series: [
           {},
-          { stroke: series, width: 2, fill: withAlpha(series, 0.1), points: { show: false } },
+          compare
+            ? { stroke: main, width: 2, points: { show: false } }
+            : { stroke: series, width: 2, fill: withAlpha(series, 0.1), points: { show: false } },
+          ...(compare ? [{ stroke: series2, width: 2, dash: [6, 4], points: { show: false } }] : []),
         ],
         hooks: {
           setCursor: [
@@ -87,7 +115,11 @@ export function TimeSeriesChart({
               const at = u.cursor.left != null && u.cursor.left >= 0 ? u.posToVal(u.cursor.left, 'x') : null
               const xs = u.data[0]
               const inside = at != null && at >= xs[0] && at <= xs[xs.length - 1]
-              setReadout(i == null || !inside ? null : { t: xs[i], y: u.data[1][i] as number })
+              setReadout(
+                i == null || !inside
+                  ? null
+                  : { t: xs[i], y: u.data[1][i] as number, y2: compare ? (u.data[2][i] as number) : undefined },
+              )
             },
           ],
           draw: [
@@ -106,6 +138,18 @@ export function TimeSeriesChart({
               // Labels claim boxes; a label that would overlap one already
               // placed is dropped (its line stays; the events table names it).
               const taken: { x0: number; x1: number; y0: number; y1: number }[] = []
+
+              if (zeroLine) {
+                const y0 = Math.round(u.valToPos(0, 'y', true))
+                if (y0 >= top && y0 <= top + height) {
+                  ctx.strokeStyle = ink
+                  ctx.lineWidth = dpr
+                  ctx.beginPath()
+                  ctx.moveTo(left, y0)
+                  ctx.lineTo(left + width, y0)
+                  ctx.stroke()
+                }
+              }
               const free = (b: (typeof taken)[number]) =>
                 taken.every((o) => b.x1 <= o.x0 || b.x0 >= o.x1 || b.y1 <= o.y0 || b.y0 >= o.y1)
 
@@ -147,7 +191,7 @@ export function TimeSeriesChart({
               if (peak) {
                 ctx.beginPath()
                 ctx.arc(peak.px, peak.py, 4 * dpr, 0, Math.PI * 2)
-                ctx.fillStyle = series
+                ctx.fillStyle = main
                 ctx.strokeStyle = surface
                 ctx.lineWidth = 2 * dpr
                 ctx.fill()
@@ -161,17 +205,21 @@ export function TimeSeriesChart({
           ],
         },
       },
-      [t, y],
+      compare ? [t, y, compare.y] : [t, y],
       el,
     )
+    // uPlot draws on a microtask. Draw now: printing redraws in the light theme
+    // inside `beforeprint`, and from the report's Print button (a click handler)
+    // that microtask would only run after the page had gone to paper, blank.
+    plot.batch(() => {})
 
-    const resize = new ResizeObserver(() => plot.setSize({ width: el.clientWidth, height: HEIGHT }))
+    const resize = new ResizeObserver(() => plot.setSize({ width: el.clientWidth, height }))
     resize.observe(el)
     return () => {
       resize.disconnect()
       plot.destroy()
     }
-  }, [t, y, events, markPeak, syncKey, unit, theme])
+  }, [t, y, events, markPeak, syncKey, unit, theme, compare, height, zeroLine, xUnit])
 
   return (
     <figure className="space-y-1">
@@ -180,20 +228,27 @@ export function TimeSeriesChart({
           {title} {unit && <span className="font-normal text-muted-foreground">({unit})</span>}
         </span>
         <span className="tabular-nums text-muted-foreground" aria-live="off">
-          {readout ? (
+          {readout && compare ? (
+            <>
+              {label}{' '}
+              <strong className="font-semibold text-foreground">{formatValue(readout.y)}</strong> · {compare.label}{' '}
+              <strong className="font-semibold text-foreground">{formatValue(readout.y2 ?? NaN)}</strong>
+              {unit && ` ${unit}`} at {atX(readout.t)}
+            </>
+          ) : readout ? (
             <>
               <strong className="font-semibold text-foreground">
                 {formatValue(readout.y)}
                 {unit && ` ${unit}`}
               </strong>{' '}
-              at {readout.t.toFixed(2)} s
+              at {atX(readout.t)}
             </>
           ) : (
             ' '
           )}
         </span>
       </figcaption>
-      <div ref={host} className="w-full" role="img" aria-label={`${title} against time`} />
+      <div ref={host} className="w-full" role="img" aria-label={`${title} against ${xLabel}`} />
     </figure>
   )
 }

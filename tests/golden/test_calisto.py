@@ -44,12 +44,17 @@ def _flatten(d: dict[str, Any], prefix: str = "") -> dict[str, float]:
     return out
 
 
+@pytest.mark.parametrize(
+    ("fixture", "key"), [("calisto", "summary"), ("calisto_estimated", "estimated")]
+)
 def test_summary_matches_pinned_golden_numbers(
-    calisto: tuple[Mission, MemoryAssetStore],
+    fixture: str, key: str, request: pytest.FixtureRequest
 ) -> None:
-    mission, store = calisto
+    """Pinned for RocketPy's drag table, and for drag estimated from the shape: a
+    change to simcore.aero.drag moves the second."""
+    mission, store = request.getfixturevalue(fixture)
     actual = _flatten(run_flight(mission, store).summary.model_dump(mode="json"))
-    expected = _flatten(GOLDEN["summary"])
+    expected = _flatten(GOLDEN[key])
     moved = {
         k: (expected[k], actual.get(k))
         for k in expected

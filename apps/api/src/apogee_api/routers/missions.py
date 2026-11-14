@@ -8,7 +8,7 @@ import re
 from datetime import UTC, datetime
 from typing import Annotated, Any, Literal
 
-from fastapi import APIRouter, Body, Depends, Query, Response, UploadFile, status
+from fastapi import APIRouter, Body, Depends, Query, Request, Response, UploadFile, status
 from pydantic import BaseModel, Field
 from sqlmodel import Session, col, select
 
@@ -16,7 +16,15 @@ from apogee_api.db import MissionRecord, get_session
 from apogee_api.deps import AssetStoreDep
 from apogee_api.problems import ApiProblem, Problem
 from simcore.assets import AssetError
-from simcore.bundle import MAX_BUNDLE_BYTES, BundleError, read_bundle, write_bundle
+from simcore.bundle import (
+    BUNDLE_MEDIA_TYPE,
+    BUNDLE_SUFFIX,
+    MAX_BUNDLE_BYTES,
+    BundleError,
+    read_bundle,
+    write_bundle,
+)
+from simcore.examples import tour_mission
 from simcore.mission import (
     Issue,
     Mission,
@@ -72,6 +80,37 @@ def _reject_errors(mission: Mission) -> None:
             "The mission is not valid",
             f"{len(errors)} problem(s) found.",
             errors,
+        )
+
+
+def _validated(data: dict[str, Any]) -> Mission:
+    """Migrate and check a raw config, as import and the YAML editor receive it."""
+    mission, report = validate_mission(data)
+    if mission is None or not report.valid:
+        raise ApiProblem(
+            422,
+            "invalid_mission",
+            "The mission is not valid",
+            f"{len(report.issues)} problem(s) found.",
+            report.issues,
+        )
+    return mission
+
+
+def _check_id(mission: Mission, mission_id: str) -> None:
+    if mission.meta.id != mission_id:
+        raise ApiProblem(
+            422,
+            "id_mismatch",
+            "meta.id does not match the URL",
+            issues=[
+                Issue(
+                    path="meta.id",
+                    message="Must match the mission being updated.",
+                    code="id_mismatch",
+                    severity="error",
+                )
+            ],
         )
 
 
@@ -149,22 +188,38 @@ def get_mission(mission_id: str, session: SessionDep) -> MissionDocument:
 
 @router.put("/{mission_id}", operation_id="updateMission", responses=PROBLEM_RESPONSES)
 def update_mission(mission_id: str, mission: Mission, session: SessionDep) -> MissionDocument:
-    if mission.meta.id != mission_id:
-        raise ApiProblem(
-            422,
-            "id_mismatch",
-            "meta.id does not match the URL",
-            issues=[
-                Issue(
-                    path="meta.id",
-                    message="Must match the mission being updated.",
-                    code="id_mismatch",
-                    severity="error",
-                )
-            ],
-        )
+    _check_id(mission, mission_id)
     _reject_errors(mission)
     record = _get_record(session, mission_id)
+    return _to_document(_save(session, mission, record), mission)
+
+
+@router.put(
+    "/{mission_id}/yaml",
+    operation_id="updateMissionYaml",
+    responses=PROBLEM_RESPONSES,
+    openapi_extra={
+        "requestBody": {
+            "required": True,
+            "content": {"application/yaml": {"schema": {"type": "string"}}},
+        }
+    },
+)
+async def update_mission_yaml(
+    mission_id: str, request: Request, session: SessionDep
+) -> MissionDocument:
+    """Replace a mission with hand-edited YAML (any schema version).
+
+    The YAML is parsed, migrated and checked like an import, then stored in
+    canonical form, so comments and key order are not kept.
+    """
+    record = _get_record(session, mission_id)
+    try:
+        data = parse_yaml((await request.body()).decode())
+    except Exception as e:
+        raise ApiProblem(422, "unreadable_yaml", "The YAML could not be read", str(e)) from e
+    mission = _validated(data)
+    _check_id(mission, mission_id)
     return _to_document(_save(session, mission, record), mission)
 
 
@@ -188,7 +243,9 @@ def delete_mission(mission_id: str, session: SessionDep) -> None:
 async def import_mission(
     file: UploadFile, session: SessionDep, store: AssetStoreDep
 ) -> MissionDocument:
-    """Import a mission.yaml or a .mission.zip bundle (any schema version).
+    """Import a mission.yaml or an .apg bundle (any schema version).
+
+    Older .mission.zip bundles are accepted too.
 
     A bundle's assets are hash-checked and added to the asset store, so the
     mission can be flown straight away.
@@ -197,7 +254,7 @@ async def import_mission(
     raw = await file.read(MAX_BUNDLE_BYTES + 1)
     bundle_assets: dict[str, bytes] = {}
     try:
-        if name.endswith(".zip"):
+        if name.endswith((BUNDLE_SUFFIX, ".zip")):
             data, bundle_assets = read_bundle(raw)
         else:
             data = parse_yaml(raw.decode())
@@ -209,15 +266,7 @@ async def import_mission(
         raise ApiProblem(
             415, "unreadable_file", "The file is not a YAML or JSON mission", str(e)
         ) from e
-    mission, report = validate_mission(data)
-    if mission is None or not report.valid:
-        raise ApiProblem(
-            422,
-            "invalid_mission",
-            "The mission is not valid",
-            f"{len(report.issues)} problem(s) found.",
-            report.issues,
-        )
+    mission = _validated(data)
     if session.get(MissionRecord, mission.meta.id) is not None:
         raise ApiProblem(
             409,
@@ -230,13 +279,23 @@ async def import_mission(
     return _to_document(_save(session, mission, None), mission)
 
 
+@router.post("/tour", operation_id="tourMission")
+def tour_mission_endpoint(session: SessionDep, store: AssetStoreDep) -> MissionDocument:
+    """The guided tour's mission: Calisto, ready to fly. Created, or reset if it exists."""
+    mission, assets = tour_mission()
+    for content in assets.values():
+        store.put(content)
+    record = session.get(MissionRecord, mission.meta.id)
+    return _to_document(_save(session, mission, record), mission)
+
+
 @router.get(
     "/{mission_id}/export",
     operation_id="exportMission",
     responses={
         **PROBLEM_RESPONSES,
         200: {
-            "content": {"application/yaml": {}, "application/zip": {}},
+            "content": {"application/yaml": {}, BUNDLE_MEDIA_TYPE: {}},
             "description": "The mission file, or a bundle with its assets.",
         },
     },
@@ -246,11 +305,11 @@ def export_mission(
     mission_id: str,
     session: SessionDep,
     store: AssetStoreDep,
-    format: Annotated[Literal["yaml", "zip"], Query()] = "yaml",
+    format: Annotated[Literal["yaml", "apg"], Query()] = "yaml",
 ) -> Response:
     record = _get_record(session, mission_id)
     slug = re.sub(r"[^a-z0-9]+", "-", record.name.lower()).strip("-") or "mission"
-    if format == "zip":
+    if format == "apg":
         mission = load_mission(parse_yaml(record.yaml))
         try:
             data = write_bundle(mission, store)
@@ -260,8 +319,8 @@ def export_mission(
             ) from e
         return Response(
             data,
-            media_type="application/zip",
-            headers={"Content-Disposition": f'attachment; filename="{slug}.mission.zip"'},
+            media_type=BUNDLE_MEDIA_TYPE,
+            headers={"Content-Disposition": f'attachment; filename="{slug}{BUNDLE_SUFFIX}"'},
         )
     return Response(
         record.yaml,

@@ -21,6 +21,17 @@ class MissionRecord(SQLModel, table=True):
     updated_utc: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
+class SitePresetRecord(SQLModel, table=True):
+    """A launch site the team reuses. Missions take a copy, never a reference."""
+
+    __tablename__ = "site_presets"
+
+    id: str = Field(primary_key=True, description="Preset id (ULID).")
+    name: str = Field(unique=True, index=True)
+    site: str = Field(description="The Site section, as JSON.")
+    updated_utc: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
 _engine: Engine | None = None
 
 

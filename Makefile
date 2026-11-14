@@ -35,10 +35,11 @@ codegen-check: codegen  ## Fail if generated files are out of date (CI)
 	@out="$$(git status --porcelain -- apps/web/openapi.json apps/web/src/lib/api/schema.gen.ts apps/web/src/lib/api/fields.gen.ts docs/reference/mission-config.md)"; \
 	if [ -n "$$out" ]; then echo "Generated files are stale; run make codegen and commit:"; echo "$$out"; exit 1; fi
 
-example:  ## Rebuild missions/examples/calisto.mission.zip from the test fixtures
-	uv run python -m simcore bundle tests/fixtures/calisto/calisto.mission.yaml -o missions/examples/calisto.mission.zip
+example:  ## Rebuild missions/examples/calisto.apg from the test fixtures
+	uv run python -m simcore bundle tests/fixtures/calisto/calisto.mission.yaml -o missions/examples/calisto.apg
+	cp missions/examples/calisto.apg packages/simcore/src/simcore/examples/calisto.apg
 
-lanius:  ## Build data/lanius-white-cliffs.mission.zip from the team's data/Lanius.ork
+lanius:  ## Build data/lanius-white-cliffs.apg from the team's data/Lanius.ork
 	uv run python scripts/lanius_test_mission.py
 
 notebook:  ## JupyterLab on notebooks/, for scripting simcore directly

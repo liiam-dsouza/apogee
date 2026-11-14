@@ -1,7 +1,7 @@
 # Calisto: RocketPy's reference rocket, as an Apogee mission.
 # Positions are metres aft of the nose tip (ADR 0002), converted from
 # RocketPy's example (tail_to_nose, origin at the dry CG 1.278 m aft of the tip).
-schema_version: 3
+schema_version: 4
 meta:
   name: Calisto (reference)
   id: 01JCALISTO0000000000000000
@@ -15,7 +15,7 @@ rocket:
   dry_cg_m: 1.278
   nose: {kind: von_karman, length_m: 0.55829}
   fins:
-    - {count: 4, root_chord_m: 0.12, tip_chord_m: 0.06, span_m: 0.11, position_m: 2.32756, cant_angle_deg: 0.5}
+    - {kind: trapezoidal, count: 4, root_chord_m: 0.12, tip_chord_m: 0.06, span_m: 0.11, position_m: 2.32756, cant_angle_deg: 0.5}
   tail: {top_radius_m: 0.0635, bottom_radius_m: 0.0435, length_m: 0.06, position_m: 2.472656}
   rail_buttons: {upper_position_m: 1.1962, lower_position_m: 1.8962, angular_position_deg: 45}
   motor_position_m: 2.533

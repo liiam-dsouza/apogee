@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 from apogee_api.deps import SettingsDep
 from apogee_api.problems import ApiProblem, Problem
 from simcore.mission.diff import Difference, diff_missions
+from simcore.mission.models import FLIGHT_IRRELEVANT
 from simcore.results import (
     FlightPath,
     ResultNotFound,
@@ -74,10 +75,6 @@ def list_results(
 ) -> list[ResultRecord]:
     """Stored single flights, newest first."""
     return list_records(settings.results_dir, mission_id=mission_id, limit=limit)
-
-
-#: Mission sections a single flight doesn't depend on (also left out of its cache key).
-FLIGHT_IRRELEVANT = {"monte_carlo", "constraints"}
 
 
 class Comparison(BaseModel):

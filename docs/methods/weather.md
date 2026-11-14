@@ -28,6 +28,18 @@ plus surface fields. Every fetch is cached as received in
 forecasts cached within 25 km of the site and shows the age of the one in use,
 amber after 6 hours and red after 24.
 
+**A past launch day** (the date picker under *Fetch forecast*; `day` in the
+request) comes instead from Open-Meteo's
+[historical forecast archive](https://open-meteo.com/en/docs/historical-forecast-api):
+what the same models had for that day, in the same shape, so it resolves and
+flies exactly like a forecast. The UTC day either side is fetched too, so every
+hour of the day in your time zone is there; the hour list shows that day's local
+hours and starts at noon. It is cached like any other fetch, and isn't flagged as
+old: a day that has passed doesn't go stale. The archive has winds aloft from
+2021 (checked: none on 1 March 2021, all on 1 June 2021); for earlier days it
+has surface fields only, and the fetch is refused with a note to enter the wind
+by hand. A day after tomorrow (UTC) is refused: fetch the forecast.
+
 Picking an hour (`GET /api/weather/forecasts/{id}/profile`) resolves it into a profile:
 
 - **The lowest level is the pad.** The model's surface pressure and 2 m

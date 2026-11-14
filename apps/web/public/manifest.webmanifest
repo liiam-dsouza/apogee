@@ -1,0 +1,19 @@
+{
+  "name": "Apogee",
+  "short_name": "Apogee",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0d0d0d",
+  "theme_color": "#0d0d0d",
+  "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }],
+  "file_handlers": [
+    {
+      "action": "/missions",
+      "accept": { "application/vnd.apogee.mission+zip": [".apg"] },
+      "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }],
+      "launch_type": "single-client"
+    }
+  ],
+  "launch_handler": { "client_mode": "navigate-existing" }
+}

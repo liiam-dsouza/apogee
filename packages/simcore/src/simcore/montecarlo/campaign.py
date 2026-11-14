@@ -42,6 +42,7 @@ OUTPUTS: dict[str, tuple[str, str]] = {
     "landing_kinetic_energy_j": ("J", "Landing kinetic energy (whole rocket)"),
     "descent_time_s": ("s", "Descent time, apogee to touchdown"),
     "flight_time_s": ("s", "Flight time"),
+    "min_fin_flutter_margin": ("1", "Fin flutter margin, lowest of any fin set"),
 }
 
 #: Probability inside each ellipse: the 1, 2 and 3 sigma levels of a 1-D normal.

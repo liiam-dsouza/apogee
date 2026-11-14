@@ -15,6 +15,10 @@ future team how far to trust the numbers.
 
 Neither is validation against reality. Both tools can be wrong in the same way.
 
+- **Airframe vibration, against two flight logs:** the first bending mode of
+  Lanius and Luke within 2-5%, and Luke's band levels to a median 3.5 dB after
+  fitting ([Airframe vibration](../methods/vibration.md#validation)).
+
 ## Recording a flight
 
 After each launch, add a section here:

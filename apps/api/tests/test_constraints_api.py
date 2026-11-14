@@ -80,3 +80,26 @@ def test_bad_settings_are_a_clear_422(client: TestClient) -> None:
     r = client.post("/api/constraints/board", json={"mission": mission})
     assert r.status_code == 422
     assert "no-such-profile" in r.json()["detail"]
+
+
+def test_board_judges_the_launch_conditions(client: TestClient) -> None:
+    mission = _mission(client)
+    mission["constraints"] = {"launch_rules": "faa-101"}
+    mission["launch_conditions"] = {
+        "launch_utc": "2024-06-21T18:00:00Z",
+        "cloud_cover_pct": 80,
+        "visibility_m": 20000,
+        "wind_speed_ms": 3,
+    }
+    r = client.post("/api/constraints/board", json={"mission": mission})
+    assert r.status_code == 200, r.text
+    body = r.json()
+    rows = {row["id"]: row for row in body["board"]["rows"]}
+    assert rows["faa_cloud_cover"]["status"] == "fail"
+    assert rows["faa_visibility"]["status"] == "pass"
+    assert body["board"]["verdict"] == "no_go"
+    assert body["board"]["launch_rules"]["id"] == "faa-101"
+    assert body["launch"]["values"]["cloud_cover_pct"] == 80
+    assert body["launch"]["next_crossing_utc"] is not None
+    listed = {p["id"]: p["kind"] for p in client.get("/api/profiles").json()}
+    assert listed["faa-101"] == "launch"

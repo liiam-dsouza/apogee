@@ -28,7 +28,8 @@ def test_bundled_profiles_load_with_a_reference_for_every_rule() -> None:
         assert profile.verified is False  # until a team member has checked them
         assert {c.metric for c in profile.constraints} <= set(METRICS)
         assert all(c.reference for c in profile.constraints)
-        assert profile.scoring is not None and profile.scoring.reference
+        if profile.kind == "competition":
+            assert profile.scoring is not None and profile.scoring.reference
 
 
 def test_scoring_follows_each_competitions_formula() -> None:

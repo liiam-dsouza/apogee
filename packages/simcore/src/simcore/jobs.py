@@ -180,3 +180,57 @@ def fit_postflight(
     tmp.write_text(json.dumps(result.model_dump(mode="json")))
     os.replace(tmp, out / f"{result_id}.json")
     return result_id
+
+
+def postflight_report(
+    mission_data: dict[str, Any],
+    *,
+    log_sha: str,
+    time_column: str,
+    altitude_column: str,
+    altitude_units: str,
+    velocity_column: str | None,
+    velocity_units: str,
+    acceleration_column: str | None,
+    acceleration_units: str,
+    result_id: str,
+    data_dir: str,
+) -> str:
+    """Compare a stored log with the mission; store it as ``postflight/reports/<id>.json``."""
+    import json
+    import os
+
+    from simcore.assets import DirectoryAssetStore
+    from simcore.mission import load_mission
+    from simcore.postflight.log import (
+        ACCELERATION_UNITS,
+        FT,
+        VELOCITY_UNITS,
+        pad_zero,
+        read_columns,
+    )
+    from simcore.postflight.report import report
+
+    root = Path(data_dir)
+    store = DirectoryAssetStore(root / "assets")
+    extra = [c for c in (velocity_column, acceleration_column) if c]
+    t, (alt, *rest) = read_columns(store.read(log_sha), time_column, [altitude_column, *extra])
+    alt = pad_zero(alt * (FT if altitude_units == "ft" else 1.0))
+    velocity = rest.pop(0) * VELOCITY_UNITS[velocity_units] if velocity_column else None
+    acceleration = (
+        rest.pop(0) * ACCELERATION_UNITS[acceleration_units] if acceleration_column else None
+    )
+    result = report(
+        load_mission(mission_data),
+        store,
+        t,
+        alt,
+        log_velocity=velocity,
+        log_acceleration=acceleration,
+    )
+    out = root / "postflight" / "reports"
+    out.mkdir(parents=True, exist_ok=True)
+    tmp = out / f".{result_id}.{os.getpid()}.tmp"
+    tmp.write_text(json.dumps(result.model_dump(mode="json")))
+    os.replace(tmp, out / f"{result_id}.json")
+    return result_id

@@ -5,8 +5,9 @@ About five minutes. You need the team's `.ork` file and, ideally, the motor's
 [the method](../methods/openrocket-import.md).
 
 1. **Save the design in OpenRocket with an up-to-date simulation.** Run at least
-   one simulation and save the file afterwards. Apogee takes the drag curves
-   from that simulation's data, and compares its own flight against it.
+   one simulation and save the file afterwards. Apogee compares its own flight
+   against that simulation. (Drag is estimated from the shape either way; the
+   simulation's drag only flies the comparison.)
 2. **Open a mission.** In **Missions**, create one with **New mission** (or open
    an existing one) and choose **Open in editor**.
 3. **Import.** Go to **Rocket**. In the pane, choose the design under **Design
@@ -35,9 +36,10 @@ About five minutes. You need the team's `.ork` file and, ideally, the motor's
 - **Mass or centre of mass.** Usually a part with an overridden mass in
   OpenRocket that isn't marked as an override, or a mass component placed
   relative to the wrong parent. Check the part list in the review.
-- **Apogee by a few percent.** Expected if the drag curves differ. Apogee uses
-  the curves from OpenRocket's own saved simulation, so re-run and re-save it
-  after changing the design.
+- **Apogee by a few percent.** The comparison flies OpenRocket's own drag from
+  its saved simulation, so re-run and re-save it after changing the design. The
+  mission itself flies the estimate, which can differ from OpenRocket's by more:
+  the review lists both.
 - **Rail exit.** Defined differently: OpenRocket reports the speed after the
   rocket has travelled the whole rod length, Apogee (RocketPy) when the upper
   rail button leaves the rail, which is sooner and slower.

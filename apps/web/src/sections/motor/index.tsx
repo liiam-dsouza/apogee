@@ -7,10 +7,12 @@ import { ProblemNotice } from '@/components/ProblemNotice'
 import { QuantityField } from '@/components/QuantityField'
 import { RequireMission } from '@/components/RequireMission'
 import { Button } from '@/components/ui/button'
-import { api, type ThrustCurveImport } from '@/lib/api'
+import { api } from '@/lib/api'
 import { formatSI, type Quantity } from '@/lib/units'
 import { useMissionStore } from '@/stores/mission'
 import { usePrefs } from '@/stores/prefs'
+import { useApplyMotor } from './apply'
+import { MotorFinder } from './MotorFinder'
 
 function useMotor() {
   return useMissionStore((s) => s.draft?.motor ?? null)
@@ -23,20 +25,6 @@ function useThrustCurve(sha: string | undefined) {
     enabled: Boolean(sha),
     staleTime: Infinity, // assets never change
   })
-}
-
-/** Puts an imported motor in the mission, with its curve in the assets, dropping the old curve. */
-function useApplyMotor() {
-  const edit = useMissionStore((s) => s.edit)
-  return (imported: ThrustCurveImport) =>
-    edit((d) => {
-      const old = d.motor?.thrust_curve
-      const { sha256, filename, size } = imported.asset
-      d.motor = imported.motor
-      d.assets = { ...d.assets, [sha256]: { kind: 'thrust_curve', filename, size } }
-      const drag = [d.rocket?.drag.power_off.table, d.rocket?.drag.power_on.table]
-      if (old && old !== sha256 && !drag.includes(old) && d.assets) delete d.assets[old]
-    })
 }
 
 export function Centre() {
@@ -54,10 +42,12 @@ function MotorCentre() {
 
   if (!motor) {
     return (
-      <div className="flex h-full flex-col justify-end gap-3 p-6 md:p-10">
+      <div className="space-y-10 p-6 md:p-10">
         <p className="max-w-[46ch] font-display text-2xl leading-snug font-medium text-muted-foreground md:text-3xl">
-          This mission has no motor yet. Upload a thrust curve or fetch one from ThrustCurve.org in the pane.
+          This mission has no motor yet. Upload a thrust curve or fetch one from ThrustCurve.org in the pane, or find
+          one below.
         </p>
+        <MotorFinder />
       </div>
     )
   }
@@ -117,6 +107,7 @@ function MotorCentre() {
           time around this curve.
         </Explainer>
       </div>
+      <MotorFinder />
     </div>
   )
 }

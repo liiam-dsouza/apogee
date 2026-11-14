@@ -16,7 +16,14 @@ from scipy.optimize import brentq
 
 from simcore.assets import AssetStore
 from simcore.ballast.mass import with_ballast
-from simcore.constraints import Board, board, from_row, from_summary, get_profile
+from simcore.constraints import (
+    Board,
+    board,
+    condition_values,
+    from_row,
+    from_summary,
+    get_profile,
+)
 from simcore.engine import run_flight
 from simcore.mission.models import Constraint, ConstraintSettings, Mission, quantity
 from simcore.montecarlo import run_samples
@@ -145,9 +152,16 @@ def solve(mission: Mission, assets: AssetStore, *, samples: int = 100) -> Ballas
     rows = [r for r in run_samples(flown, assets, list(range(samples))) if r["error"] is None]
     apogees = [r["apogee_agl_m"] for r in rows]
 
-    own_rules = bool(mission.constraints.profile or mission.constraints.additional)
-    settings = mission.constraints if own_rules else ConstraintSettings(additional=BUILT_IN_CHECKS)
-    report = board(settings, from_summary(nominal), [from_row(r) for r in rows])
+    c = mission.constraints
+    own_rules = bool(c.profile or c.launch_rules or c.additional)
+    settings = c if own_rules else ConstraintSettings(additional=BUILT_IN_CHECKS)
+    report = board(
+        settings,
+        from_summary(nominal),
+        [from_row(r) for r in rows],
+        condition_values(mission),
+        mission.launch_conditions.cloud_base_m,
+    )
     return BallastSolution(
         status="ok",
         exact_kg=exact,

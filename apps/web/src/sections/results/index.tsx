@@ -5,7 +5,7 @@ import { Histogram } from '@/components/charts/Histogram'
 import { Explainer } from '@/components/Explainer'
 import { RequireMission } from '@/components/RequireMission'
 import { api, type Distribution } from '@/lib/api'
-import { useCampaign } from '@/lib/campaign'
+import { FAILURE_LABEL, useCampaign } from '@/lib/campaign'
 import { fromSI, unitFor, type Quantity } from '@/lib/units'
 import { useMissionStore } from '@/stores/mission'
 import { usePrefs } from '@/stores/prefs'
@@ -94,6 +94,11 @@ function ResultsCentre() {
         <h2 className="font-display text-2xl font-semibold">
           {state ? `Spread across ${state.samples_done} flights` : 'Spread across the campaign'}
         </h2>
+        {campaign.failure && (
+          <p className="text-sm font-medium text-caution">
+            {FAILURE_LABEL[campaign.failure]}: every sample flew with that failure.
+          </p>
+        )}
         {state && (
           <p className="text-sm text-muted-foreground">
             {state.status === 'running' ? `Still running: ${state.samples_done} of ${state.samples}. ` : ''}Each chart

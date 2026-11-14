@@ -305,12 +305,34 @@ export interface paths {
         put?: never;
         /**
          * Import Mission
-         * @description Import a mission.yaml or a .mission.zip bundle (any schema version).
+         * @description Import a mission.yaml or an .apg bundle (any schema version).
+         *
+         *     Older .mission.zip bundles are accepted too.
          *
          *     A bundle's assets are hash-checked and added to the asset store, so the
          *     mission can be flown straight away.
          */
         post: operations["importMission"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/missions/tour": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Tour Mission Endpoint
+         * @description The guided tour's mission: Calisto, ready to fly. Created, or reset if it exists.
+         */
+        post: operations["tourMission"];
         delete?: never;
         options?: never;
         head?: never;
@@ -376,6 +398,52 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/missions/{mission_id}/yaml": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Update Mission Yaml
+         * @description Replace a mission with hand-edited YAML (any schema version).
+         *
+         *     The YAML is parsed, migrated and checked like an import, then stored in
+         *     canonical form, so comments and key order are not kept.
+         */
+        put: operations["updateMissionYaml"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/motors/finder": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Find Motors
+         * @description Screen every catalogue motor that fits, and fly the best. Ask again until they land.
+         *
+         *     Flights are cached like any other, so asking again only starts what hasn't
+         *     been flown.
+         */
+        post: operations["findMotors"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/postflight/fit": {
         parameters: {
             query?: never;
@@ -433,6 +501,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/postflight/report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start Report
+         * @description Compare the log with a full flight of the mission, or return the stored report.
+         */
+        post: operations["reportPostflight"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/postflight/reports/{result_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Report */
+        get: operations["getPostflightReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/profiles": {
         parameters: {
             query?: never;
@@ -442,7 +547,7 @@ export interface paths {
         };
         /**
          * List Profiles
-         * @description Every competition profile, with its rules.
+         * @description Every competition profile and launch-condition rule set, with its rules.
          */
         get: operations["listProfiles"];
         put?: never;
@@ -467,6 +572,46 @@ export interface paths {
          * @description Steady descent rate under each device, where it opens and where the next takes over.
          */
         post: operations["descentRates"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/recovery/ejection": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ejection
+         * @description Black-powder charge per bay, and whether its pins hold the joint through coast.
+         */
+        post: operations["ejectionCharges"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/recovery/failures": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Failures
+         * @description Fly the mission with each part of its recovery failed. Starts what isn't stored yet.
+         */
+        post: operations["recoveryFailures"];
         delete?: never;
         options?: never;
         head?: never;
@@ -573,6 +718,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/rocket/drag": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Drag
+         * @description CD against Mach: the curves the mission flies, the estimate, and what makes it up.
+         *
+         *     Reynolds number follows Mach through the standard atmosphere at the site,
+         *     which is what a flight sees near the pad.
+         */
+        post: operations["rocketDrag"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/sim/flight": {
         parameters: {
             query?: never;
@@ -632,6 +800,82 @@ export interface paths {
          *     are (re)queued. The same mission and versions always give the same campaign.
          */
         post: operations["runMonteCarlo"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/sites": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Site Presets */
+        get: operations["listSitePresets"];
+        put?: never;
+        /** Create Site Preset */
+        post: operations["createSitePreset"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/sites/{preset_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Update Site Preset */
+        put: operations["updateSitePreset"];
+        post?: never;
+        /** Delete Site Preset */
+        delete: operations["deleteSitePreset"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/structures/fin-materials": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Fin Materials
+         * @description Typical fin materials and their shear moduli, to start from.
+         */
+        get: operations["listFinMaterials"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/structures/flutter": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Flutter
+         * @description Flutter margin per fin set from the mission's single flight, and the thinnest safe fin.
+         */
+        post: operations["finFlutter"];
         delete?: never;
         options?: never;
         head?: never;
@@ -730,9 +974,31 @@ export interface paths {
         put?: never;
         /**
          * Fetch Forecast
-         * @description Fetch a seven-day hourly forecast for a point from Open-Meteo, and cache it.
+         * @description Fetch a seven-day hourly forecast, or a past day, for a point from Open-Meteo; cache it.
          */
         post: operations["fetchForecast"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/weather/forecasts/{forecast_id}/conditions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Forecast Conditions
+         * @description Cloud, visibility, wind and gusts for one hour of a cached forecast.
+         *
+         *     A forecast cached before these were fetched has none of them: fetch it again.
+         */
+        get: operations["forecastConditions"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -763,6 +1029,83 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * AirframeJoint
+         * @description Where two airframe sections meet: a coupler, a nose shoulder, a switch band.
+         */
+        AirframeJoint: {
+            /**
+             * Flexibility Cal
+             * @description Extra bending at the joint, as the length of the tube beside it that would bend as much, in calibers. 0 is as stiff as the tube.
+             * @default 1.25
+             */
+            flexibility_cal: number;
+            /**
+             * Name
+             * @description Joint name, for display.
+             */
+            name: string;
+            /**
+             * Position M
+             * @description Where the sections meet, aft of the nose tip.
+             */
+            position_m: number;
+        };
+        /**
+         * AirframeShell
+         * @description A length of tube that carries bending: body tube, coupler, motor tube, piece of nose.
+         *
+         *     Shells that overlap (a coupler inside two body tubes) add their stiffness.
+         *     The outer radius goes linearly from the forward end to the aft end.
+         */
+        AirframeShell: {
+            /**
+             * Aft Radius M
+             * @description Outer radius at the aft end.
+             */
+            aft_radius_m: number;
+            /**
+             * Forward Radius M
+             * @description Outer radius at the forward end.
+             */
+            forward_radius_m: number;
+            /**
+             * Length M
+             * @description Length along the axis.
+             */
+            length_m: number;
+            /**
+             * Material
+             * @description Material name, for display.
+             * @default
+             */
+            material: string;
+            /**
+             * Name
+             * @description Part name, for display.
+             */
+            name: string;
+            /**
+             * Position M
+             * @description Forward end, aft of the nose tip.
+             */
+            position_m: number;
+            /**
+             * Shear Modulus Pa
+             * @description In-plane shear modulus of the wall. Composite tubes are soft in shear, which lowers the higher bending modes.
+             */
+            shear_modulus_pa: number;
+            /**
+             * Wall Thickness M
+             * @description Wall thickness.
+             */
+            wall_thickness_m: number;
+            /**
+             * Youngs Modulus Pa
+             * @description Young's modulus along the axis. A layup's own or a tap-tested value is best.
+             */
+            youngs_modulus_pa: number;
+        };
         /** Asset */
         Asset: {
             /**
@@ -968,8 +1311,78 @@ export interface components {
              */
             target_source: string;
         };
+        /** BayCheck */
+        BayCheck: {
+            /**
+             * Backup Charge Kg
+             * @description The primary times the backup factor.
+             */
+            backup_charge_kg: number;
+            /**
+             * Bulkhead Area M2
+             * @description Area the gas pushes on.
+             */
+            bulkhead_area_m2: number;
+            /**
+             * Design Pressure Pa
+             * @description Pins plus the separation pressure.
+             */
+            design_pressure_pa: number;
+            /**
+             * Device
+             * @description The recovery device it releases.
+             */
+            device: string | null;
+            /**
+             * Drag Separation N
+             * @description Most the joint is pulled apart during coast. None: not checked.
+             */
+            drag_separation_n: number | null;
+            /**
+             * Ejection Force N
+             * @description Force on the bulkhead at the design pressure.
+             */
+            ejection_force_n: number;
+            /**
+             * Hold Margin
+             * @description Pin strength over the drag separation force. Below 1, it comes apart in coast.
+             */
+            hold_margin: number | null;
+            /**
+             * Name
+             * @description Bay name.
+             */
+            name: string;
+            /**
+             * Notes
+             * @description What to look at, in words.
+             */
+            notes: string[];
+            /**
+             * Pin Break Pressure Pa
+             * @description Bay pressure that breaks every pin.
+             */
+            pin_break_pressure_pa: number;
+            /**
+             * Pins Hold N
+             * @description Force the pins resist before they break.
+             */
+            pins_hold_n: number;
+            /**
+             * Primary Charge Kg
+             * @description Black powder for the design pressure.
+             */
+            primary_charge_kg: number;
+            /**
+             * Volume M3
+             * @description Free volume the gas fills.
+             */
+            volume_m3: number;
+        };
         /** Board */
         Board: {
+            /** @description The launch-condition rule set, if any. */
+            launch_rules?: components["schemas"]["ProfileInfo"] | null;
             /** @description The competition profile, if any. */
             profile: components["schemas"]["ProfileInfo"] | null;
             /**
@@ -999,6 +1412,8 @@ export interface components {
             campaign: components["schemas"]["CampaignBasis"];
             /** @description The single flight it is based on. */
             flight: components["schemas"]["FlightBasis"];
+            /** @description The launch conditions it is judged on. */
+            launch: components["schemas"]["LaunchSummary"];
         };
         /** Body_importMission */
         Body_importMission: {
@@ -1063,6 +1478,11 @@ export interface components {
         };
         /** CampaignRequest */
         CampaignRequest: {
+            /**
+             * Failure
+             * @description Fly every sample with this part of the recovery failed: where it lands then.
+             */
+            failure?: ("drogue_fails" | "main_fails" | "nothing_opens") | null;
             /** @description The mission, with its monte_carlo settings. */
             mission: components["schemas"]["Mission"];
         };
@@ -1155,6 +1575,95 @@ export interface components {
              */
             stats: components["schemas"]["Stat"][];
         };
+        /**
+         * Candidate
+         * @description A motor from the ThrustCurve.org catalogue.
+         */
+        Candidate: {
+            /**
+             * Availability
+             * @description regular, occasional or OOP.
+             * @default
+             */
+            availability: string;
+            /**
+             * Average Thrust N
+             * @description Average thrust.
+             */
+            average_thrust_n: number;
+            /**
+             * Burn Time S
+             * @description Burn time.
+             */
+            burn_time_s: number;
+            /**
+             * Case Info
+             * @description Case or hardware it needs.
+             * @default
+             */
+            case_info: string;
+            /**
+             * Common Name
+             * @description Class and average thrust, e.g. 'M1340'.
+             */
+            common_name: string;
+            /**
+             * Designation
+             * @description Designation, e.g. 'M1340W'.
+             */
+            designation: string;
+            /**
+             * Diameter Mm
+             * @description Case diameter.
+             */
+            diameter_mm: number;
+            /**
+             * Impulse Class
+             * @description Impulse class letter.
+             */
+            impulse_class: string;
+            /**
+             * Length Mm
+             * @description Case length.
+             */
+            length_mm: number;
+            /**
+             * Manufacturer
+             * @description Manufacturer, e.g. 'AeroTech'.
+             */
+            manufacturer: string;
+            /**
+             * Motor Id
+             * @description ThrustCurve.org motor id.
+             */
+            motor_id: string;
+            /**
+             * Propellant
+             * @description Propellant name.
+             * @default
+             */
+            propellant: string;
+            /**
+             * Propellant Mass Kg
+             * @description Propellant mass.
+             */
+            propellant_mass_kg: number;
+            /**
+             * Total Impulse Ns
+             * @description Total impulse.
+             */
+            total_impulse_ns: number;
+            /**
+             * Total Mass Kg
+             * @description Loaded motor mass.
+             */
+            total_mass_kg: number;
+            /**
+             * Type
+             * @description SU (single use), reload or hybrid.
+             */
+            type: string;
+        };
         /** Category */
         Category: {
             /**
@@ -1172,6 +1681,60 @@ export interface components {
              * @description Category name.
              */
             name: string;
+        };
+        /** ChannelComparison */
+        ChannelComparison: {
+            /**
+             * Ascent Only
+             * @description Compared from launch to apogee only.
+             */
+            ascent_only: boolean;
+            /**
+             * Derived
+             * @description Not in the log: derived from its altitude.
+             */
+            derived: boolean;
+            /**
+             * Max Error
+             * @description Largest simulated minus measured, signed, SI.
+             */
+            max_error: number;
+            /**
+             * Max Error T
+             * @description When the largest error happens.
+             */
+            max_error_t: number;
+            /**
+             * Mean Error
+             * @description Mean of simulated minus measured (bias), SI.
+             */
+            mean_error: number;
+            /**
+             * Measured
+             * @description The log, SI.
+             */
+            measured: number[];
+            /**
+             * Name
+             * @description Trajectory channel, as in a flight result.
+             * @enum {string}
+             */
+            name: "altitude_agl_m" | "vertical_velocity_ms" | "acceleration_ms2";
+            /**
+             * Rms Error
+             * @description RMS of simulated minus measured, SI.
+             */
+            rms_error: number;
+            /**
+             * Simulated
+             * @description The simulation, SI.
+             */
+            simulated: number[];
+            /**
+             * T
+             * @description Time since launch, s.
+             */
+            t: number[];
         };
         /** ChannelInfo */
         ChannelInfo: {
@@ -1223,7 +1786,7 @@ export interface components {
              * @description The metric that decides.
              * @enum {string}
              */
-            metric: "apogee_agl_m" | "rail_exit_velocity_ms" | "stability_margin_at_rail_exit_cal" | "min_stability_margin_cal" | "max_stability_margin_cal" | "stability_margin_at_launch_pct_length" | "min_stability_margin_pct_length" | "max_stability_margin_pct_length" | "thrust_to_weight" | "max_mach" | "max_acceleration_ms2" | "max_dynamic_pressure_pa" | "landing_speed_ms" | "landing_kinetic_energy_j" | "main_deploy_agl_m" | "drogue_descent_rate_ms" | "descent_time_s" | "drift_m" | "flight_time_s";
+            metric: "apogee_agl_m" | "rail_exit_velocity_ms" | "stability_margin_at_rail_exit_cal" | "min_stability_margin_cal" | "max_stability_margin_cal" | "stability_margin_at_launch_pct_length" | "min_stability_margin_pct_length" | "max_stability_margin_pct_length" | "thrust_to_weight" | "max_mach" | "max_acceleration_ms2" | "max_dynamic_pressure_pa" | "landing_speed_ms" | "landing_kinetic_energy_j" | "main_deploy_agl_m" | "drogue_descent_rate_ms" | "descent_time_s" | "drift_m" | "flight_time_s" | "min_fin_flutter_margin" | "cloud_clearance_m" | "cloud_cover_pct" | "visibility_m" | "surface_wind_ms" | "sun_elevation_deg";
             /**
              * Min
              * @description Applies when the metric is at least this.
@@ -1265,7 +1828,7 @@ export interface components {
              * @description The result metric it tests.
              * @enum {string}
              */
-            metric: "apogee_agl_m" | "rail_exit_velocity_ms" | "stability_margin_at_rail_exit_cal" | "min_stability_margin_cal" | "max_stability_margin_cal" | "stability_margin_at_launch_pct_length" | "min_stability_margin_pct_length" | "max_stability_margin_pct_length" | "thrust_to_weight" | "max_mach" | "max_acceleration_ms2" | "max_dynamic_pressure_pa" | "landing_speed_ms" | "landing_kinetic_energy_j" | "main_deploy_agl_m" | "drogue_descent_rate_ms" | "descent_time_s" | "drift_m" | "flight_time_s";
+            metric: "apogee_agl_m" | "rail_exit_velocity_ms" | "stability_margin_at_rail_exit_cal" | "min_stability_margin_cal" | "max_stability_margin_cal" | "stability_margin_at_launch_pct_length" | "min_stability_margin_pct_length" | "max_stability_margin_pct_length" | "thrust_to_weight" | "max_mach" | "max_acceleration_ms2" | "max_dynamic_pressure_pa" | "landing_speed_ms" | "landing_kinetic_energy_j" | "main_deploy_agl_m" | "drogue_descent_rate_ms" | "descent_time_s" | "drift_m" | "flight_time_s" | "min_fin_flutter_margin" | "cloud_clearance_m" | "cloud_cover_pct" | "visibility_m" | "surface_wind_ms" | "sun_elevation_deg";
             /**
              * Min
              * @description Lowest allowed value, in the metric's units.
@@ -1359,6 +1922,11 @@ export interface components {
              * @description Category within the profile.
              */
             category?: string | null;
+            /**
+             * Launch Rules
+             * @description Launch-condition rules id, e.g. 'faa-101'. None: conditions not checked.
+             */
+            launch_rules?: string | null;
             /**
              * Overrides
              * @description Changes to profile rules, by rule id.
@@ -1546,14 +2114,24 @@ export interface components {
              * @default 1
              */
             multiplier: number;
-            /** @description Drag coefficient after burnout. */
+            /**
+             * @description Drag coefficient after burnout.
+             * @default {
+             *       "estimate": true
+             *     }
+             */
             power_off: components["schemas"]["DragCurve"];
-            /** @description Drag coefficient while the motor burns. */
+            /**
+             * @description Drag coefficient while the motor burns.
+             * @default {
+             *       "estimate": true
+             *     }
+             */
             power_on: components["schemas"]["DragCurve"];
         };
         /**
          * DragCurve
-         * @description Drag coefficient against Mach: a table asset, or a constant.
+         * @description Drag coefficient: estimated from the rocket's shape, a table asset, or a constant.
          */
         DragCurve: {
             /**
@@ -1562,10 +2140,92 @@ export interface components {
              */
             constant_cd?: number | null;
             /**
+             * Estimate
+             * @description Estimate drag from the rocket's shape (component build-up, as OpenRocket does). Depends on Mach, Reynolds number and angle of attack.
+             * @default false
+             */
+            estimate: boolean;
+            /**
              * Table
-             * @description CSV asset of (Mach, CD) rows. Takes precedence over constant_cd.
+             * @description CSV asset of (Mach, CD) rows.
              */
             table?: string | null;
+        };
+        /** DragPoint */
+        DragPoint: {
+            /**
+             * Base
+             * @description Estimated power-off CD from the base.
+             */
+            base: number;
+            /**
+             * Estimate Off
+             * @description Estimated power-off CD, multiplier applied.
+             */
+            estimate_off: number;
+            /**
+             * Estimate On
+             * @description Estimated power-on CD, multiplier applied.
+             */
+            estimate_on: number;
+            /**
+             * Fins
+             * @description Estimated CD from fin leading and trailing edges.
+             */
+            fins: number;
+            /**
+             * Friction
+             * @description Estimated power-off CD from skin friction.
+             */
+            friction: number;
+            /**
+             * Mach
+             * @description Mach number.
+             */
+            mach: number;
+            /**
+             * Nose
+             * @description Estimated CD from nose pressure drag.
+             */
+            nose: number;
+            /**
+             * Power Off
+             * @description The mission's power-off CD, multiplier applied.
+             */
+            power_off: number;
+            /**
+             * Power On
+             * @description The mission's power-on CD, multiplier applied.
+             */
+            power_on: number;
+            /**
+             * Tail
+             * @description Estimated CD from the boat-tail.
+             */
+            tail: number;
+        };
+        /** DragRequest */
+        DragRequest: {
+            /** @description The mission, saved or not. */
+            mission: components["schemas"]["Mission"];
+        };
+        /** DragResponse */
+        DragResponse: {
+            /**
+             * Elevation M
+             * @description Site elevation the curves are taken at (standard atmosphere); 0 with no site.
+             */
+            elevation_m: number;
+            /**
+             * Notes
+             * @description Assumptions behind the estimate, in plain language.
+             */
+            notes: string[];
+            /**
+             * Points
+             * @description CD against Mach, every 0.05 to Mach 2.5.
+             */
+            points: components["schemas"]["DragPoint"][];
         };
         /** EffectiveProfile */
         EffectiveProfile: {
@@ -1584,6 +2244,92 @@ export interface components {
             elevation_m: number;
             /** @description The mission's environment section. */
             environment: components["schemas"]["Environment"];
+        };
+        /** Ejection */
+        Ejection: {
+            /**
+             * Bays
+             * @description Separation joints and their charges.
+             */
+            bays?: components["schemas"]["EjectionBay"][];
+        };
+        /**
+         * EjectionBay
+         * @description A compartment a black-powder charge pressurises to separate the rocket.
+         */
+        EjectionBay: {
+            /**
+             * Backup Factor
+             * @description Backup charge as a multiple of the primary.
+             * @default 1.25
+             */
+            backup_factor: number;
+            /**
+             * Device
+             * @description The recovery device it releases, by name. For display.
+             */
+            device?: string | null;
+            /**
+             * Forward Mass Kg
+             * @description Mass the joint holds on to during coast: everything on the far side from the motor, e.g. the nose and payload for a forward bay. Unset: drag separation isn't checked.
+             */
+            forward_mass_kg?: number | null;
+            /**
+             * Free Length M
+             * @description Length of the empty space the gas fills: the bay's length less what is packed in it.
+             */
+            free_length_m: number;
+            /**
+             * Inner Diameter M
+             * @description Inside diameter of the bay: the bulkhead the gas pushes on.
+             */
+            inner_diameter_m: number;
+            /**
+             * Name
+             * @description Bay name, e.g. 'Drogue bay'.
+             */
+            name: string;
+            /**
+             * Pin Strength N
+             * @description Shear strength of one pin. Use a tested or de-rated value.
+             * @default 0
+             */
+            pin_strength_n: number;
+            /**
+             * Separation Pressure Pa
+             * @description Pressure the charge must reach over what breaks the pins, to push the section off against friction and the packed recovery gear. 15 psi is a common start.
+             * @default 103421
+             */
+            separation_pressure_pa: number;
+            /**
+             * Shear Pins
+             * @description Shear pins across the joint.
+             * @default 0
+             */
+            shear_pins: number;
+        };
+        /** EjectionRequest */
+        EjectionRequest: {
+            /** @description The mission, saved or not. */
+            mission: components["schemas"]["Mission"];
+        };
+        /** EjectionResponse */
+        EjectionResponse: {
+            /**
+             * Bays
+             * @description One per bay, in the mission's order.
+             */
+            bays: components["schemas"]["BayCheck"][];
+            /**
+             * Coast Drag Deceleration Ms2
+             * @description Highest drag deceleration in coast, from that flight.
+             */
+            coast_drag_deceleration_ms2: number | null;
+            /**
+             * Flight Run
+             * @description The mission's single flight has been run.
+             */
+            flight_run: boolean;
         };
         /** Ellipse */
         Ellipse: {
@@ -1625,6 +2371,367 @@ export interface components {
             atmosphere?: components["schemas"]["StandardAtmosphere"] | components["schemas"]["ResolvedProfile"] | components["schemas"]["ManualProfile"];
             /** @description A measured surface wind to blend into the atmosphere near the ground. */
             surface_wind?: components["schemas"]["SurfaceWind"] | null;
+        };
+        /**
+         * Estimate
+         * @description The screen's point-mass flight. For ranking: the full flight is the number to trust.
+         */
+        Estimate: {
+            /**
+             * Apogee Agl M
+             * @description Estimated apogee above the pad.
+             */
+            apogee_agl_m: number;
+            /**
+             * Liftoff Mass Kg
+             * @description Rocket, ballast and loaded motor.
+             */
+            liftoff_mass_kg: number;
+            /**
+             * Max Mach
+             * @description Estimated highest Mach number.
+             */
+            max_mach: number;
+            /**
+             * Rail Exit Velocity Ms
+             * @description Estimated speed off the rail.
+             */
+            rail_exit_velocity_ms: number;
+            /**
+             * Thrust To Weight
+             * @description Average thrust over the weight at ignition.
+             */
+            thrust_to_weight: number;
+        };
+        /** EventComparison */
+        EventComparison: {
+            /**
+             * Measured Agl M
+             * @description Altitude in the log at the event.
+             */
+            measured_agl_m: number | null;
+            /**
+             * Measured S
+             * @description From the log, since launch.
+             */
+            measured_s: number | null;
+            /**
+             * Name
+             * @description Event.
+             */
+            name: string;
+            /**
+             * Simulated Agl M
+             * @description Simulated altitude at the event.
+             */
+            simulated_agl_m: number | null;
+            /**
+             * Simulated S
+             * @description From the simulation, since ignition.
+             */
+            simulated_s: number | null;
+        };
+        /**
+         * Excitation
+         * @description What shakes the airframe, as fractions of the load that drives each source.
+         *
+         *     Defaults are fitted to one flight log (Luke, a 5" rocket on a CTI K940;
+         *     docs/methods/vibration.md). Motor roughness depends on the propellant, so
+         *     fit it to a log of the same motor where there is one.
+         */
+        Excitation: {
+            /**
+             * Aero Load
+             * @description Random side load along the airframe, RMS per metre, over dynamic pressure times the projected width.
+             * @default 0.0031
+             */
+            aero_load: number;
+            /**
+             * Band Hz
+             * @description Motor roughness is spread evenly from 0 to this frequency.
+             * @default 2000
+             */
+            band_hz: number;
+            /**
+             * Motor Roughness
+             * @description Axial thrust fluctuation, RMS over the band, as a fraction of the thrust.
+             * @default 0.0064
+             */
+            motor_roughness: number;
+            /**
+             * Motor Side Load
+             * @description Side force at the nozzle, RMS over the band, as a fraction of the thrust.
+             * @default 0.0016
+             */
+            motor_side_load: number;
+            /**
+             * Transonic Factor
+             * @description How much stronger the aerodynamic load is at Mach 1 than either side of it (shocks moving on the airframe). 0 is no transonic rise.
+             * @default 2
+             */
+            transonic_factor: number;
+        };
+        /** FailureOutcome */
+        FailureOutcome: {
+            /**
+             * Devices
+             * @description The devices still in the mission.
+             */
+            devices: string[];
+            /**
+             * Drift M
+             * @description How far from the pad it lands.
+             */
+            drift_m: number | null;
+            /**
+             * Label
+             * @description What fails, in words.
+             */
+            label: string;
+            /**
+             * Landing Energy J
+             * @description Touchdown energy, whole rocket as one body.
+             */
+            landing_energy_j: number | null;
+            /**
+             * Landing Lon Lat
+             * @description Where it lands, [longitude, latitude].
+             */
+            landing_lon_lat: [
+                number,
+                number
+            ] | null;
+            /**
+             * Landing Speed Ms
+             * @description Touchdown speed, once flown.
+             */
+            landing_speed_ms: number | null;
+            /**
+             * Mode
+             * @description What fails.
+             * @enum {string}
+             */
+            mode: "drogue_fails" | "main_fails" | "nothing_opens";
+            /**
+             * Opening Speed Ms
+             * @description Speed when the first remaining device opens: the shock it takes.
+             */
+            opening_speed_ms: number | null;
+            /**
+             * Outside Boundary
+             * @description Lands outside the range boundary. None without a boundary or a flight.
+             */
+            outside_boundary: boolean | null;
+            /** @description The flight of the mission with that failure. */
+            run: components["schemas"]["RunState"];
+        };
+        /** FailuresRequest */
+        FailuresRequest: {
+            /** @description The mission, saved or not. */
+            mission: components["schemas"]["Mission"];
+        };
+        /** FailuresResponse */
+        FailuresResponse: {
+            /**
+             * Nominal Landing Speed Ms
+             * @description Touchdown speed with everything working, if that flight has been run.
+             */
+            nominal_landing_speed_ms: number | null;
+            /**
+             * Outcomes
+             * @description One per failure the recovery can have.
+             */
+            outcomes: components["schemas"]["FailureOutcome"][];
+        };
+        /** FinFlutter */
+        FinFlutter: {
+            /**
+             * Altitude Agl M
+             * @description Altitude above the pad where the margin is lowest.
+             */
+            altitude_agl_m: number;
+            /**
+             * Fin Set
+             * @description Which fin set, from 1, in the mission's order.
+             */
+            fin_set: number;
+            /**
+             * Flutter Speed Ms
+             * @description Flutter speed where the margin is lowest.
+             */
+            flutter_speed_ms: number;
+            /**
+             * Material
+             * @description Material name, as in the mission.
+             */
+            material: string;
+            /**
+             * Min Margin
+             * @description Lowest flutter speed over flight speed during the ascent. Above 1 is no flutter.
+             */
+            min_margin: number;
+            /**
+             * Shear Modulus Pa
+             * @description Shear modulus used.
+             */
+            shear_modulus_pa: number;
+            /**
+             * Speed Ms
+             * @description Rocket speed where the margin is lowest.
+             */
+            speed_ms: number;
+            /**
+             * Thickness M
+             * @description Fin thickness checked.
+             */
+            thickness_m: number;
+            /**
+             * Time S
+             * @description When the margin is lowest.
+             */
+            time_s: number;
+        };
+        /**
+         * FinMaterial
+         * @description What the fins are made of, as far as flutter cares: the shear modulus.
+         */
+        FinMaterial: {
+            /**
+             * Name
+             * @description Material name, for display.
+             */
+            name: string;
+            /**
+             * Shear Modulus Pa
+             * @description Shear modulus G of the fin as built. Composite layups vary a lot: use a measured or supplier value where there is one.
+             */
+            shear_modulus_pa: number;
+        };
+        /** FinMaterialPreset */
+        FinMaterialPreset: {
+            /**
+             * Id
+             * @description Stable id.
+             */
+            id: string;
+            /**
+             * Name
+             * @description Material name.
+             */
+            name: string;
+            /**
+             * Note
+             * @description Where the value comes from, or its caveat.
+             * @default
+             */
+            note: string;
+            /**
+             * Shear Modulus Pa
+             * @description Typical shear modulus.
+             */
+            shear_modulus_pa: number;
+        };
+        /** FinSetFlutter */
+        FinSetFlutter: {
+            /**
+             * Checked
+             * @description The fin set has a thickness and material.
+             */
+            checked: boolean;
+            /**
+             * Fin Set
+             * @description Which fin set, from 1.
+             */
+            fin_set: number;
+            /** @description From this mission's single flight, if it has been run and the set is checked. */
+            flutter: components["schemas"]["FinFlutter"] | null;
+            /**
+             * Thinnest M
+             * @description Thinnest fin of this material that keeps the required margin on this flight.
+             */
+            thinnest_m: number | null;
+        };
+        /** FinderRequest */
+        FinderRequest: {
+            /**
+             * Also Fly
+             * @description ThrustCurve.org motor ids to fly as well, wherever they screened.
+             */
+            also_fly?: string[];
+            /**
+             * Discontinued
+             * @description Include motors that are out of production.
+             * @default false
+             */
+            discontinued: boolean;
+            /**
+             * Flights
+             * @description How many of the best-screened motors to fly.
+             * @default 8
+             */
+            flights: number;
+            /** @description The mission, saved or not. */
+            mission: components["schemas"]["Mission"];
+            /** @description The motor mount. Unset: the current motor's diameter and length. */
+            mount?: components["schemas"]["Mount"] | null;
+            /**
+             * Target Apogee M
+             * @description Apogee to aim for, above the pad. Unset: the category's target.
+             */
+            target_apogee_m?: number | null;
+        };
+        /** FinderResponse */
+        FinderResponse: {
+            /**
+             * Catalogue Count
+             * @description ThrustCurve.org motors of that diameter.
+             */
+            catalogue_count: number;
+            /**
+             * Catalogue Fetched At
+             * @description When that list was fetched from ThrustCurve.org (Unix seconds).
+             */
+            catalogue_fetched_at: number;
+            /**
+             * Curves Fetched
+             * @description False if some curves couldn't be fetched: those motors are only screened.
+             */
+            curves_fetched: boolean;
+            /** @description The mount searched for. */
+            mount: components["schemas"]["Mount"];
+            /**
+             * Rows
+             * @description Every motor that fits: flown ones first (GO, then nearest the target), then the rest by screened apogee nearest the target.
+             */
+            rows: components["schemas"]["FinderRow"][];
+            /**
+             * Target Apogee M
+             * @description Apogee aimed for.
+             */
+            target_apogee_m: number;
+            /**
+             * Target From
+             * @description Where the target came from.
+             * @enum {string}
+             */
+            target_from: "request" | "category";
+        };
+        /** FinderRow */
+        FinderRow: {
+            /** @description Its stored thrust curve. */
+            asset: components["schemas"]["AssetInfo"] | null;
+            /** @description The motor. */
+            candidate: components["schemas"]["Candidate"];
+            /** @description The screen's estimate. */
+            estimate: components["schemas"]["Estimate"];
+            /** @description What the full flight gives, once done. */
+            flown: components["schemas"]["Flown"] | null;
+            /** @description The flight against the rules, once done. */
+            judgement: components["schemas"]["Judgement"] | null;
+            /** @description The motor section it flies with, to put in the mission. */
+            motor: components["schemas"]["GenericMotor"] | null;
+            /** @description Its full flight, if it is being flown. */
+            run: components["schemas"]["RunState"] | null;
         };
         /** FitCurve */
         FitCurve: {
@@ -1788,6 +2895,11 @@ export interface components {
              * @description Descent rate under the first device when the last one triggered. None with one device.
              */
             drogue_descent_rate_ms: number | null;
+            /**
+             * Fin Flutter
+             * @description Flutter check per fin set with a thickness and material. Empty: not checked.
+             */
+            fin_flutter?: components["schemas"]["FinFlutter"][];
             /** @description Touchdown. None for an ascent-only flight, which stops at apogee. */
             landing: components["schemas"]["Landing"] | null;
             /**
@@ -1800,6 +2912,11 @@ export interface components {
              * @description Highest acceleration magnitude.
              */
             max_acceleration_ms2: number;
+            /**
+             * Max Coast Drag Deceleration Ms2
+             * @description Highest deceleration from drag alone between burnout and apogee: what pulls a separation joint apart. None for results stored before it was recorded.
+             */
+            max_coast_drag_deceleration_ms2?: number | null;
             /**
              * Max Dynamic Pressure Pa
              * @description Highest dynamic pressure (max q).
@@ -1861,11 +2978,77 @@ export interface components {
              */
             thrust_to_weight: number;
         };
+        /** Flown */
+        Flown: {
+            /**
+             * Apogee Agl M
+             * @description Apogee above the pad.
+             */
+            apogee_agl_m: number;
+            /**
+             * Max Mach
+             * @description Highest Mach number.
+             */
+            max_mach: number;
+            /**
+             * Min Stability Margin Cal
+             * @description Lowest stability margin.
+             */
+            min_stability_margin_cal: number;
+            /**
+             * Rail Exit Velocity Ms
+             * @description Speed off the rail.
+             */
+            rail_exit_velocity_ms: number;
+            /**
+             * Stability Margin At Rail Exit Cal
+             * @description Stability at rail exit.
+             */
+            stability_margin_at_rail_exit_cal: number;
+            /**
+             * Thrust To Weight
+             * @description Thrust to weight.
+             */
+            thrust_to_weight: number;
+        };
+        /** FlutterRequest */
+        FlutterRequest: {
+            /** @description The mission, saved or not. */
+            mission: components["schemas"]["Mission"];
+        };
+        /** FlutterResponse */
+        FlutterResponse: {
+            /**
+             * Fin Sets
+             * @description One per fin set, in the mission's order.
+             */
+            fin_sets: components["schemas"]["FinSetFlutter"][];
+            /**
+             * Flight Run
+             * @description The mission's single flight has been run.
+             */
+            flight_run: boolean;
+            /**
+             * Required By
+             * @description The rule that sets it, or why it is the default.
+             */
+            required_by: string;
+            /**
+             * Required Margin
+             * @description Flutter speed over flight speed the check asks for.
+             */
+            required_margin: number;
+        };
         /**
          * ForecastInfo
          * @description A cached forecast: when it was fetched, where for, and which hours it covers.
          */
         ForecastInfo: {
+            /**
+             * Day
+             * @description The past day fetched from the archive; None for a forecast.
+             */
+            day?: string | null;
             /**
              * Fetched Utc
              * Format: date-time
@@ -1916,6 +3099,11 @@ export interface components {
         /** ForecastRequest */
         ForecastRequest: {
             /**
+             * Day
+             * @description A past day (e.g. an earlier launch) to fetch from the archive, instead of the seven-day forecast. Upper-air history starts in 2021.
+             */
+            day?: string | null;
+            /**
              * Latitude
              * @description WGS84 latitude, degrees.
              */
@@ -1925,6 +3113,52 @@ export interface components {
              * @description WGS84 longitude, degrees.
              */
             longitude: number;
+        };
+        /** FreeFormFins */
+        FreeFormFins: {
+            /**
+             * Cant Angle Deg
+             * @description Fin cant angle.
+             * @default 0
+             */
+            cant_angle_deg: number;
+            /**
+             * Count
+             * @description Number of fins in the set.
+             */
+            count: number;
+            /**
+             * Cross Section
+             * @description Shape of the fin edges, for the drag estimate: square, rounded or airfoil.
+             * @default square
+             * @enum {string}
+             */
+            cross_section: "square" | "rounded" | "airfoil";
+            /**
+             * @description Fin set with an arbitrary outline. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            kind: "free_form";
+            /** @description Fin material, for the flutter check. Unset: not checked. */
+            material?: components["schemas"]["FinMaterial"] | null;
+            /**
+             * Points
+             * @description One fin's outline as [x, y] in metres: x aft of the root leading edge, y outward from the body tube. Starts at [0, 0] (root leading edge) and ends on the body tube at the root trailing edge, [root chord, 0].
+             */
+            points: [
+                number,
+                number
+            ][];
+            /**
+             * Position M
+             * @description Position of the root chord's leading edge, aft of the nose tip.
+             */
+            position_m: number;
+            /**
+             * Thickness M
+             * @description Fin thickness. With a material, every flight checks fin flutter.
+             */
+            thickness_m?: number | null;
         };
         /**
          * GenericMotor
@@ -2141,6 +3375,28 @@ export interface components {
              */
             status: "queued" | "running" | "done" | "failed" | "not_found";
         };
+        /**
+         * Judgement
+         * @description One candidate's flight against the mission's rules.
+         */
+        Judgement: {
+            /**
+             * Failing
+             * @description Rules it fails, hard ones first.
+             */
+            failing: string[];
+            /**
+             * Points
+             * @description Apogee score, if the profile scores apogee.
+             */
+            points: number | null;
+            /**
+             * Verdict
+             * @description no_go if a hard rule fails; incomplete if one can't be judged.
+             * @enum {string}
+             */
+            verdict: "go" | "no_go" | "incomplete";
+        };
         /** Landing */
         Landing: {
             /**
@@ -2207,8 +3463,90 @@ export interface components {
              */
             longitude_deg: number;
         };
+        /**
+         * LaunchConditions
+         * @description The sky at launch, for launch-condition rules. A flight doesn't depend on it.
+         */
+        LaunchConditions: {
+            /**
+             * Cloud Base M
+             * @description Height of the lowest cloud base above the pad.
+             */
+            cloud_base_m?: number | null;
+            /**
+             * Cloud Cover Pct
+             * @description Share of the sky covered by cloud.
+             */
+            cloud_cover_pct?: number | null;
+            /**
+             * Launch Utc
+             * @description Planned launch time, UTC. Unset: the forecast hour the atmosphere is from.
+             */
+            launch_utc?: string | null;
+            /**
+             * Source
+             * @description Where the numbers came from, e.g. a forecast or the RSO's briefing.
+             * @default
+             */
+            source: string;
+            /**
+             * Visibility M
+             * @description Horizontal visibility.
+             */
+            visibility_m?: number | null;
+            /**
+             * Wind Gust Ms
+             * @description Strongest surface gust.
+             */
+            wind_gust_ms?: number | null;
+            /**
+             * Wind Speed Ms
+             * @description Sustained surface wind. Unset: the flight's wind at the surface.
+             */
+            wind_speed_ms?: number | null;
+        };
+        /**
+         * LaunchSummary
+         * @description The launch conditions the board judged, with the daylight around the launch.
+         */
+        LaunchSummary: {
+            /**
+             * Launch Utc
+             * @description Launch time used, UTC.
+             */
+            launch_utc: string | null;
+            /**
+             * Next Crossing Utc
+             * @description The sunset (in daylight) or sunrise (at night) after launch, within a day.
+             */
+            next_crossing_utc: string | null;
+            /**
+             * Previous Crossing Utc
+             * @description The sunrise (in daylight) or sunset (at night) before launch, within a day.
+             */
+            previous_crossing_utc: string | null;
+            /**
+             * Values
+             * @description Each condition metric there is a value for.
+             */
+            values: {
+                [key: string]: number;
+            };
+        };
         /** LogPreview */
         LogPreview: {
+            /**
+             * Acceleration Column
+             * @description Guessed acceleration column.
+             */
+            acceleration_column?: string | null;
+            /**
+             * Acceleration Units
+             * @description Guessed acceleration units.
+             * @default m/s2
+             * @enum {string}
+             */
+            acceleration_units: "m/s2" | "ft/s2" | "g";
             /**
              * Altitude Column
              * @description Guessed altitude column.
@@ -2245,6 +3583,18 @@ export interface components {
              * @description Guessed time column.
              */
             time_column: string | null;
+            /**
+             * Velocity Column
+             * @description Guessed velocity column.
+             */
+            velocity_column?: string | null;
+            /**
+             * Velocity Units
+             * @description Guessed velocity units.
+             * @default m/s
+             * @enum {string}
+             */
+            velocity_units: "m/s" | "ft/s";
         };
         /** ManualProfile */
         ManualProfile: {
@@ -2293,6 +3643,51 @@ export interface components {
              */
             speed_ms: number;
         };
+        /** Metric */
+        Metric: {
+            /**
+             * Derived
+             * @description Measured from a derived channel.
+             * @default false
+             */
+            derived: boolean;
+            /**
+             * Error
+             * @description Simulated minus measured, SI.
+             */
+            error: number | null;
+            /**
+             * Error Pct
+             * @description The error as a percentage of the measured value.
+             */
+            error_pct: number | null;
+            /**
+             * Key
+             * @description Stable identifier.
+             */
+            key: string;
+            /**
+             * Label
+             * @description What is compared.
+             */
+            label: string;
+            /**
+             * Measured
+             * @description From the log, SI; None if it can't show it.
+             */
+            measured: number | null;
+            /**
+             * Quantity
+             * @description How to display the values.
+             * @enum {string}
+             */
+            quantity: "altitude" | "speed" | "acceleration" | "time";
+            /**
+             * Simulated
+             * @description From the simulation, SI.
+             */
+            simulated: number | null;
+        };
         /**
          * Mission
          * @description A complete mission config. Serialised as YAML (or JSON).
@@ -2309,13 +3704,17 @@ export interface components {
             ballast?: components["schemas"]["Ballast"];
             /** @description Competition profile and team rules the go/no-go board checks. */
             constraints?: components["schemas"]["ConstraintSettings"];
+            /** @description Ejection charges and shear pins. A flight doesn't depend on them. */
+            ejection?: components["schemas"]["Ejection"];
             /** @description Atmosphere and wind. */
             environment?: components["schemas"]["Environment"];
             /**
              * Extends
-             * @description Path of a base config this one overrides (not yet supported).
+             * @description Reserved for config inheritance, which is not supported: must be unset. To reuse a launch site, save it as a site preset.
              */
             extends?: string | null;
+            /** @description Cloud, visibility, gusts and launch time, for launch-condition rules. */
+            launch_conditions?: components["schemas"]["LaunchConditions"];
             /** @description Name, id, authorship. */
             meta: components["schemas"]["MissionMeta"];
             /** @description Monte Carlo campaign settings. */
@@ -2332,10 +3731,10 @@ export interface components {
             /**
              * Schema Version
              * @description Config schema version. Older configs are migrated on load.
-             * @default 3
+             * @default 4
              * @constant
              */
-            schema_version: 3;
+            schema_version: 4;
             /** @description Launch site and range geometry. */
             site?: components["schemas"]["Site"] | null;
             /**
@@ -2345,6 +3744,8 @@ export interface components {
             solver?: {
                 [key: string]: unknown;
             };
+            /** @description The airframe as a beam, for vibration. A flight doesn't depend on it. */
+            structure?: components["schemas"]["Structure"];
         };
         /** MissionDocument */
         MissionDocument: {
@@ -2499,6 +3900,19 @@ export interface components {
              */
             manufacturer: string;
         };
+        /** Mount */
+        Mount: {
+            /**
+             * Diameter Mm
+             * @description Motor mount tube inside diameter (nominal).
+             */
+            diameter_mm: number;
+            /**
+             * Max Length Mm
+             * @description Longest motor case the mount takes.
+             */
+            max_length_mm: number;
+        };
         /** NoseCone */
         NoseCone: {
             /**
@@ -2537,6 +3951,8 @@ export interface components {
             report: components["schemas"]["ImportReport"];
             /** @description Draft rocket section. */
             rocket: components["schemas"]["Rocket"];
+            /** @description Draft structure: the airframe as a beam. */
+            structure: components["schemas"]["Structure"];
         };
         /** OrkSimulation */
         OrkSimulation: {
@@ -2598,6 +4014,11 @@ export interface components {
              * @description Recovery device name, from the mission.
              */
             name: string;
+            /**
+             * Speed Ms
+             * @description Rocket speed when the trigger fired: what the canopy opens into. None for results stored before it was recorded.
+             */
+            speed_ms?: number | null;
             /**
              * Triggered Agl M
              * @description Altitude above ground when the trigger fired.
@@ -2672,6 +4093,49 @@ export interface components {
              * @description RMS altitude error over the ascent, as it stands.
              */
             rms_before_m: number;
+        };
+        /** PostflightReport */
+        PostflightReport: {
+            /**
+             * Channels
+             * @description Channels on a common time base.
+             */
+            channels: components["schemas"]["ChannelComparison"][];
+            /**
+             * Drag Multiplier
+             * @description The mission's drag multiplier, as flown.
+             */
+            drag_multiplier: number;
+            /**
+             * Events
+             * @description Flight events, in order.
+             */
+            events: components["schemas"]["EventComparison"][];
+            /**
+             * Launch S
+             * @description When the log leaves the pad, in the log's own time.
+             */
+            launch_s: number;
+            /**
+             * Log End S
+             * @description Where the log ends, since launch.
+             */
+            log_end_s: number;
+            /**
+             * Metrics
+             * @description Key numbers, measured against simulated.
+             */
+            metrics: components["schemas"]["Metric"][];
+            /**
+             * Shift S
+             * @description Time offset applied to match the ascent.
+             */
+            shift_s: number;
+            /**
+             * Warnings
+             * @description What the comparison could not do.
+             */
+            warnings: string[];
         };
         /** Probability */
         Probability: {
@@ -2748,8 +4212,15 @@ export interface components {
              */
             id: string;
             /**
+             * Kind
+             * @description competition: a contest's rules. launch: launch-condition rules for a region.
+             * @default competition
+             * @enum {string}
+             */
+            kind: "competition" | "launch";
+            /**
              * Name
-             * @description Competition name.
+             * @description Competition or rule set name.
              */
             name: string;
             /**
@@ -2992,6 +4463,56 @@ export interface components {
              */
             target: string | null;
         };
+        /** ReportRequest */
+        ReportRequest: {
+            /**
+             * Acceleration Column
+             * @description Column holding acceleration; derived from altitude if none.
+             */
+            acceleration_column?: string | null;
+            /**
+             * Acceleration Units
+             * @description Units of the acceleration column.
+             * @default m/s2
+             * @enum {string}
+             */
+            acceleration_units: "m/s2" | "ft/s2" | "g";
+            /**
+             * Altitude Column
+             * @description Column holding altitude.
+             */
+            altitude_column: string;
+            /**
+             * Altitude Units
+             * @description Units of the altitude column.
+             * @enum {string}
+             */
+            altitude_units: "m" | "ft";
+            /**
+             * Log Sha256
+             * @description The uploaded log.
+             */
+            log_sha256: string;
+            /** @description The mission as flown. */
+            mission: components["schemas"]["Mission"];
+            /**
+             * Time Column
+             * @description Column holding time, in seconds.
+             */
+            time_column: string;
+            /**
+             * Velocity Column
+             * @description Column holding vertical velocity; derived from altitude if none.
+             */
+            velocity_column?: string | null;
+            /**
+             * Velocity Units
+             * @description Units of the velocity column.
+             * @default m/s
+             * @enum {string}
+             */
+            velocity_units: "m/s" | "ft/s";
+        };
         /** ResolvedProfile */
         ResolvedProfile: {
             /**
@@ -3059,7 +4580,18 @@ export interface components {
         };
         /** Rocket */
         Rocket: {
-            /** @description Aerodynamic drag. */
+            /**
+             * @description Aerodynamic drag. Unset: estimated from the shape.
+             * @default {
+             *       "multiplier": 1,
+             *       "power_off": {
+             *         "estimate": true
+             *       },
+             *       "power_on": {
+             *         "estimate": true
+             *       }
+             *     }
+             */
             drag: components["schemas"]["Drag"];
             /**
              * Dry Cg M
@@ -3082,9 +4614,9 @@ export interface components {
             dry_mass_kg: number;
             /**
              * Fins
-             * @description Fin sets.
+             * @description Fin sets: trapezoidal, or free-form with any outline.
              */
-            fins: components["schemas"]["TrapezoidalFins"][];
+            fins: (components["schemas"]["TrapezoidalFins"] | components["schemas"]["FreeFormFins"])[];
             /**
              * Motor Position M
              * @description Position of the motor's nozzle exit, aft of the nose tip.
@@ -3099,6 +4631,13 @@ export interface components {
             radius_m: number;
             /** @description Rail buttons. Without them the rail is a single point. */
             rail_buttons?: components["schemas"]["RailButtons"] | null;
+            /**
+             * Surface Finish
+             * @description Outside surface finish, for the drag estimate's skin friction. normal is regular paint.
+             * @default normal
+             * @enum {string}
+             */
+            surface_finish: "mirror" | "polished" | "sheet_metal" | "optimum" | "smooth" | "normal" | "unfinished" | "rough_unfinished" | "rough";
             /** @description Boat-tail, if any. */
             tail?: components["schemas"]["Tail"] | null;
         };
@@ -3106,7 +4645,7 @@ export interface components {
         RuleResult: {
             /**
              * Evaluate On
-             * @description nominal, p50, p95, p99 or worst.
+             * @description nominal, p50, p95, p99 or worst; conditions for a launch-condition metric.
              */
             evaluate_on: string;
             /**
@@ -3158,10 +4697,10 @@ export interface components {
             severity: string;
             /**
              * Source
-             * @description profile, a team override of it, or a team rule.
+             * @description profile, launch rules, a team override of either, or a team rule.
              * @enum {string}
              */
-            source: "profile" | "override" | "team";
+            source: "profile" | "launch" | "override" | "team";
             /**
              * Status
              * @description Whether the value is within the limits.
@@ -3368,6 +4907,37 @@ export interface components {
              */
             rail_length_m: number;
         };
+        /** SitePreset */
+        SitePreset: {
+            /**
+             * Id
+             * @description Preset id (ULID).
+             */
+            id: string;
+            /**
+             * Name
+             * @description Name shown in the picker.
+             */
+            name: string;
+            /** @description The launch site and range geometry. */
+            site: components["schemas"]["Site"];
+            /**
+             * Updated Utc
+             * Format: date-time
+             * @description Last saved, UTC.
+             */
+            updated_utc: string;
+        };
+        /** SitePresetInput */
+        SitePresetInput: {
+            /**
+             * Name
+             * @description Name shown in the picker.
+             */
+            name: string;
+            /** @description The launch site and range geometry. */
+            site: components["schemas"]["Site"];
+        };
         /**
          * SolidMotor
          * @description A solid motor with known grain geometry (team-built, or a published spec).
@@ -3525,6 +5095,70 @@ export interface components {
              * @description Whether everything in it can be computed again (and so may be cleared).
              */
             recomputable: boolean;
+        };
+        /**
+         * StructuralMass
+         * @description Mass the airframe carries, spread evenly over its length (zero length: a point).
+         */
+        StructuralMass: {
+            /**
+             * Length M
+             * @description Length it is spread over.
+             * @default 0
+             */
+            length_m: number;
+            /**
+             * Mass Kg
+             * @description Mass.
+             */
+            mass_kg: number;
+            /**
+             * Name
+             * @description Part name, for display.
+             */
+            name: string;
+            /**
+             * Position M
+             * @description Forward end, aft of the nose tip.
+             */
+            position_m: number;
+        };
+        /**
+         * Structure
+         * @description The airframe as a free beam, for its vibration modes and the vibration in flight.
+         *
+         *     Imported from OpenRocket. Masses here are everything but the motor, which is
+         *     added from the mission's motor as it burns.
+         */
+        Structure: {
+            /**
+             * Damping Ratio
+             * @description Damping of every mode, as a fraction of critical. 0.02 to 0.05 for a bonded composite airframe with joints.
+             * @default 0.04
+             */
+            damping_ratio: number;
+            /** @description What shakes the airframe. */
+            excitation?: components["schemas"]["Excitation"];
+            /**
+             * Joints
+             * @description Where airframe sections meet.
+             */
+            joints?: components["schemas"]["AirframeJoint"][];
+            /**
+             * Masses
+             * @description Every part's mass, the tubes' own included.
+             */
+            masses?: components["schemas"]["StructuralMass"][];
+            /**
+             * Shells
+             * @description Tubes that carry bending.
+             */
+            shells?: components["schemas"]["AirframeShell"][];
+            /**
+             * Stations
+             * @description Where vibration is predicted.
+             */
+            stations?: components["schemas"]["VibrationStation"][];
         };
         /**
          * SurfaceWind
@@ -3744,6 +5378,20 @@ export interface components {
              */
             count: number;
             /**
+             * Cross Section
+             * @description Shape of the fin edges, for the drag estimate: square, rounded or airfoil.
+             * @default square
+             * @enum {string}
+             */
+            cross_section: "square" | "rounded" | "airfoil";
+            /**
+             * @description Fin set defined by chords, span and sweep. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            kind: "trapezoidal";
+            /** @description Fin material, for the flutter check. Unset: not checked. */
+            material?: components["schemas"]["FinMaterial"] | null;
+            /**
              * Position M
              * @description Position of the root chord's leading edge, aft of the nose tip.
              */
@@ -3760,9 +5408,14 @@ export interface components {
             span_m: number;
             /**
              * Sweep Length M
-             * @description Axial distance from root leading edge to tip leading edge. Unset means the tip chord is centred on the root chord.
+             * @description Axial distance from root leading edge to tip leading edge. Unset means the trailing edge is square: the tip ends level with the root (sweep = root chord - tip chord), as RocketPy flies it.
              */
             sweep_length_m?: number | null;
+            /**
+             * Thickness M
+             * @description Fin thickness. With a material, every flight checks fin flutter.
+             */
+            thickness_m?: number | null;
             /**
              * Tip Chord M
              * @description Chord length at the fin tip.
@@ -3794,6 +5447,22 @@ export interface components {
              * @description True when there are no errors (warnings allowed).
              */
             valid: boolean;
+        };
+        /**
+         * VibrationStation
+         * @description A place on the airframe whose vibration is predicted: a payload, a flight computer.
+         */
+        VibrationStation: {
+            /**
+             * Name
+             * @description Station name, e.g. 'Payload'.
+             */
+            name: string;
+            /**
+             * Position M
+             * @description Position, aft of the nose tip.
+             */
+            position_m: number;
         };
     };
     responses: never;
@@ -4478,6 +6147,26 @@ export interface operations {
             };
         };
     };
+    tourMission: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MissionDocument"];
+                };
+            };
+        };
+    };
     validateMission: {
         parameters: {
             query?: never;
@@ -4665,7 +6354,7 @@ export interface operations {
     exportMission: {
         parameters: {
             query?: {
-                format?: "yaml" | "zip";
+                format?: "yaml" | "apg";
             };
             header?: never;
             path: {
@@ -4681,8 +6370,8 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    "application/vnd.apogee.mission+zip": unknown;
                     "application/yaml": unknown;
-                    "application/zip": unknown;
                 };
             };
             /** @description No mission with that id. */
@@ -4705,6 +6394,110 @@ export interface operations {
             };
             /** @description The mission is not valid. */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    updateMissionYaml: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mission_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/yaml": string;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MissionDocument"];
+                };
+            };
+            /** @description No mission with that id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Conflicts with a stored mission. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description The mission is not valid. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    findMotors: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FinderRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FinderResponse"];
+                };
+            };
+            /** @description No rocket, site, target or mount. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description ThrustCurve.org refused the request. */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description ThrustCurve.org unreachable with nothing cached, or no job queue. */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4829,6 +6622,88 @@ export interface operations {
             };
         };
     };
+    reportPostflight: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReportRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FitRun"];
+                };
+            };
+            /** @description The mission can't be flown, or no such log. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description No job queue. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    getPostflightReport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                result_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PostflightReport"];
+                };
+            };
+            /** @description Not compared (yet). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     listProfiles: {
         parameters: {
             query?: never;
@@ -4873,6 +6748,81 @@ export interface operations {
             };
             /** @description No rocket, motor or site yet. */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    ejectionCharges: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EjectionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EjectionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    recoveryFailures: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FailuresRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FailuresResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description No job queue. */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5082,6 +7032,39 @@ export interface operations {
             };
         };
     };
+    rocketDrag: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DragRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DragResponse"];
+                };
+            };
+            /** @description No rocket yet, or a drag table is missing. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     runFlight: {
         parameters: {
             query?: {
@@ -5202,6 +7185,230 @@ export interface operations {
             };
             /** @description No job queue. */
             503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    listSitePresets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SitePreset"][];
+                };
+            };
+        };
+    };
+    createSitePreset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SitePresetInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SitePreset"];
+                };
+            };
+            /** @description No preset with that id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Another preset has that name. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description The site is not valid. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    updateSitePreset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                preset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SitePresetInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SitePreset"];
+                };
+            };
+            /** @description No preset with that id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Another preset has that name. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description The site is not valid. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    deleteSitePreset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                preset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No preset with that id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Another preset has that name. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description The site is not valid. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    listFinMaterials: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FinMaterialPreset"][];
+                };
+            };
+        };
+    };
+    finFlutter: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FlutterRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FlutterResponse"];
+                };
+            };
+            /** @description No rocket yet. */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5385,13 +7592,13 @@ export interface operations {
                     "application/json": components["schemas"]["ForecastInfo"];
                 };
             };
-            /** @description Validation Error */
+            /** @description A day in the future, or with no upper-air data. */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["Problem"];
                 };
             };
             /** @description Open-Meteo refused the request. */
@@ -5405,6 +7612,49 @@ export interface operations {
             };
             /** @description Open-Meteo is not reachable (offline?). */
             503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    forecastConditions: {
+        parameters: {
+            query: {
+                /** @description The launch time; the nearest hour is used. */
+                valid_utc: string;
+            };
+            header?: never;
+            path: {
+                forecast_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LaunchConditions"];
+                };
+            };
+            /** @description No such cached forecast. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description The forecast does not cover that time. */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

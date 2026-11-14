@@ -16,10 +16,14 @@ from apogee_api.routers import (
     imports,
     missions,
     montecarlo,
+    motors,
     postflight,
     recovery,
     results,
+    rocket,
     sim,
+    sites,
+    structures,
     system,
     weather,
 )
@@ -58,6 +62,7 @@ def create_app() -> FastAPI:
     problems.install(app)
     app.include_router(system.router)
     app.include_router(missions.router)
+    app.include_router(sites.router)
     app.include_router(assets.router)
     app.include_router(sim.router)
     app.include_router(results.router)
@@ -68,6 +73,9 @@ def create_app() -> FastAPI:
     app.include_router(recovery.router)
     app.include_router(ballast.router)
     app.include_router(postflight.router)
+    app.include_router(structures.router)
+    app.include_router(rocket.router)
+    app.include_router(motors.router)
     return app
 
 

@@ -1,10 +1,11 @@
-import { Download, FilePlus2, FolderOpen, Trash2, Upload } from 'lucide-react'
-import { useRef, useState } from 'react'
+import { Download, FileCode2, FilePlus2, FolderOpen, Trash2, Upload } from 'lucide-react'
+import { lazy, Suspense, useEffect, useEffectEvent, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import { Explainer } from '@/components/Explainer'
 import { ProblemNotice } from '@/components/ProblemNotice'
 import { Button } from '@/components/ui/button'
 import { api, type MissionSummary } from '@/lib/api'
+import { useSaveMission } from '@/lib/mission/save'
 import { cn } from '@/lib/utils'
 import { useMissionStore } from '@/stores/mission'
 import {
@@ -16,11 +17,14 @@ import {
 } from './queries'
 import { useSectionLayout } from '@/app/sectionLayout'
 
+// Monaco is large: load it only when someone opens the YAML editor.
+const YamlEditor = lazy(() => import('./yaml/YamlEditor'))
+
 /** The selected card lives in the URL (?id=), so a selection is linkable. */
 function useSelectedId() {
   const [params, setParams] = useSearchParams()
   const select = (id: string | null) => setParams(id ? { id } : {}, { replace: true })
-  return [params.get('id'), select] as const
+  return [params.get('id'), select, params.get('yaml') === '1'] as const
 }
 
 const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' })
@@ -42,6 +46,14 @@ export function Centre() {
         },
       })
   }
+
+  // An .apg opened from the OS in the installed app arrives here (manifest file_handlers).
+  const onLaunch = useEffectEvent(onImport)
+  useEffect(() => {
+    window.launchQueue?.setConsumer(async ({ files }) => {
+      if (files[0]) onLaunch(await files[0].getFile())
+    })
+  }, [])
 
   return (
     <div className="space-y-6 p-6">
@@ -68,7 +80,7 @@ export function Centre() {
         <input
           ref={fileInput}
           type="file"
-          accept=".yaml,.yml,.json,.zip"
+          accept=".apg,.yaml,.yml,.json,.zip"
           className="hidden"
           onChange={(e) => {
             onImport(e.target.files?.[0])
@@ -81,7 +93,7 @@ export function Centre() {
 
       {missions.data && missions.data.length === 0 && (
         <p className="max-w-[46ch] font-display text-2xl leading-snug font-medium text-muted-foreground">
-          No missions yet. Create one, or import a mission.yaml or .mission.zip from your team's repository.
+          No missions yet. Create one, or import an .apg or mission.yaml from your team's repository.
         </p>
       )}
 
@@ -102,7 +114,8 @@ export function Centre() {
         <Explainer methodsHref="/docs/guides/first-flight">
           A mission config is the one file everything else reads: rocket, motor, recovery, site,
           weather, Monte Carlo settings and constraints. Open one to edit it in the other sections.
-          Export it as YAML to keep it in Git alongside your other launches.
+          Export it as an .apg to hand to another machine with every file it needs, or as YAML to
+          keep it in Git alongside your other launches.
         </Explainer>
       </div>
     </div>
@@ -139,7 +152,8 @@ function MissionCard({
 }
 
 export function Pane() {
-  const [selectedId, select] = useSelectedId()
+  const [selectedId, select, yamlRequested] = useSelectedId()
+  const layout = useSectionLayout()
   const doc = useMissionDocument(selectedId)
   const remove = useDeleteMission()
   const load = useMissionStore((s) => s.load)
@@ -149,6 +163,19 @@ export function Pane() {
   const navigate = useNavigate()
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [confirmDiscard, setConfirmDiscard] = useState(false)
+  const [editingYaml, setEditingYaml] = useState(false)
+  const [confirmSaveFirst, setConfirmSaveFirst] = useState(false)
+  const saveDraft = useSaveMission()
+
+  // ?yaml=1 (from a "Fix problem" link) asks for the YAML editor, under the same
+  // save-first rule as the button. The pane may be collapsed, so bring it into view.
+  const needsSave = openId === selectedId && isDirty
+  const yamlOpen = editingYaml || (yamlRequested && !needsSave)
+  const saveFirstShown = confirmSaveFirst || (yamlRequested && needsSave)
+  const clearYamlRequest = () => yamlRequested && select(selectedId)
+  useEffect(() => {
+    if (yamlRequested) layout.showPane()
+  }, [yamlRequested, layout])
 
   if (!selectedId) {
     return <p className="p-4 text-sm text-muted-foreground">Select a mission to see its details.</p>
@@ -168,6 +195,11 @@ export function Pane() {
     load(mission)
     setConfirmDiscard(false)
     navigate('/site')
+  }
+  // The YAML editor works on the stored file, so the open draft's edits must be saved first.
+  const editYaml = () => {
+    if (openId === mission.meta.id && isDirty) setConfirmSaveFirst(true)
+    else setEditingYaml(true)
   }
 
   return (
@@ -228,9 +260,62 @@ export function Pane() {
             Open in editor
           </Button>
         )}
+        {saveFirstShown ? (
+          <div className="space-y-2 rounded-md border border-caution/60 p-3">
+            <p className="text-sm">“{openName}” has unsaved changes. Save them before editing the file as YAML.</p>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="primary"
+                disabled={saveDraft.isPending}
+                onClick={() =>
+                  saveDraft.mutate(undefined, {
+                    onSuccess: () => {
+                      setConfirmSaveFirst(false)
+                      setEditingYaml(true)
+                    },
+                  })
+                }
+              >
+                {saveDraft.isPending ? 'Saving' : 'Save and edit as YAML'}
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setConfirmSaveFirst(false)
+                  clearYamlRequest()
+                }}
+              >
+                Not now
+              </Button>
+            </div>
+            <ProblemNotice error={saveDraft.error} />
+          </div>
+        ) : (
+          <Button onClick={editYaml}>
+            <FileCode2 aria-hidden />
+            Edit as YAML
+          </Button>
+        )}
+        {yamlOpen && (
+          <Suspense fallback={null}>
+            <YamlEditor
+              missionId={mission.meta.id!}
+              name={mission.meta.name}
+              onClose={() => {
+                setEditingYaml(false)
+                clearYamlRequest()
+              }}
+            />
+          </Suspense>
+        )}
         <Button asChild>
-          <a href={api.exportMissionUrl(mission.meta.id!)} download>
+          <a href={api.exportMissionUrl(mission.meta.id!, 'apg')} download>
             <Download aria-hidden />
+            Export .apg
+          </a>
+        </Button>
+        <Button asChild variant="ghost" size="sm">
+          <a href={api.exportMissionUrl(mission.meta.id!)} download>
             Export as YAML
           </a>
         </Button>

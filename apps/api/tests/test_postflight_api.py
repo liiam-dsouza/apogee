@@ -76,3 +76,32 @@ def test_upload_preview_fit_and_reuse(client: TestClient) -> None:
 def test_unreadable_log_is_422(client: TestClient) -> None:
     r = client.post("/api/postflight/logs", files={"file": ("x.csv", b"1,2\n3,4\n5,6\n")})
     assert r.status_code == 422 and r.json()["code"] == "unreadable_log"
+
+
+def test_report_compares_the_log_with_the_mission(client: TestClient) -> None:
+    mission, log = _mission_and_log(client)
+    preview = client.post("/api/postflight/logs", files={"file": ("flight.csv", log)}).json()
+    body = {
+        "mission": mission,
+        "log_sha256": preview["sha256"],
+        "time_column": "time",
+        "altitude_column": "altitude_m",
+        "altitude_units": "m",
+    }
+    run = client.post("/api/postflight/report", json=body).json()
+    deadline = time.monotonic() + 120
+    while client.get(f"/api/postflight/reports/{run['result_id']}").status_code == 404:
+        assert time.monotonic() < deadline
+        time.sleep(0.3)
+    report = client.get(f"/api/postflight/reports/{run['result_id']}").json()
+    apogee = next(m for m in report["metrics"] if m["key"] == "apogee")
+    # The log was flown with 10% more drag: the mission overshoots it.
+    assert apogee["error"] > 0
+    assert {c["name"] for c in report["channels"]} == {
+        "altitude_agl_m",
+        "vertical_velocity_ms",
+        "acceleration_ms2",
+    }
+    assert client.post("/api/postflight/report", json=body).json()["status"] == "done"
+    # A report is not a fit, and the other way round.
+    assert client.get(f"/api/postflight/fits/{run['result_id']}").status_code == 404

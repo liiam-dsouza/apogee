@@ -7,7 +7,8 @@ from pydantic import BaseModel, Field
 
 from apogee_api.deps import AssetStoreDep, QueueDep, SettingsDep
 from apogee_api.problems import ApiProblem, Problem
-from apogee_api.queue import FLIGHT_TASK, JobState, QueueUnavailable
+from apogee_api.queue import FLIGHT_TASK, JobQueue, JobState, QueueUnavailable
+from apogee_api.settings import Settings
 from simcore.mission import Issue, Mission, canonical_json
 from simcore.mission.validation import physical_checks
 from simcore.results import result_key
@@ -72,6 +73,39 @@ def _from_job(state: JobState, result_id: str) -> RunState:
     return RunState(status=state.status, job_id=state.id, result_id=result_id, cached=False)
 
 
+async def start_flight(
+    mission: Mission, ascent_only: bool, queue: JobQueue, settings: Settings, wait_s: float = 0
+) -> RunState:
+    """The stored result if there is one, else a job flying it. Raises 503 without a queue."""
+    result_id = result_key(mission, ascent_only=ascent_only)
+    stored = settings.results_dir / result_id
+    if (stored / "result.json").exists():
+        # Results from before runs kept their mission: the id is the mission's hash, so
+        # this request's mission is the one that produced it (for Compare).
+        if not (stored / "mission.json").exists():
+            (stored / "mission.json").write_text(canonical_json(mission.model_dump(mode="json")))
+        return RunState(status="done", job_id=None, result_id=result_id, cached=True)
+    try:
+        job_id = await queue.submit(
+            FLIGHT_TASK,
+            f"flight:{result_id}",
+            mission_data=mission.model_dump(mode="json"),
+            ascent_only=ascent_only,
+            result_id=result_id,
+            data_dir=str(settings.data_dir),
+            git_sha=settings.git_sha,
+        )
+        state = await queue.wait(job_id, wait_s) if wait_s else await queue.state(job_id)
+    except QueueUnavailable as e:
+        raise ApiProblem(
+            503,
+            "queue_unavailable",
+            "Simulations are unavailable",
+            "The job queue is not reachable. Check that Redis and a worker are running.",
+        ) from e
+    return _from_job(state, result_id)
+
+
 @router.post(
     "/sim/flight",
     operation_id="runFlight",
@@ -107,33 +141,7 @@ async def run_flight(
             f"{len(issues)} problem(s) found.",
             issues,
         )
-    result_id = result_key(mission, ascent_only=body.ascent_only)
-    stored = settings.results_dir / result_id
-    if (stored / "result.json").exists():
-        # Results from before runs kept their mission: the id is the mission's hash, so
-        # this request's mission is the one that produced it (for Compare).
-        if not (stored / "mission.json").exists():
-            (stored / "mission.json").write_text(canonical_json(mission.model_dump(mode="json")))
-        return RunState(status="done", job_id=None, result_id=result_id, cached=True)
-    try:
-        job_id = await queue.submit(
-            FLIGHT_TASK,
-            f"flight:{result_id}",
-            mission_data=mission.model_dump(mode="json"),
-            ascent_only=body.ascent_only,
-            result_id=result_id,
-            data_dir=str(settings.data_dir),
-            git_sha=settings.git_sha,
-        )
-        state = await queue.wait(job_id, wait_s) if wait_s else await queue.state(job_id)
-    except QueueUnavailable as e:
-        raise ApiProblem(
-            503,
-            "queue_unavailable",
-            "Simulations are unavailable",
-            "The job queue is not reachable. Check that Redis and a worker are running.",
-        ) from e
-    run = _from_job(state, result_id)
+    run = await start_flight(mission, body.ascent_only, queue, settings, wait_s)
     if run.status in ("queued", "running"):
         response.status_code = status.HTTP_202_ACCEPTED
     return run

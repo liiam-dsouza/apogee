@@ -13,13 +13,24 @@ from typing import Any, Literal
 import numpy as np
 from pydantic import BaseModel, Field
 
+from simcore.constraints.conditions import (
+    CLEAR_SKY_PCT,
+    CONDITION_HINT,
+    CONDITION_METRICS,
+    with_conditions,
+)
 from simcore.constraints.metrics import METRICS
 from simcore.constraints.profiles import Profile, get_profile
 from simcore.mission.models import Constraint, ConstraintSettings
 
 QUANTILE = {"p50": 0.5, "p95": 0.95, "p99": 0.99, "worst": 1.0}
 
-Source = Literal["profile", "override", "team"]
+Source = Literal["profile", "launch", "override", "team"]
+#: Metrics a flight only has once the mission says more: what to set.
+UNSET_HINT: dict[str, str] = {
+    "min_fin_flutter_margin": "Set the fin thickness and material in the Rocket section.",
+}
+
 Status = Literal["pass", "fail", "missing", "not_applicable"]
 Outcome = Literal["go", "warn", "no_go", "missing"]
 
@@ -38,9 +49,13 @@ class RuleResult(BaseModel):
     label: str = Field(description="What it checks.")
     metric: str = Field(description="Metric tested.")
     units: str = Field(description="The metric's units.")
-    source: Source = Field(description="profile, a team override of it, or a team rule.")
+    source: Source = Field(
+        description="profile, launch rules, a team override of either, or a team rule."
+    )
     severity: str = Field(description="hard, scoring or advisory.")
-    evaluate_on: str = Field(description="nominal, p50, p95, p99 or worst.")
+    evaluate_on: str = Field(
+        description="nominal, p50, p95, p99 or worst; conditions for a launch-condition metric."
+    )
     reference: str = Field(description="Rule clause.")
     lower: float | None = Field(description="Lowest allowed value.")
     upper: float | None = Field(description="Highest allowed value.")
@@ -80,14 +95,18 @@ class Board(BaseModel):
     )
     rows: list[RuleResult] = Field(description="Every rule, profile rules first.")
     profile: ProfileInfo | None = Field(description="The competition profile, if any.")
+    launch_rules: ProfileInfo | None = Field(
+        default=None, description="The launch-condition rule set, if any."
+    )
     score: ScoreEstimate | None = Field(
         description="Expected apogee score, if the profile scores apogee and a category is set."
     )
 
 
 def resolve(settings: ConstraintSettings) -> tuple[list[Rule], Profile | None]:
-    """The mission's rules: its profile's (with overrides applied), then its own."""
+    """The mission's rules: its profile's and launch rules' (with overrides), then its own."""
     profile = get_profile(settings.profile) if settings.profile else None
+    launch = get_profile(settings.launch_rules, "launch") if settings.launch_rules else None
     category = None
     if profile and settings.category:
         category = next((c for c in profile.categories if c.id == settings.category), None)
@@ -96,10 +115,13 @@ def resolve(settings: ConstraintSettings) -> tuple[list[Rule], Profile | None]:
 
     rules: list[Rule] = []
     candidates: list[tuple[Constraint, Source]] = []
-    for c in profile.constraints if profile else []:
+    sourced: list[tuple[Constraint, Source]] = [
+        (c, "profile") for c in (profile.constraints if profile else [])
+    ] + [(c, "launch") for c in (launch.constraints if launch else [])]
+    for c, origin in sourced:
         override = settings.overrides.get(c.id)
         if override is None:
-            candidates.append((c, "profile"))
+            candidates.append((c, origin))
             continue
         if override.disabled:
             continue
@@ -145,12 +167,34 @@ def _outcome(status: Status, severity: str) -> Outcome:
     return "no_go" if severity == "hard" else "warn"
 
 
+def _within(rule: Rule, low: float, high: float) -> bool:
+    return (rule.lower is None or low >= rule.lower) and (rule.upper is None or high <= rule.upper)
+
+
+def _judge_condition(rule: Rule, base: dict[str, Any], conditions: dict[str, float]) -> RuleResult:
+    """A rule on the launch conditions: one value, the same for every flight."""
+    c = rule.constraint
+    v = conditions.get(c.metric)
+    status: Status = "missing" if v is None else "pass" if _within(rule, v, v) else "fail"
+    return RuleResult(
+        **base | {"evaluate_on": "conditions"},
+        value_low=v if rule.lower is not None else None,
+        value_high=v if rule.upper is not None else None,
+        status=status,
+        outcome=_outcome(status, c.severity),
+        violation_share=None,
+        samples=None,
+        note=CONDITION_HINT[c.metric] if v is None else "",
+    )
+
+
 def evaluate(
     rules: list[Rule],
     nominal: dict[str, float] | None,
     samples: list[dict[str, float]] | None,
+    conditions: dict[str, float] | None = None,
 ) -> list[RuleResult]:
-    """Judge each rule. ``nominal`` and each sample map metric names to values."""
+    """Judge each rule. ``nominal``, each sample and ``conditions`` map metric names to values."""
     out = []
     for rule in rules:
         c = rule.constraint
@@ -167,6 +211,9 @@ def evaluate(
             "lower": rule.lower,
             "upper": rule.upper,
         }
+        if c.metric in CONDITION_METRICS:
+            out.append(_judge_condition(rule, base, conditions or {}))
+            continue
         values = None
         covered = samples
         if samples and c.applies_if is not None:
@@ -216,10 +263,7 @@ def evaluate(
         elif low is None or high is None:
             status = "missing"
         else:
-            ok = (rule.lower is None or low >= rule.lower) and (
-                rule.upper is None or high <= rule.upper
-            )
-            status = "pass" if ok else "fail"
+            status = "pass" if _within(rule, low, high) else "fail"
         if (
             c.applies_if is not None
             and values is not None
@@ -227,6 +271,13 @@ def evaluate(
             and status != "not_applicable"
         ):
             note = f"Judged on the {len(values)} of {len(samples)} flights it applies to."
+        if (
+            status == "missing"
+            and c.metric in UNSET_HINT
+            and nominal is not None
+            and c.metric not in nominal
+        ):
+            note = UNSET_HINT[c.metric]
         if c.metric == "landing_kinetic_energy_j" and status not in ("missing", "not_applicable"):
             note = "Whole rocket as one body; separate sections each carry less."
         out.append(
@@ -244,13 +295,36 @@ def evaluate(
     return out
 
 
+def _clearance_notes(rows: list[RuleResult], cover: float | None, base: float | None) -> None:
+    """A clear sky has no cloud to fly into; otherwise say what is missing."""
+    for r in rows:
+        if r.metric != "cloud_clearance_m":
+            continue
+        if cover is not None and cover < CLEAR_SKY_PCT:
+            r.status, r.outcome = "not_applicable", "go"
+            r.value_low = r.value_high = r.violation_share = r.samples = None
+            r.note = "Clear sky: no cloud to fly into."
+        elif r.status == "missing" and (cover is None or base is None):
+            r.note = CONDITION_HINT["cloud_cover_pct" if cover is None else "cloud_clearance_m"]
+
+
 def board(
     settings: ConstraintSettings,
     nominal: dict[str, float] | None,
     samples: list[dict[str, float]] | None,
+    conditions: dict[str, float] | None = None,
+    cloud_base_m: float | None = None,
 ) -> Board:
+    """Judge every rule. Flights get the conditions added, and their clearance below cloud."""
     rules, profile = resolve(settings)
-    rows = evaluate(rules, nominal, samples)
+    if conditions or cloud_base_m is not None:
+        cond = conditions or {}
+        nominal = None if nominal is None else with_conditions(nominal, cond, cloud_base_m)
+        samples = (
+            None if samples is None else [with_conditions(s, cond, cloud_base_m) for s in samples]
+        )
+    rows = evaluate(rules, nominal, samples, conditions)
+    _clearance_notes(rows, (conditions or {}).get("cloud_cover_pct"), cloud_base_m)
     hard = [r for r in rows if r.severity == "hard"]
     if any(r.outcome == "no_go" for r in hard):
         verdict: Literal["go", "no_go", "incomplete"] = "no_go"
@@ -287,4 +361,15 @@ def board(
             source=profile.source,
             category=chosen.name if chosen else None,
         )
-    return Board(verdict=verdict, rows=rows, profile=info, score=score)
+    launch = None
+    if settings.launch_rules:
+        lr = get_profile(settings.launch_rules, "launch")
+        launch = ProfileInfo(
+            id=lr.id,
+            name=lr.name,
+            rules_version=lr.rules_version,
+            verified=lr.verified,
+            source=lr.source,
+            category=None,
+        )
+    return Board(verdict=verdict, rows=rows, profile=info, launch_rules=launch, score=score)

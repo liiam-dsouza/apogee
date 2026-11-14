@@ -14,6 +14,7 @@ import { useMissionStore } from '@/stores/mission'
 import { systemOf } from '@/lib/units'
 import { usePrefs } from '@/stores/prefs'
 import { DRAW_LABEL, MIN_POINTS, useDrawing } from './drawing'
+import { SavedSites, UseSavedSite } from './presets'
 
 /**
  * Starting values for a new site's rail. Placeholders the team must check
@@ -248,7 +249,13 @@ export function Pane() {
 function SitePane() {
   const site = useSite()
   const editSite = useEditSite()
-  if (!site) return <NewSite />
+  if (!site)
+    return (
+      <>
+        <UseSavedSite />
+        <NewSite />
+      </>
+    )
 
   const field = (
     name: keyof typeof NEW_RAIL | 'latitude_deg' | 'longitude_deg',
@@ -291,6 +298,7 @@ function SitePane() {
         </div>
       </section>
       <RangeGeometry site={site} />
+      <SavedSites site={site} />
       <Explainer methodsHref="/docs/methods/site">
         The boundary polygon is what the dispersion analysis tests landing points against. Hazard zones are places the
         rocket must not land; a pad inside one is an error. Rail length, inclination and heading set the initial

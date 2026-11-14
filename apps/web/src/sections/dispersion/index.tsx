@@ -9,8 +9,8 @@ import { QuantityField } from '@/components/QuantityField'
 import { RequireMission } from '@/components/RequireMission'
 import { Button } from '@/components/ui/button'
 import { Map, MapControls, MapGeoJSON, MapMarker, MarkerContent, useMap } from '@/components/ui/map'
-import { api, type CampaignResult, type MonteCarloParameters, type Probability } from '@/lib/api'
-import { useCampaign, useRunCampaign } from '@/lib/campaign'
+import { api, type CampaignResult, type FailureMode, type MonteCarloParameters, type Probability } from '@/lib/api'
+import { FAILURE_LABEL, useCampaign, useRunCampaign } from '@/lib/campaign'
 import { overlayColors } from '@/lib/mapStyles'
 import { formatSI, systemOf, unitFor } from '@/lib/units'
 import { cn } from '@/lib/utils'
@@ -51,7 +51,14 @@ function DispersionMap() {
           ) : !site ? (
             <p className="text-sm">This mission has no launch site yet. Add one in the Site section.</p>
           ) : result ? (
-            <CampaignTiles result={result} />
+            <>
+              {campaign.failure && (
+                <p className="text-sm font-medium text-caution">
+                  {FAILURE_LABEL[campaign.failure]}: every sample flew with that failure.
+                </p>
+              )}
+              <CampaignTiles result={result} />
+            </>
           ) : (
             <p className="text-sm">Run a campaign from the pane to plot where the rocket could land.</p>
           )}
@@ -91,9 +98,9 @@ function CampaignLayers({ result }: { result: CampaignResult }) {
       'circle-color': c.primary,
       'circle-opacity': 0.75,
       'circle-stroke-width': 1,
-      'circle-stroke-color': resolvedTheme === 'dark' ? '#0d0d0d' : '#f5f5f5',
+      'circle-stroke-color': c.background,
     }),
-    [c.primary, resolvedTheme],
+    [c.primary, c.background],
   )
   const ellipses = result.summary.ellipses
 
@@ -299,6 +306,8 @@ function CampaignPane() {
   const edit = useMissionStore((s) => s.edit)
   const run = useRunCampaign()
   const campaign = useCampaign(draft.meta.id)
+  const [failure, setFailure] = useState<FailureMode | null>(campaign.failure)
+  const devices = draft.recovery?.devices?.length ?? 0
   const mc: NonNullable<typeof draft.monte_carlo> = draft.monte_carlo ?? DEFAULT_CAMPAIGN
   const editMc = (recipe: (m: NonNullable<typeof draft.monte_carlo>) => void) =>
     edit((d) => recipe((d.monte_carlo ??= { ...DEFAULT_CAMPAIGN })))
@@ -322,12 +331,28 @@ function CampaignPane() {
           />
           <IntField label="Seed" value={mc.seed} onChange={(v) => editMc((m) => void (m.seed = v))} />
         </div>
+        <label className="block space-y-1 text-sm">
+          <span>Recovery</span>
+          <select
+            value={failure ?? ''}
+            onChange={(e) => setFailure((e.target.value || null) as FailureMode | null)}
+            className="h-9 w-full rounded-md border border-border bg-background px-2"
+          >
+            <option value="">As designed</option>
+            {devices >= 2 && <option value="drogue_fails">{FAILURE_LABEL.drogue_fails}</option>}
+            {devices >= 2 && <option value="main_fails">{FAILURE_LABEL.main_fails}</option>}
+            {devices >= 1 && <option value="nothing_opens">{FAILURE_LABEL.nothing_opens}</option>}
+          </select>
+          <span className="block text-xs text-muted-foreground">
+            Fly every sample with part of the recovery failed, to see where it would land then.
+          </span>
+        </label>
         <Button
           variant="primary"
           className="w-full"
           disabled={run.isPending}
           onClick={() => {
-            run.mutate(draft)
+            run.mutate({ draft, failure })
             layout.showCentre()
           }}
         >

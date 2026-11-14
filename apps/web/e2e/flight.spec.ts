@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test'
 
 test.skip(!process.env.E2E_BASE_URL, 'needs a live stack: set E2E_BASE_URL')
 
-const BUNDLE = path.resolve(import.meta.dirname, '../../../missions/examples/calisto.mission.zip')
+const BUNDLE = path.resolve(import.meta.dirname, '../../../missions/examples/calisto.apg')
 const CALISTO_ID = '01JCALISTO0000000000000000'
 
 test('import the Calisto bundle, fly it, and run a small campaign', async ({ page, request }) => {

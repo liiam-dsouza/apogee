@@ -12,6 +12,12 @@
     "max_dynamic_pressure_pa": 41545.06480299039,
     "max_acceleration_ms2": 105.27745709333198,
     "burnout_time_s": 3.9,
+    "stability_margin_at_launch_cal": 2.19392359405544,
+    "rocket_length_m": 2.533,
+    "reference_diameter_m": 0.127,
+    "thrust_to_weight": 8.208006569291639,
+    "main_deploy_agl_m": 800.0540760502904,
+    "drogue_descent_rate_ms": 17.9689213032638,
     "landing": {
       "east_m": -5.973472087938575,
       "north_m": 662.3350540750814,
@@ -26,13 +32,62 @@
       {
         "name": "Drogue",
         "triggered_s": 25.8952380952381,
-        "triggered_agl_m": 3305.4395822635643
+        "triggered_agl_m": 3305.4395822635643,
+        "speed_ms": 20.660210182177934
       },
       {
         "name": "Main",
         "triggered_s": 158.25714285714287,
-        "triggered_agl_m": 800.0540760502904
+        "triggered_agl_m": 800.0540760502904,
+        "speed_ms": 17.968921770414312
       }
-    ]
+    ],
+    "max_coast_drag_deceleration_ms2": 12.969486087030916,
+    "fin_flutter": []
+  },
+  "estimated": {
+    "apogee_agl_m": 2981.7813048854405,
+    "apogee_time_s": 24.2693949868859,
+    "rail_exit_velocity_ms": 26.206278860316818,
+    "stability_margin_at_rail_exit_cal": 2.2716369406415065,
+    "min_stability_margin_cal": 2.19392359405544,
+    "max_stability_margin_cal": 3.6800712930989867,
+    "max_mach": 0.8489347403648364,
+    "max_speed_ms": 282.2580234493742,
+    "max_dynamic_pressure_pa": 40513.36921070281,
+    "max_acceleration_ms2": 105.27613981752376,
+    "burnout_time_s": 3.9,
+    "stability_margin_at_launch_cal": 2.19392359405544,
+    "rocket_length_m": 2.533,
+    "reference_diameter_m": 0.127,
+    "thrust_to_weight": 8.208006569291639,
+    "main_deploy_agl_m": 799.9868347681013,
+    "drogue_descent_rate_ms": 17.968857365427166,
+    "landing": {
+      "east_m": -4.900021070601562,
+      "north_m": 583.4919235005063,
+      "latitude_deg": 32.99550078182001,
+      "longitude_deg": -106.97505053425242,
+      "drift_distance_m": 583.5124977211826,
+      "speed_ms": 5.456266206877607,
+      "kinetic_energy_j": 241.75411372215962,
+      "flight_time_s": 280.52545809363573
+    },
+    "parachute_events": [
+      {
+        "name": "Drogue",
+        "triggered_s": 24.27619047619048,
+        "triggered_agl_m": 2981.7810828939837,
+        "speed_ms": 18.76623284132897
+      },
+      {
+        "name": "Main",
+        "triggered_s": 140.63809523809525,
+        "triggered_agl_m": 799.9868347681013,
+        "speed_ms": 17.968857832572844
+      }
+    ],
+    "max_coast_drag_deceleration_ms2": 16.923475191354882,
+    "fin_flutter": []
   }
 }

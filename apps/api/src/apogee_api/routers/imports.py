@@ -4,10 +4,7 @@ Parsing happens here (it is fast and needs no physics); anything that flies
 the rocket goes through the job queue like every other simulation.
 """
 
-import json
 import logging
-import urllib.error
-import urllib.request
 import uuid
 from base64 import b64decode
 from typing import Annotated, Any
@@ -15,6 +12,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, File, Form, UploadFile
 from pydantic import BaseModel, Field
 
+from apogee_api import thrustcurve
 from apogee_api.deps import AssetStoreDep, QueueDep, SettingsDep
 from apogee_api.problems import ApiProblem, Problem
 from apogee_api.queue import ORK_CROSS_CHECK_TASK, QueueUnavailable
@@ -35,15 +33,12 @@ from simcore.importers.thrust import (
     generic_motor_estimate,
     parse_thrust_curve,
 )
-from simcore.mission.models import Asset, GenericMotor, Recovery, Rocket
+from simcore.mission.models import Asset, GenericMotor, Recovery, Rocket, Structure
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/imports", tags=["imports"])
 
 CROSS_CHECK_WAIT_S = 30.0
-THRUSTCURVE_API = "https://www.thrustcurve.org/api/v1"
-#: ThrustCurve.org refuses Python's default User-Agent with 403; say who we are.
-USER_AGENT = "Apogee/0.1 (rocketry flight simulation; motor lookup)"
 
 
 class OpenRocketImport(BaseModel):
@@ -51,6 +46,7 @@ class OpenRocketImport(BaseModel):
 
     rocket: Rocket = Field(description="Draft rocket section.")
     recovery: Recovery = Field(description="Draft recovery section.")
+    structure: Structure = Field(description="Draft structure: the airframe as a beam.")
     motor: GenericMotor | None = Field(
         description="Draft motor, if a thrust curve was supplied with the design."
     )
@@ -112,10 +108,12 @@ async def import_ork(
             422, "unreadable_ork", "This is not an OpenRocket design Apogee can read", str(e)
         ) from e
 
+    # OpenRocket's drag tables only fly the cross-check: stored, not added to the mission.
     assets: dict[str, Asset] = {}
+    check_assets: dict[str, Asset] = {}
     for sha, (name, content) in result.assets.items():
         store.put(content)
-        assets[sha] = Asset(kind="drag_table", filename=name, size=len(content))
+        check_assets[sha] = Asset(kind="drag_table", filename=name, size=len(content))
 
     motor = None
     report = result.report
@@ -146,7 +144,9 @@ async def import_ork(
                 f"{ref.designation}. Check you uploaded the right file."
             )
         report.cross_checks.extend(
-            await _flight_cross_checks(result, motor, assets, queue, str(settings.data_dir))
+            await _flight_cross_checks(
+                result, motor, assets | check_assets, queue, str(settings.data_dir)
+            )
         )
     elif result.motor is not None:
         report.warnings.append(
@@ -158,6 +158,7 @@ async def import_ork(
     return OpenRocketImport(
         rocket=result.rocket,
         recovery=result.recovery,
+        structure=result.structure,
         motor=motor,
         motor_reference=result.motor,
         rail=result.rail,
@@ -177,6 +178,7 @@ async def _flight_cross_checks(
         motor.model_dump(mode="json"),
         {k: v.model_dump() for k, v in assets.items()},
         result.reference,
+        drag=result.cross_check_drag,
     )
     unavailable = CrossCheck(
         quantity="Apogee, max Mach, CP",
@@ -215,17 +217,6 @@ class ThrustCurveImport(BaseModel):
     source: str = Field(description="Where the curve came from.")
 
 
-def _thrustcurve(path: str, body: dict[str, Any]) -> dict[str, Any]:
-    req = urllib.request.Request(
-        f"{THRUSTCURVE_API}/{path}",
-        data=json.dumps(body).encode(),
-        headers={"Content-Type": "application/json", "User-Agent": USER_AGENT},
-    )
-    with urllib.request.urlopen(req, timeout=10) as resp:
-        parsed: dict[str, Any] = json.loads(resp.read())
-        return parsed
-
-
 @router.post(
     "/thrustcurve",
     operation_id="fetchThrustCurve",
@@ -241,33 +232,15 @@ def fetch_thrust_curve(body: ThrustCurveRequest, store: AssetStoreDep) -> Thrust
     Needs internet. Fetched curves are stored like uploads, so they work
     offline afterwards.
     """
-    try:
-        found = _thrustcurve("search.json", body.model_dump()).get("results", [])
-        if not found:
-            raise ApiProblem(
-                404,
-                "motor_not_found",
-                f"ThrustCurve.org has no {body.manufacturer} {body.designation}",
-            )
-        motor_id = found[0]["motorId"]
-        files = _thrustcurve(
-            "download.json", {"motorIds": [motor_id], "format": "RASP", "data": "file"}
+    found = thrustcurve.call("search.json", body.model_dump()).get("results", [])
+    if not found:
+        raise ApiProblem(
+            404, "motor_not_found", f"ThrustCurve.org has no {body.manufacturer} {body.designation}"
         )
-    except urllib.error.HTTPError as e:
-        # Reached the site, but it said no: not an offline problem.
-        raise ApiProblem(
-            502,
-            "thrustcurve_refused",
-            f"ThrustCurve.org refused the request (HTTP {e.code})",
-            "Try again later, or download the .eng file from thrustcurve.org and upload it.",
-        ) from e
-    except (urllib.error.URLError, TimeoutError) as e:
-        raise ApiProblem(
-            503,
-            "thrustcurve_unreachable",
-            "ThrustCurve.org could not be reached",
-            "You may be offline. Download the .eng file elsewhere and upload it instead.",
-        ) from e
+    motor_id = found[0]["motorId"]
+    files = thrustcurve.call(
+        "download.json", {"motorIds": [motor_id], "format": "RASP", "data": "file"}
+    )
     rasp = next((f for f in files.get("results", []) if f.get("format") == "RASP"), None)
     if rasp is None:
         raise ApiProblem(

@@ -11,6 +11,8 @@ type Schemas = components['schemas']
 export type Mission = Schemas['Mission']
 export type MissionMeta = Schemas['MissionMeta']
 export type Site = Schemas['Site']
+export type SitePreset = Schemas['SitePreset']
+export type SitePresetInput = Schemas['SitePresetInput']
 export type MissionDocument = Schemas['MissionDocument']
 export type MissionSummary = Schemas['MissionSummary']
 export type ValidationReport = Schemas['ValidationReport']
@@ -33,6 +35,8 @@ export type CrossCheck = Schemas['CrossCheck']
 export type ThrustCurveImport = Schemas['ThrustCurveImport']
 export type Environment = Schemas['Environment']
 export type ResolvedProfile = Schemas['ResolvedProfile']
+export type LaunchConditions = Schemas['LaunchConditions']
+export type LaunchSummary = Schemas['LaunchSummary']
 export type ProfileLevel = Schemas['ProfileLevel']
 export type SurfaceWind = Schemas['SurfaceWind']
 export type ForecastInfo = Schemas['ForecastInfo']
@@ -55,7 +59,27 @@ export type Comparison = Schemas['Comparison']
 export type LogPreview = Schemas['LogPreview']
 export type PostflightFit = Schemas['PostflightFit']
 export type FitRequest = Schemas['FitRequest']
+export type PostflightReport = Schemas['PostflightReport']
+export type ReportRequest = Schemas['ReportRequest']
+export type ChannelComparison = Schemas['ChannelComparison']
+export type ReportMetric = Schemas['Metric']
 export type DescentResponse = Schemas['DescentResponse']
+export type FlutterResponse = Schemas['FlutterResponse']
+export type FinMaterialPreset = Schemas['FinMaterialPreset']
+export type FinMaterial = Schemas['FinMaterial']
+export type DragResponse = Schemas['DragResponse']
+export type DragCurve = Schemas['DragCurve']
+export type SurfaceFinish = Schemas['Rocket']['surface_finish']
+export type EjectionResponse = Schemas['EjectionResponse']
+export type EjectionBay = Schemas['EjectionBay']
+export type BayCheck = Schemas['BayCheck']
+export type FailuresResponse = Schemas['FailuresResponse']
+export type FailureOutcome = Schemas['FailureOutcome']
+export type FailureMode = FailureOutcome['mode']
+export type FinderRequest = Schemas['FinderRequest']
+export type FinderResponse = Schemas['FinderResponse']
+export type FinderRow = Schemas['FinderRow']
+export type Mount = Schemas['Mount']
 export type RecoveryDevice = Schemas['RecoveryDevice']
 export type Constraint = Schemas['Constraint']
 export type BoardResponse = Schemas['BoardResponse']
@@ -120,10 +144,35 @@ export const api = {
         body: mission,
       }),
     ),
+  getMissionYaml: (id: string) =>
+    unwrap<string>(
+      client.GET('/api/missions/{mission_id}/export', {
+        params: { path: { mission_id: id }, query: { format: 'yaml' } },
+        parseAs: 'text',
+      }),
+    ),
+  updateMissionYaml: (id: string, yaml: string) =>
+    unwrap<MissionDocument>(
+      client.PUT('/api/missions/{mission_id}/yaml', {
+        params: { path: { mission_id: id } },
+        body: yaml,
+        bodySerializer: (body) => body,
+        headers: { 'Content-Type': 'application/yaml' },
+      }),
+    ),
   deleteMission: (id: string) =>
     unwrap<void>(client.DELETE('/api/missions/{mission_id}', { params: { path: { mission_id: id } } })),
+  listSitePresets: () => unwrap<SitePreset[]>(client.GET('/api/sites')),
+  createSitePreset: (preset: SitePresetInput) =>
+    unwrap<SitePreset>(client.POST('/api/sites', { body: preset })),
+  updateSitePreset: (id: string, preset: SitePresetInput) =>
+    unwrap<SitePreset>(client.PUT('/api/sites/{preset_id}', { params: { path: { preset_id: id } }, body: preset })),
+  deleteSitePreset: (id: string) =>
+    unwrap<void>(client.DELETE('/api/sites/{preset_id}', { params: { path: { preset_id: id } } })),
   validateMission: (data: Record<string, unknown>) =>
     unwrap<ValidationReport>(client.POST('/api/missions/validate', { body: data })),
+  /** The guided tour's Calisto: created, or reset to how the tour starts it. */
+  tourMission: () => unwrap<MissionDocument>(client.POST('/api/missions/tour')),
   importMission: (file: File) =>
     unwrap<MissionDocument>(
       client.POST('/api/missions/import', {
@@ -179,8 +228,9 @@ export const api = {
     ),
   fetchThrustCurve: (manufacturer: string, designation: string) =>
     unwrap<ThrustCurveImport>(client.POST('/api/imports/thrustcurve', { body: { manufacturer, designation } })),
-  fetchForecast: (latitude: number, longitude: number) =>
-    unwrap<ForecastInfo>(client.POST('/api/weather/forecasts', { body: { latitude, longitude } })),
+  /** The seven-day forecast, or with `day` (YYYY-MM-DD) that past day from the archive. */
+  fetchForecast: (latitude: number, longitude: number, day?: string) =>
+    unwrap<ForecastInfo>(client.POST('/api/weather/forecasts', { body: { latitude, longitude, day: day ?? null } })),
   listForecasts: (latitude: number, longitude: number) =>
     unwrap<ForecastInfo[]>(client.GET('/api/weather/forecasts', { params: { query: { latitude, longitude } } })),
   forecastProfile: (id: string, validUtc: string, elevationM: number) =>
@@ -189,10 +239,16 @@ export const api = {
         params: { path: { forecast_id: id }, query: { valid_utc: validUtc, elevation_m: elevationM } },
       }),
     ),
+  forecastConditions: (id: string, validUtc: string) =>
+    unwrap<LaunchConditions>(
+      client.GET('/api/weather/forecasts/{forecast_id}/conditions', {
+        params: { path: { forecast_id: id }, query: { valid_utc: validUtc } },
+      }),
+    ),
   effectiveProfile: (environment: Environment, elevationM: number) =>
     unwrap<EffectiveProfile>(client.POST('/api/weather/effective', { body: { environment, elevation_m: elevationM } })),
-  runMonteCarlo: (mission: Mission) =>
-    unwrap<CampaignState>(client.POST('/api/sim/montecarlo', { body: { mission } })),
+  runMonteCarlo: (mission: Mission, failure: FailureMode | null = null) =>
+    unwrap<CampaignState>(client.POST('/api/sim/montecarlo', { body: { mission, failure } })),
   getCampaign: (id: string) =>
     unwrap<CampaignResult>(client.GET('/api/campaigns/{campaign_id}', { params: { path: { campaign_id: id } } })),
   campaignDistributions: (id: string) =>
@@ -216,6 +272,16 @@ export const api = {
     unwrap<DescentResponse>(
       client.POST('/api/recovery/descent', { body: { mission, target_rates_ms: targetRates } }),
     ),
+  recoveryFailures: (mission: Mission) =>
+    unwrap<FailuresResponse>(client.POST('/api/recovery/failures', { body: { mission } })),
+  /** Screen every ThrustCurve.org motor that fits the mount and fly the best; ask again until they land. */
+  findMotors: (body: FinderRequest) => unwrap<FinderResponse>(client.POST('/api/motors/finder', { body })),
+  ejectionCharges: (mission: Mission) =>
+    unwrap<EjectionResponse>(client.POST('/api/recovery/ejection', { body: { mission } })),
+  finFlutter: (mission: Mission) =>
+    unwrap<FlutterResponse>(client.POST('/api/structures/flutter', { body: { mission } })),
+  listFinMaterials: () => unwrap<FinMaterialPreset[]>(client.GET('/api/structures/fin-materials')),
+  rocketDrag: (mission: Mission) => unwrap<DragResponse>(client.POST('/api/rocket/drag', { body: { mission } })),
   solveBallast: (mission: Mission) =>
     unwrap<BallastRun>(client.POST('/api/ballast/solve', { body: { mission } })),
   getBallast: (id: string) =>
@@ -246,6 +312,12 @@ export const api = {
   fitPostflight: (body: FitRequest) => unwrap<Schemas['FitRun']>(client.POST('/api/postflight/fit', { body })),
   getPostflightFit: (id: string) =>
     unwrap<PostflightFit>(client.GET('/api/postflight/fits/{result_id}', { params: { path: { result_id: id } } })),
+  reportPostflight: (body: ReportRequest) =>
+    unwrap<Schemas['FitRun']>(client.POST('/api/postflight/report', { body })),
+  getPostflightReport: (id: string) =>
+    unwrap<PostflightReport>(
+      client.GET('/api/postflight/reports/{result_id}', { params: { path: { result_id: id } } }),
+    ),
   storage: () => unwrap<StoreUsage[]>(client.GET('/api/system/storage')),
   clearStore: (name: string) =>
     unwrap<void>(client.DELETE('/api/system/storage/{name}', { params: { path: { name } } })),
@@ -254,6 +326,6 @@ export const api = {
     unwrap<BoardResponse>(client.POST('/api/constraints/board', { body: { mission } })),
   /** A plain URL, for <a download>. */
   campaignCsvUrl: (id: string) => `/api/campaigns/${encodeURIComponent(id)}/samples.csv`,
-  exportMissionUrl: (id: string, format: 'yaml' | 'zip' = 'yaml') =>
+  exportMissionUrl: (id: string, format: 'yaml' | 'apg' = 'yaml') =>
     `/api/missions/${encodeURIComponent(id)}/export?format=${format}`,
 }
