@@ -3,6 +3,225 @@
 Running log of what's built against the project brief. Newest first.
 Frontend paths are relative to `apps/web/`.
 
+## 2026-11-14: Airframe vibration
+
+**Done**
+- **Mission `structure`** ([method](docs/methods/vibration.md)): the airframe as a beam.
+  Shells (tubes, couplers, motor tube, nose and transitions in pieces) with Young's and
+  shear moduli, every part's mass, joints with a flexibility in calibers, stations where
+  vibration is predicted, damping and excitation coefficients. Not part of any flight or
+  campaign cache key. The OpenRocket import fills it in (tube stiffness from the material
+  name: `TUBE_MATERIALS`); stations from mass components named like payload or avionics.
+- **`simcore.structures.beam`**: free-free finite-element beam (Timoshenko stiffness,
+  hinge springs at joints) and axial bar; the motor's case and burning propellant added at
+  any time in the burn; mass-normalised modes, rigid-body modes kept. Matches the
+  analytic free-free beam to 0.1%.
+- **`simcore.structures.vibration`**: random vibration window by window: motor roughness
+  (axial), motor side load and turbulent aerodynamic load (lateral, with a transonic rise),
+  modal superposition at each station. Band RMS, persistence, expected FFT amplitude, PSDs
+  of a flight log on the same windows, and a dB fit of the coefficients to a log.
+- **Flights** now also store `thrust_n` and `mass_kg`.
+- **`scripts/vibration_report.py`**: flies a mission bundle and draws the spectrum, band
+  RMS over time, persistence and mode shapes per station, with a flight log alongside and
+  an optional fit.
+
+**Lanius and Luke:** first bending mode 33.7-34.9 Hz against ~33 Hz measured, and
+48.1-49.5 Hz against 48-50 Hz. Fitted to Luke's log, bands agree to a median 3.5 dB;
+predicting Lanius from Luke is within 2x laterally early in the boost, 2-4x high late in
+it, and 4-7x low axially (the M1340W is a much rougher motor).
+
+**Known gaps:** not in the app yet (script only); higher modes ±15-25%; no payload-mount
+or sled modes; no shocks; motor roughness is per motor. The two Luke HR logs in data/
+(J760, K940) hold identical accelerometer samples, so only one flight was usable.
+
+## 2026-11-12: Motor finder
+
+**Done**
+- **`simcore.motors`** ([method](docs/methods/motor-finder.md)): ThrustCurve.org catalogue
+  rows as candidates; what fits a mount (nominal diameter, longest case); a **screen** that
+  flies every motor that fits as a point mass from its catalogue numbers (average thrust,
+  burn time, masses) with the rocket's own drag curves and ISA air, a few ms each; the
+  mission with a motor swapped in (estimated as an imported `.eng` is); and a **judgement**
+  of one flight on the mission's rules, every rule on that flight, launch rules left out.
+- **API:** `POST /api/motors/finder` searches by the mount's diameter, screens, fetches the
+  RASP curves of the eight nearest the target (plus any asked for) in one download, and
+  flies them as ordinary cached flights; ask again until they land. The target defaults to
+  the category's, the mount to the current motor's case (from its `.eng` header). Flown
+  motors are ranked GO first, then nearest the target.
+- **`apogee_api.thrustcurve`:** the ThrustCurve.org client, now shared with the single-motor
+  fetch. A diameter's catalogue is kept for a week (an older one is used offline); fetched
+  curves go in the asset store, and motors with no RASP file are remembered, so a search
+  made once works offline.
+- **Motor section:** a *Motor finder* panel: target apogee, mount diameter and longest
+  motor, out-of-production motors; a table with the screened and flown apogee (and miss),
+  rail exit, lowest stability, thrust to weight, verdict, points and the first failing
+  rule; **Fly** for a screened-only motor, **Use** to put a flown one in the mission (the
+  mount stays as searched). Also shown when the mission has no motor yet.
+
+**Calisto (tour), 75 mm, 757 mm mount:** 63 of 129 motors fit; screen and eight flights in
+5 s. Closest: Cesaroni M1830 at 3,016 m (-1.1%, 347 of 350 points), then M1160 and M2250;
+every one fails AURC's drogue descent, as Calisto does. The screen was within 3% of the
+flown apogee for seven of the eight (the M1780NT screened 11% high).
+
+**Known gaps:** no adapters (a 54 mm motor in a 75 mm mount means setting the mount to
+54 mm); motors are flown as generic motors from catalogue masses, so Calisto's own motor
+gives 3,230 m this way against 3,305 m from its grains; no Monte Carlo per motor.
+
+## 2026-11-11: Launch conditions on the go/no-go board
+
+**Done**
+- **Mission `launch_conditions`:** launch time, cloud cover, cloud base above the pad,
+  visibility, sustained wind and gusts, and where they came from. Not part of any
+  flight or campaign cache key.
+- **Launch rules** (`constraints.launch_rules`), a second kind of rule file
+  (`kind: launch`) chosen alongside the competition. Bundled: **`faa-101`**, US launch
+  conditions: cloud cover at most half (14 CFR 101.25(a)), visibility at least 5 mi
+  (b), apogee below the cloud base on every flight (c), daylight (d), and surface wind
+  with gusts at most 20 mph (NAR/Tripoli codes). Marked not verified.
+- **New metrics:** `cloud_cover_pct`, `visibility_m`, `surface_wind_ms` and
+  `sun_elevation_deg` are judged once on the conditions ("Launch conditions" on the
+  board); `cloud_clearance_m` (cloud base minus apogee) is per flight. A clear sky makes
+  the cloud rule not apply; an unknown condition is never a pass and says what to set.
+  Wind falls back to the flight's own surface wind, the launch time to the forecast hour.
+- **`simcore.weather.sun`:** the sun's elevation (Almanac low-precision formulae) and
+  the sunrise/sunset around a time; matches the almanac to a minute.
+- **Forecasts** now also fetch cloud cover, visibility, gusts and dew point;
+  `GET /api/weather/forecasts/{id}/conditions` reads an hour, with the cloud base from
+  the dew-point spread. Using a forecast hour in the Weather pane fills the conditions in.
+  Forecasts cached before this have none of them: fetch again.
+- **Weather pane:** a *Launch conditions* editor. **Go/no-go:** a Launch rules choice,
+  its rules (untick or override like a profile's), the launch time with the sunset or
+  sunrise around it, and team rules on any of the new metrics.
+- Docs: [constraints method](docs/methods/constraints.md#launch-conditions).
+
+**Calisto (tour), a test copy of the API:** 35% cloud at 2,900 m fails 101.25(c) on
+every flight (the highest is 938 m into it); 9.5 m/s gusts fail the wind rule; the
+rest pass. A live Open-Meteo forecast for Spaceport America read back as clear,
+53 km visibility, 6.3 m/s gusting 7.2.
+
+**Known gaps:** the archive endpoint wasn't reachable from here, so past days' condition
+fields weren't checked live (missing ones are left unknown). Times show in your time
+zone, not the site's.
+
+## 2026-11-11: Recovery failures
+
+**Done**
+- **`simcore.recovery.failures`** ([method](docs/methods/flight.md#if-recovery-fails)):
+  drogue fails (the first device to open is gone), main fails (the last), nothing opens.
+  Each is the mission with those devices removed, flown and cached like any other.
+- Parachute events now record the **speed at deployment** (what the canopy opens into).
+- **API:** `POST /api/recovery/failures` starts or reads the three flights and reports
+  the opening speed, touchdown speed and energy, drift, landing point and whether it is
+  outside the boundary. `POST /api/sim/montecarlo` takes an optional `failure`, giving
+  that failure its own campaign. The flight-starting code in the sim router is now one
+  helper, `start_flight`, shared by both.
+- **Recovery section:** an *If recovery fails* table (touchdowns over 11 m/s marked).
+- **Dispersion:** a Recovery choice (as designed / each failure) for the campaign; the map
+  and the Monte Carlo results say when they show a failure.
+
+**Calisto:** drogue fails, the main opens at 189 m/s; main fails, it lands at 17.3 m/s
+(2.4 kJ); nothing opens, 204 m/s (337 kJ). **Lanius** (still air): main opens at
+179 m/s if the drogue fails; 17.7 m/s under the drogue alone; 182 m/s ballistic.
+
+**Known gaps:** a rocket with nothing open always comes in nose-first (no tumbling);
+sections that separate aren't flown as separate bodies.
+
+## 2026-11-11: Help tour
+
+**Done**
+- **Help** in the rail's footer cluster (with Docs and Settings, a question mark in a
+  circle) and in the phone menu; **New to Apogee? Launch the tour** on the home screen,
+  in the brand fill.
+- **The tour** (`app/tour/`): 16 steps through the shell and the sections. The app is
+  dimmed and the part a step explains is cut out of the dimming (an SVG mask), with a
+  ring around it; the card sits beside it, or inside it when there's no room. Each step
+  opens its section, explains it, and links to its docs page. Skip / Previous / Next, plus
+  Esc and the arrow keys. Steps point at `data-tour` targets and follow them as sections
+  load and panes resize; a target that isn't on screen (the rail on a phone) gives a
+  centred card.
+- **The tour flies a real mission.** `POST /api/missions/tour` makes (or resets) its own
+  "Calisto (tour)" from the example bundle packaged in `simcore.examples` (a copy of
+  `missions/examples/calisto.apg`; `make example` writes both, a test keeps them equal),
+  with 4 mm G10 fins, a drogue and a main bay, AURC 2026's 10,000 ft category and a
+  60-sample campaign. Starting the tour opens it, flies it, and starts the campaign and
+  the recovery failures, so every section it visits shows real numbers; the card says what
+  the example is doing. Unsaved changes to another mission are never discarded: the tour
+  asks to save them first, or goes on without the example. Without an API it carries on
+  without it.
+- **Home:** the tour is the top-left tile of the quick actions, in the brand fill; with no
+  mission open an *Open a mission* tile keeps the grid at six.
+- Tests: every step's docs page and section exist (Vitest); Help, Next, Previous, Esc,
+  the docs link, the home tile and the no-API path (Playwright); the tour mission flies
+  and resets (API).
+- Checked end to end against a scratch API: the flight (3,305 m), the 60-flight landing
+  ellipse, the failure table, ejection charges and the board (NO-GO, drogue descent) all
+  fill in during the tour.
+- **Careful:** with `make up` running, the default e2e preview proxies to it, so the tour
+  tests create "Calisto (tour)" in that stack's data.
+- The rail's short-screen breakpoints moved up (`short` 960 px, `shorter` 820 px) so the
+  extra item still fits without scrolling down to about 740 px tall.
+
+## 2026-11-11: Ejection charges and shear pins
+
+**Done**
+- **`ejection.bays`** in the mission: inside diameter, free length, mass beyond the joint,
+  shear pins and their strength, separation pressure, backup factor. Left out of the
+  flight's and campaign's cache keys (now one shared list, `FLIGHT_IRRELEVANT` and
+  `CAMPAIGN_IRRELEVANT` in `simcore.mission.models`), so editing a charge re-flies nothing.
+- **`simcore.structures.ejection`** ([method](docs/methods/ejection.md)): black powder
+  from the ideal gas law (R = 22.16 ft·lbf/lbm·°R, T = 3307 °R) at the pins' breaking
+  pressure plus the separation pressure; backup charge; force on the bulkhead.
+- **Coast load:** every flight records the highest drag deceleration between burnout and
+  apogee; the joint's pull is the mass beyond it times that, against the pins' strength.
+  Calisto: 12.9 m/s² just after burnout.
+- **API:** `POST /api/recovery/ejection`.
+- **Recovery section:** an Ejection charges panel per bay, with nylon 2-56 and 4-40 pin
+  presets, the charge, backup, pressures, coast pull, pins' hold and hold margin.
+- Units gained charge mass (g, grains).
+
+**Known gaps:** not on the go/no-go board (no rule needs it); ambient pressure at altitude,
+separation shock and heat loss aren't modelled: ground test every charge.
+
+## 2026-11-11: Fin flutter
+
+**Done**
+- **Fin thickness and material** on every fin set (`thickness_m`, `material` with a
+  shear modulus). Optional: a set without them isn't checked.
+- **`simcore.structures`** ([method](docs/methods/flutter.md)):
+  - The NACA TN 4197 boundary, as in RocketPy and Peak of Flight #291, evaluated along
+    the trajectory with the flight's own pressure and speed of sound. Tested against
+    RocketPy's boundary on the same flight.
+  - The margin (flutter speed over flight speed) is judged at every instant of the ascent;
+    the summary records the lowest per fin set, when, where, and both speeds there.
+  - The thinnest safe fin for a margin, from the thickness^1.5 scaling (no re-flight).
+  - Typical fin materials (G10, carbon 0/90, 6061-T6, birch ply, polycarbonate, PLA,
+    PETG, ABS), with their caveats.
+- **Every flight carries it:** `fin_flutter` in the summary, a `fin_flutter_speed_ms`
+  channel, and the `min_fin_flutter_margin` metric, so campaigns record it per sample.
+- **Board:** AURC 2026's `fin_flutter` rule (Spec 4.2.1, at least 1.5). A missing margin
+  says to set the fin thickness and material. IREC only asks for it to be reported; the
+  method page says how to add a team rule.
+- **OpenRocket import** brings the fin thickness, and the material when its name is one we
+  know (the report says which value it chose, or that flutter isn't checked).
+- **API:** `GET /api/structures/fin-materials`, `POST /api/structures/flutter` (per set,
+  from the mission's own flight, with the thinnest fin for the rule's margin).
+- **Rocket section:** a Fin flutter panel per fin set: material, shear modulus,
+  thickness, the lowest margin and where it happens, and **Use the thinnest thickness**.
+- Units gained thickness (mm / in) and stiffness (GPa / ksi).
+
+**Lanius** (imported: 4.6 mm fiberglass, read as G10 at a typical 3 GPa; M1340W,
+standard atmosphere): lowest margin **1.06** at 5.0 s, 804 m up, 272 m/s against a
+flutter speed of 288 m/s. AURC asks for 1.5: about **5.8 mm** of the same material, or a
+stiffer one. The shear modulus is a typical value; a measured one could move this a lot
+(the margin goes as its square root).
+
+**Known gaps**
+- Monte Carlo doesn't perturb thickness or shear modulus yet.
+- No flutter chart: the speed and flutter-speed channels are downsampled separately, so
+  they don't share a time base for an overlay.
+- Changing the fin thickness re-flies the rocket (it is part of the flight's cache key),
+  though only the flutter numbers change.
+
 ## 2026-11-02: Theme, ballast, settings and units, 3D trajectory, compare, post-flight
 
 **Done**

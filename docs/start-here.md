@@ -27,6 +27,7 @@ units and its valid range. Then import the team's real rocket with
 4. [OpenRocket import](methods/openrocket-import.md): how a design becomes a mission.
 5. [Monte Carlo](methods/monte-carlo.md): what varies in a campaign, and how to read the landing ellipses.
 6. [Constraints](methods/constraints.md): how the go/no-go board judges a mission against the competition rules.
+7. [Airframe vibration](methods/vibration.md): the airframe's modes, and the vibration a payload feels in flight.
 
 **Day 4: learn how it is built.** [Architecture](architecture/overview.md)
 shows the services and what happens when you press Run. The

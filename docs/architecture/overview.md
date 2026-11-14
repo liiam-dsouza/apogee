@@ -30,7 +30,10 @@ All durable state is in the data directory (`/data` in Docker, `.data/` in devel
 | `weather/` | Every forecast ever fetched, as received. |
 
 A mission refers to its files by hash, so it names exactly one file forever.
-A `.mission.zip` bundle carries the mission and its files to another machine.
+An `.apg` bundle carries the mission and its files to another machine. It is a zip
+(`mission.yaml` plus `assets/<sha256>`) under its own extension, so an installed Apogee
+(Chrome or Edge: **Install app** in the address bar) shows `.apg` files with its icon and
+opens them straight into **Missions**. Older `.mission.zip` bundles still import.
 
 ## What happens when you press Run
 

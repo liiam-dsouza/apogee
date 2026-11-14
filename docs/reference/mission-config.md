@@ -14,15 +14,15 @@ Config schema version. Older configs are migrated on load.
 
 | Field | Type | Units | Allowed | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `schema_version` | `3` |  |  | `3` | Config schema version. Older configs are migrated on load. |
+| `schema_version` | `4` |  |  | `4` | Config schema version. Older configs are migrated on load. |
 
 ## `extends`
 
-Path of a base config this one overrides (not yet supported).
+Reserved for config inheritance, which is not supported: must be unset. To reuse a launch site, save it as a site preset.
 
 | Field | Type | Units | Allowed | Default | Description |
 | --- | --- | --- | --- | --- | --- |
-| `extends` | string |  |  | `null` | Path of a base config this one overrides (not yet supported). |
+| `extends` | string |  |  | `null` | Reserved for config inheritance, which is not supported: must be unset. To reuse a launch site, save it as a site preset. |
 
 ## `meta`
 
@@ -51,14 +51,7 @@ Airframe, without the motor.
 | `rocket.nose` | NoseCone |  |  | required | Nose cone. |
 | `rocket.nose.kind` | one of `von_karman`, `conical`, `tangent_ogive`, `lvhaack`, `elliptical`, `parabolic` |  |  | required | Nose cone profile. |
 | `rocket.nose.length_m` | number | m | > 0 | required | Nose cone length, tip to shoulder. |
-| `rocket.fins` | list of TrapezoidalFins |  | not empty | required | Fin sets. |
-| `rocket.fins[].count` | integer |  | ≥ 2, ≤ 8 | required | Number of fins in the set. |
-| `rocket.fins[].root_chord_m` | number | m | > 0 | required | Chord length at the body tube. |
-| `rocket.fins[].tip_chord_m` | number | m | ≥ 0 | required | Chord length at the fin tip. |
-| `rocket.fins[].span_m` | number | m | > 0 | required | Distance from body tube to fin tip. |
-| `rocket.fins[].position_m` | number | m | ≥ 0 | required | Position of the root chord's leading edge, aft of the nose tip. |
-| `rocket.fins[].sweep_length_m` | number | m |  | `null` | Axial distance from root leading edge to tip leading edge. Unset means the tip chord is centred on the root chord. |
-| `rocket.fins[].cant_angle_deg` | number | deg | ≥ -10, ≤ 10 | `0.0` | Fin cant angle. |
+| `rocket.fins` | list of TrapezoidalFins or FreeFormFins |  | not empty | required | Fin sets: trapezoidal, or free-form with any outline. |
 | `rocket.tail` | Tail |  |  | `null` | Boat-tail, if any. |
 | `rocket.tail.top_radius_m` | number | m | > 0 | required | Radius at the forward end of the tail. |
 | `rocket.tail.bottom_radius_m` | number | m | ≥ 0 | required | Radius at the aft end of the tail. |
@@ -69,12 +62,15 @@ Airframe, without the motor.
 | `rocket.rail_buttons.lower_position_m` | number | m | ≥ 0 | required | Aft rail button, aft of the nose tip. |
 | `rocket.rail_buttons.angular_position_deg` | number | deg |  | `45.0` | Angle of the buttons around the body, relative to the fins. |
 | `rocket.motor_position_m` | number | m | > 0 | required | Position of the motor's nozzle exit, aft of the nose tip. |
-| `rocket.drag` | Drag |  |  | required | Aerodynamic drag. |
-| `rocket.drag.power_off` | DragCurve |  |  | required | Drag coefficient after burnout. |
-| `rocket.drag.power_off.table` | string |  |  | `null` | CSV asset of (Mach, CD) rows. Takes precedence over constant_cd. |
+| `rocket.surface_finish` | one of `mirror`, `polished`, `sheet_metal`, `optimum`, `smooth`, `normal`, `unfinished`, `rough_unfinished`, `rough` |  |  | `"normal"` | Outside surface finish, for the drag estimate's skin friction. normal is regular paint. |
+| `rocket.drag` | Drag |  |  | `{"power_off": {"constant_cd": null, "estimate": true, "table": null}, "power_on": {"constant_cd": null, "estimate": true, "table": null}, "multiplier": 1.0}` | Aerodynamic drag. Unset: estimated from the shape. |
+| `rocket.drag.power_off` | DragCurve |  |  | `{"estimate": true, "table": null, "constant_cd": null}` | Drag coefficient after burnout. |
+| `rocket.drag.power_off.estimate` | boolean |  |  | `false` | Estimate drag from the rocket's shape (component build-up, as OpenRocket does). Depends on Mach, Reynolds number and angle of attack. |
+| `rocket.drag.power_off.table` | string |  |  | `null` | CSV asset of (Mach, CD) rows. |
 | `rocket.drag.power_off.constant_cd` | number |  | > 0 | `null` | A constant drag coefficient, if there is no table. |
-| `rocket.drag.power_on` | DragCurve |  |  | required | Drag coefficient while the motor burns. |
-| `rocket.drag.power_on.table` | string |  |  | `null` | CSV asset of (Mach, CD) rows. Takes precedence over constant_cd. |
+| `rocket.drag.power_on` | DragCurve |  |  | `{"estimate": true, "table": null, "constant_cd": null}` | Drag coefficient while the motor burns. |
+| `rocket.drag.power_on.estimate` | boolean |  |  | `false` | Estimate drag from the rocket's shape (component build-up, as OpenRocket does). Depends on Mach, Reynolds number and angle of attack. |
+| `rocket.drag.power_on.table` | string |  |  | `null` | CSV asset of (Mach, CD) rows. |
 | `rocket.drag.power_on.constant_cd` | number |  | > 0 | `null` | A constant drag coefficient, if there is no table. |
 | `rocket.drag.multiplier` | number |  | > 0, ≤ 5 | `1.0` | Scales both curves. 1 uses them as given; post-flight calibration fits this. |
 
@@ -170,6 +166,61 @@ Ballast installed and to solve for.
 | `ballast.increment_kg` | number | kg | > 0 | `0.05` | Smallest step you can add: one plate, or a measure of shot. |
 | `ballast.max_kg` | number | kg | > 0 | `2.0` | Most the bay holds. |
 
+## `ejection`
+
+Ejection charges and shear pins. A flight doesn't depend on them.
+
+| Field | Type | Units | Allowed | Default | Description |
+| --- | --- | --- | --- | --- | --- |
+| `ejection` | Ejection |  |  |  | Ejection charges and shear pins. A flight doesn't depend on them. |
+| `ejection.bays` | list of EjectionBay |  |  |  | Separation joints and their charges. |
+| `ejection.bays[].name` | string |  | not empty | required | Bay name, e.g. 'Drogue bay'. |
+| `ejection.bays[].device` | string |  |  | `null` | The recovery device it releases, by name. For display. |
+| `ejection.bays[].inner_diameter_m` | number | m | > 0, ≤ 1 | required | Inside diameter of the bay: the bulkhead the gas pushes on. |
+| `ejection.bays[].free_length_m` | number | m | > 0, ≤ 5 | required | Length of the empty space the gas fills: the bay's length less what is packed in it. |
+| `ejection.bays[].forward_mass_kg` | number | kg | > 0 | `null` | Mass the joint holds on to during coast: everything on the far side from the motor, e.g. the nose and payload for a forward bay. Unset: drag separation isn't checked. |
+| `ejection.bays[].shear_pins` | integer |  | ≥ 0, ≤ 24 | `0` | Shear pins across the joint. |
+| `ejection.bays[].pin_strength_n` | number | N | ≥ 0 | `0.0` | Shear strength of one pin. Use a tested or de-rated value. |
+| `ejection.bays[].separation_pressure_pa` | number | Pa | > 0 | `103421.0` | Pressure the charge must reach over what breaks the pins, to push the section off against friction and the packed recovery gear. 15 psi is a common start. |
+| `ejection.bays[].backup_factor` | number | 1 | ≥ 1, ≤ 3 | `1.25` | Backup charge as a multiple of the primary. |
+
+## `structure`
+
+The airframe as a beam, for vibration. A flight doesn't depend on it.
+
+| Field | Type | Units | Allowed | Default | Description |
+| --- | --- | --- | --- | --- | --- |
+| `structure` | Structure |  |  |  | The airframe as a beam, for vibration. A flight doesn't depend on it. |
+| `structure.shells` | list of AirframeShell |  |  |  | Tubes that carry bending. |
+| `structure.shells[].name` | string |  | not empty | required | Part name, for display. |
+| `structure.shells[].position_m` | number | m | ≥ 0 | required | Forward end, aft of the nose tip. |
+| `structure.shells[].length_m` | number | m | > 0 | required | Length along the axis. |
+| `structure.shells[].forward_radius_m` | number | m | ≥ 0, ≤ 1 | required | Outer radius at the forward end. |
+| `structure.shells[].aft_radius_m` | number | m | ≥ 0, ≤ 1 | required | Outer radius at the aft end. |
+| `structure.shells[].wall_thickness_m` | number | m | > 0, ≤ 0.1 | required | Wall thickness. |
+| `structure.shells[].material` | string |  |  | `""` | Material name, for display. |
+| `structure.shells[].youngs_modulus_pa` | number | Pa | > 0 | required | Young's modulus along the axis. A layup's own or a tap-tested value is best. |
+| `structure.shells[].shear_modulus_pa` | number | Pa | > 0 | required | In-plane shear modulus of the wall. Composite tubes are soft in shear, which lowers the higher bending modes. |
+| `structure.masses` | list of StructuralMass |  |  |  | Every part's mass, the tubes' own included. |
+| `structure.masses[].name` | string |  | not empty | required | Part name, for display. |
+| `structure.masses[].mass_kg` | number | kg | ≥ 0 | required | Mass. |
+| `structure.masses[].position_m` | number | m |  | required | Forward end, aft of the nose tip. |
+| `structure.masses[].length_m` | number | m | ≥ 0 | `0.0` | Length it is spread over. |
+| `structure.joints` | list of AirframeJoint |  |  |  | Where airframe sections meet. |
+| `structure.joints[].name` | string |  | not empty | required | Joint name, for display. |
+| `structure.joints[].position_m` | number | m | ≥ 0 | required | Where the sections meet, aft of the nose tip. |
+| `structure.joints[].flexibility_cal` | number | cal | ≥ 0, ≤ 20 | `1.25` | Extra bending at the joint, as the length of the tube beside it that would bend as much, in calibers. 0 is as stiff as the tube. |
+| `structure.stations` | list of VibrationStation |  |  |  | Where vibration is predicted. |
+| `structure.stations[].name` | string |  | not empty | required | Station name, e.g. 'Payload'. |
+| `structure.stations[].position_m` | number | m | ≥ 0 | required | Position, aft of the nose tip. |
+| `structure.damping_ratio` | number | 1 | > 0, ≤ 0.3 | `0.04` | Damping of every mode, as a fraction of critical. 0.02 to 0.05 for a bonded composite airframe with joints. |
+| `structure.excitation` | Excitation |  |  |  | What shakes the airframe. |
+| `structure.excitation.motor_roughness` | number | 1 | ≥ 0, ≤ 0.5 | `0.0064` | Axial thrust fluctuation, RMS over the band, as a fraction of the thrust. |
+| `structure.excitation.motor_side_load` | number | 1 | ≥ 0, ≤ 0.5 | `0.0016` | Side force at the nozzle, RMS over the band, as a fraction of the thrust. |
+| `structure.excitation.aero_load` | number | 1 | ≥ 0, ≤ 1 | `0.0031` | Random side load along the airframe, RMS per metre, over dynamic pressure times the projected width. |
+| `structure.excitation.transonic_factor` | number | 1 | ≥ 0, ≤ 20 | `2.0` | How much stronger the aerodynamic load is at Mach 1 than either side of it (shocks moving on the airframe). 0 is no transonic rise. |
+| `structure.excitation.band_hz` | number | Hz | > 0 | `2000` | Motor roughness is spread evenly from 0 to this frequency. |
+
 ## `site`
 
 Launch site and range geometry.
@@ -236,6 +287,21 @@ Atmosphere and wind.
 | `environment.atmosphere.levels[].direction_deg` | number | deg | ≥ 0, < 360 | required | Direction the wind blows from, degrees clockwise from true north. |
 | `environment.atmosphere.surface_temperature_k` | number | K | > 200, < 340 | `null` | Air temperature at the pad. Unset uses the standard atmosphere. |
 | `environment.atmosphere.surface_pressure_pa` | number | Pa | > 30000, < 110000 | `null` | Station pressure at the pad (not sea-level). Unset uses the standard atmosphere. |
+
+## `launch_conditions`
+
+Cloud, visibility, gusts and launch time, for launch-condition rules.
+
+| Field | Type | Units | Allowed | Default | Description |
+| --- | --- | --- | --- | --- | --- |
+| `launch_conditions` | LaunchConditions |  |  |  | Cloud, visibility, gusts and launch time, for launch-condition rules. |
+| `launch_conditions.launch_utc` | date-time (UTC) |  |  | `null` | Planned launch time, UTC. Unset: the forecast hour the atmosphere is from. |
+| `launch_conditions.cloud_cover_pct` | number | % | ≥ 0, ≤ 100 | `null` | Share of the sky covered by cloud. |
+| `launch_conditions.cloud_base_m` | number | m | ≥ 0, ≤ 30000 | `null` | Height of the lowest cloud base above the pad. |
+| `launch_conditions.visibility_m` | number | m | ≥ 0, ≤ 200000 | `null` | Horizontal visibility. |
+| `launch_conditions.wind_speed_ms` | number | m/s | ≥ 0, ≤ 80 | `null` | Sustained surface wind. Unset: the flight's wind at the surface. |
+| `launch_conditions.wind_gust_ms` | number | m/s | ≥ 0, ≤ 100 | `null` | Strongest surface gust. |
+| `launch_conditions.source` | string |  |  | `""` | Where the numbers came from, e.g. a forecast or the RSO's briefing. |
 
 ## `monte_carlo`
 
@@ -309,7 +375,7 @@ Competition profile and team rules the go/no-go board checks.
 | `constraints.additional` | list of Constraint |  |  |  | The team's own rules, on top of the profile's. |
 | `constraints.additional[].id` | string |  |  | required | Stable id, e.g. 'min_rail_exit_velocity'. |
 | `constraints.additional[].label` | string |  |  | `""` | What it checks, in words. |
-| `constraints.additional[].metric` | one of `apogee_agl_m`, `rail_exit_velocity_ms`, `stability_margin_at_rail_exit_cal`, `min_stability_margin_cal`, `max_stability_margin_cal`, `stability_margin_at_launch_pct_length`, `min_stability_margin_pct_length`, `max_stability_margin_pct_length`, `thrust_to_weight`, `max_mach`, `max_acceleration_ms2`, `max_dynamic_pressure_pa`, `landing_speed_ms`, `landing_kinetic_energy_j`, `main_deploy_agl_m`, `drogue_descent_rate_ms`, `descent_time_s`, `drift_m`, `flight_time_s` |  |  | required | The result metric it tests. |
+| `constraints.additional[].metric` | one of `apogee_agl_m`, `rail_exit_velocity_ms`, `stability_margin_at_rail_exit_cal`, `min_stability_margin_cal`, `max_stability_margin_cal`, `stability_margin_at_launch_pct_length`, `min_stability_margin_pct_length`, `max_stability_margin_pct_length`, `thrust_to_weight`, `max_mach`, `max_acceleration_ms2`, `max_dynamic_pressure_pa`, `landing_speed_ms`, `landing_kinetic_energy_j`, `main_deploy_agl_m`, `drogue_descent_rate_ms`, `descent_time_s`, `drift_m`, `flight_time_s`, `min_fin_flutter_margin`, `cloud_clearance_m`, `cloud_cover_pct`, `visibility_m`, `surface_wind_ms`, `sun_elevation_deg` |  |  | required | The result metric it tests. |
 | `constraints.additional[].min` | number |  |  | `null` | Lowest allowed value, in the metric's units. |
 | `constraints.additional[].max` | number |  |  | `null` | Highest allowed value, in the metric's units. |
 | `constraints.additional[].target` | number or string |  |  | `null` | Target value, or '$category.apogee_target_m' to take the profile category's target. Needs a tolerance. |
@@ -319,9 +385,10 @@ Competition profile and team rules the go/no-go board checks.
 | `constraints.additional[].evaluate_on` | one of `nominal`, `p50`, `p95`, `p99`, `worst` |  |  | `"p95"` | nominal: the single flight. p50/p95/p99: that share of Monte Carlo flights must comply. worst: every flight must. |
 | `constraints.additional[].reference` | string |  |  | `""` | The rule clause this comes from. |
 | `constraints.additional[].applies_if` | Condition |  |  | `null` | Judge only the flights this holds for. Unset: every flight. |
-| `constraints.additional[].applies_if.metric` | one of `apogee_agl_m`, `rail_exit_velocity_ms`, `stability_margin_at_rail_exit_cal`, `min_stability_margin_cal`, `max_stability_margin_cal`, `stability_margin_at_launch_pct_length`, `min_stability_margin_pct_length`, `max_stability_margin_pct_length`, `thrust_to_weight`, `max_mach`, `max_acceleration_ms2`, `max_dynamic_pressure_pa`, `landing_speed_ms`, `landing_kinetic_energy_j`, `main_deploy_agl_m`, `drogue_descent_rate_ms`, `descent_time_s`, `drift_m`, `flight_time_s` |  |  | required | The metric that decides. |
+| `constraints.additional[].applies_if.metric` | one of `apogee_agl_m`, `rail_exit_velocity_ms`, `stability_margin_at_rail_exit_cal`, `min_stability_margin_cal`, `max_stability_margin_cal`, `stability_margin_at_launch_pct_length`, `min_stability_margin_pct_length`, `max_stability_margin_pct_length`, `thrust_to_weight`, `max_mach`, `max_acceleration_ms2`, `max_dynamic_pressure_pa`, `landing_speed_ms`, `landing_kinetic_energy_j`, `main_deploy_agl_m`, `drogue_descent_rate_ms`, `descent_time_s`, `drift_m`, `flight_time_s`, `min_fin_flutter_margin`, `cloud_clearance_m`, `cloud_cover_pct`, `visibility_m`, `surface_wind_ms`, `sun_elevation_deg` |  |  | required | The metric that decides. |
 | `constraints.additional[].applies_if.min` | number |  |  | `null` | Applies when the metric is at least this. |
 | `constraints.additional[].applies_if.max` | number |  |  | `null` | Applies when the metric is below this. |
+| `constraints.launch_rules` | string |  |  | `null` | Launch-condition rules id, e.g. 'faa-101'. None: conditions not checked. |
 
 ## `solver`
 

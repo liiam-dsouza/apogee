@@ -19,6 +19,7 @@ section, which samples uncertain inputs, answers the second.
 | --- | --- |
 | Positions, metres aft of the nose tip ([ADR 0002](../adr/0002-positions-from-nose-tip.md)) | `coordinate_system_orientation="nose_to_tail"` |
 | `motor.thrust_curve` (.eng asset) | parsed by simcore, passed as points; a (0, 0) point is prepended, as RocketPy's own reader does |
+| `rocket.drag` estimate | a function of angle of attack, Mach and Reynolds number, built from the shape ([drag](drag.md)), times `drag.multiplier` |
 | `rocket.drag` tables (CD vs Mach) | parsed by simcore, passed as a **linearly** interpolated `Function`, times `drag.multiplier` |
 | `recovery.devices` | `add_parachute`, trigger noise **zero** |
 | `environment` | standard atmosphere, or a resolved profile (with any measured surface wind blended in) as `custom_atmosphere`; see [weather](weather.md) |
@@ -27,7 +28,9 @@ section, which samples uncertain inputs, answers the second.
 ## Assumptions
 
 - **Rigid body, constant aerodynamics in roll.** RocketPy's standard equations of motion.
-- **Drag depends on Mach only.** Two curves: motor burning and motor off.
+- **Two drag curves:** motor burning and motor off. Estimated, they depend on
+  Mach, Reynolds number and angle of attack ([drag](drag.md)); a table or a
+  constant depends on Mach only.
 - **Linear interpolation between drag-table points.** RocketPy builds a
   Python-list drag source with a cubic spline but a CSV path with linear
   interpolation. A spline can overshoot between measured points, so simcore
@@ -54,6 +57,28 @@ with the simulated flight within 3% under both canopies.
 
 These are sizing estimates. The single flight, with deployment lag and the
 approach to terminal speed, is the answer the go/no-go board uses.
+
+## If recovery fails
+
+**Recovery → If recovery fails** flies the mission again with part of its
+recovery taken away (`simcore.recovery.failures`), to answer what a range safety
+officer asks: how hard does it land, and where?
+
+- **Drogue fails:** the first device to open is gone. The rocket falls from
+  apogee until the next one opens, so the table shows the speed the main opens
+  into: the shock its canopy, harness and attachments must take.
+- **Main fails:** the last device is gone; it lands under the drogue.
+- **Nothing opens:** a ballistic descent.
+
+With one device, only *nothing opens* applies. Each is an ordinary mission, so
+its flight is cached and appears in **Compare**. The **Dispersion** pane can fly a
+whole campaign with a failure, to draw where the rocket would land then.
+
+With nothing open, RocketPy flies the rocket nose-first, as a stable rocket
+weathercocks into its fall: the hardest case. A rocket that tumbles falls slower,
+and one that separates lands as lighter pieces. Energy is for the whole rocket
+as one body. Touchdowns above 11 m/s (AURC's and IREC's limit under the main) are
+marked.
 
 ## The motor
 
@@ -97,8 +122,9 @@ drag interpolation method.
 
 ## Known weak spots
 
-- **Transonic and supersonic drag** is only as good as the drag table. OpenRocket's
-  estimates are shaky above about Mach 0.8.
+- **Transonic and supersonic drag.** The estimate runs 16–26% low from Mach 1
+  to 2 against the one independent curve we have ([drag](drag.md)), as
+  OpenRocket's does. A table is only as good as its source.
 - **Stability margin** is static (Barrowman-style centre of pressure); it
   says nothing about dynamic stability.
 - **Rail exit** depends on rail-button positions. Without them the rail is

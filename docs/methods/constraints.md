@@ -11,8 +11,11 @@ and the clause it comes from. Rules come from three places, marked on the board:
 - **Profile:** a competition's rules, from a file in
   `packages/simcore/src/simcore/constraints/profiles/`. A malformed profile fails
   loudly when loaded, and a rule naming an unknown metric is an error.
-- **Team override:** the mission changes a profile rule (e.g. judges it on the
-  single flight) or drops it.
+- **Launch rules:** a region's launch-condition rules, from a file of the same
+  kind with `kind: launch`, chosen separately from the competition
+  ([below](#launch-conditions)).
+- **Team override:** the mission changes a profile or launch rule (e.g. judges
+  it on the single flight) or drops it.
 - **Team rule:** the mission's own, on top.
 
 Profiles are versioned by rules year and never edited in place, so a past
@@ -61,6 +64,54 @@ never orphans the results they are judged on.
 | `main_deploy_agl_m` | Height above the pad when the last recovery device triggers. |
 | `drogue_descent_rate_ms` | Vertical speed when the last device triggers, i.e. under drogue just before the main (IREC DTEG 6.3.3's definition; AURC Spec 5.3.2 doesn't say where). |
 | `landing_kinetic_energy_j` | The whole rocket as one body: over-states it for sections that descend separately. |
+| `min_fin_flutter_margin` | Lowest flutter speed over flight speed during the ascent, of any fin set with a thickness and material ([method](flutter.md)). Missing without them. |
+| `cloud_clearance_m` | Cloud base minus apogee, per flight. Needs the cloud base. |
+| `cloud_cover_pct`, `visibility_m` | The launch conditions as entered. |
+| `surface_wind_ms` | The stronger of the sustained wind and the gusts. Without a sustained wind, the flight's own: the measured surface wind, else the profile's lowest level. |
+| `sun_elevation_deg` | The sun's centre above the horizon at the launch time, at the pad. |
+
+## Launch conditions
+
+Launch rules are judged on the mission's **launch conditions** (Weather
+section): launch time, cloud cover, cloud base above the pad, visibility,
+sustained wind and gusts. Using a forecast hour fills them in from
+Open-Meteo; the range's briefing on the day is better, so edit them then.
+They are not part of a flight or campaign's cache key: changing them never
+asks for a re-run.
+
+Cover, visibility, wind and the sun are the same for every flight, so a rule
+on one is judged once ("Launch conditions" on the board), whatever its
+`evaluate_on`. Cloud base above apogee is per flight, and judged like any
+flight metric. With a clear sky (under 1% cover) there is no cloud to fly
+into and that rule does not apply. An unknown condition is never a pass.
+
+**Forecast values.** Cloud cover is the whole sky's, from the model.
+Open-Meteo gives no cloud base, so it is estimated from the dew-point spread
+at 2 m: 125 m per kelvin, where cumulus forms. Layered cloud can sit well
+above or below that: check it on the day. The archive often lacks
+visibility, which is then left unknown.
+
+**The sun.** Its position from the Astronomical Almanac's low-precision
+formulae (about 0.01°). Sunrise and sunset are when its centre is 0.833°
+below the horizon (refraction and the disc's radius), so the daylight rule is
+"elevation at least −0.833°". The board shows the sunrise or sunset either
+side of the launch, in your time zone.
+
+**US launch conditions** (`faa-101`)
+
+| Rule | Limit | Reference |
+| --- | --- | --- |
+| Cloud cover | at most half the sky | 14 CFR 101.25(a) |
+| Visibility | at least 5 miles (8,047 m) | 14 CFR 101.25(b) |
+| Apogee below the cloud base | every flight | 14 CFR 101.25(c) |
+| Launch between sunrise and sunset | sun's centre above −0.833° | 14 CFR 101.25(d) |
+| Surface wind, gusts included | at most 20 mph (8.94 m/s) | NAR HPR and Tripoli safety codes |
+
+101.25(a) limits cover "at any altitude" the rocket reaches; the whole sky's
+cover is stricter. An FAA waiver or authorization (night launches, controlled
+airspace, an altitude ceiling) has its own terms: override or drop a rule to
+match. Not checked: distance from airports (101.25(e)), controlled airspace
+(101.25(f)), separation from people and property (101.25(g)).
 
 ## Scoring
 
@@ -83,6 +134,7 @@ reference. The board shows that warning until `verified: true` is set.
 | Rule | Limit | Reference |
 | --- | --- | --- |
 | Apogee | at most 32,000 ft (9,754 m) AGL | Spec 4.1.1 |
+| Fin flutter | flutter speed at least 1.5 × the rocket's, through the ascent | Spec 4.2.1 |
 | Thrust to weight | above 5 | Spec 4.3.1, 4.3.2 |
 | Stability during ascent | 1.5 to 6 cal | Spec 4.4.3 |
 | Rail departure velocity | above 15 m/s | Spec 4.4.5 (exemption: 4.4.6) |
@@ -105,7 +157,9 @@ reference. The board shows that warning until `verified: true` is set.
 
 **In the documents but not checked by the board:**
 
-- fin flutter (AURC Spec 4.2.1);
+- IREC's fin-flutter velocity (DTEG asks that it be reported, with no limit): the
+  Rocket section shows it; add a team rule on `min_fin_flutter_margin` to judge it;
+
 - payload mass (AURC Spec 10.3.4: 400 g in the 5,000 ft category; IREC R&R 3.1.1: 4.4 lb);
 - rail inclination, set by the range: Endeavour's procedures at AURC; 84° ± 2° at IREC, DTEG 10.1.1;
 - IREC's fin span of at least 0.8 calibers (DTEG 10.2.4);
