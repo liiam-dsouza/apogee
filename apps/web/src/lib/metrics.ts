@@ -13,7 +13,14 @@ export const METRIC_QUANTITY: Record<string, Quantity | null> = {
   max_acceleration_ms2: 'acceleration',
   max_dynamic_pressure_pa: 'dynamic_pressure',
   landing_kinetic_energy_j: 'energy',
+  cloud_clearance_m: 'altitude',
+  visibility_m: 'distance',
+  surface_wind_ms: 'speed',
+  sun_elevation_deg: 'angle',
 }
+
+/** Metrics from the launch conditions, not a flight: judged once, whatever a rule says to judge them on. */
+export const CONDITION_METRICS = new Set(['cloud_cover_pct', 'visibility_m', 'surface_wind_ms', 'sun_elevation_deg'])
 
 export const JUDGED: Record<string, string> = {
   nominal: 'Single flight',
@@ -21,6 +28,7 @@ export const JUDGED: Record<string, string> = {
   p95: '95% of flights',
   p99: '99% of flights',
   worst: 'Every flight',
+  conditions: 'Launch conditions',
 }
 
 export function useMetricFormat() {

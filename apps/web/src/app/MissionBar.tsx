@@ -1,5 +1,5 @@
 import { Redo2, Save, Undo2 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ProblemNotice } from '@/components/ProblemNotice'
 import { Button } from '@/components/ui/button'
 import { Tooltip } from '@/components/ui/tooltip'
@@ -46,10 +46,8 @@ export function MissionBar() {
   if (name === undefined) return null
 
   return (
-    <div className="flex min-w-0 items-center gap-1">
-      <span className="mr-2 truncate text-sm text-muted-foreground max-lg:hidden" title={name}>
-        {name}
-      </span>
+    <div data-tour="mission-bar" className="flex min-w-0 items-center gap-1">
+      <MissionName name={name} />
       {restoredFrom && <RestoredNotice savedAt={restoredFrom} />}
       <Tooltip content={`Undo (${mod}Z)`}>
         <Button variant="ghost" size="icon" className="size-8" onClick={() => undo()} disabled={!canUndo} aria-label="Undo">
@@ -80,6 +78,50 @@ export function MissionBar() {
         </Button>
       </Tooltip>
     </div>
+  )
+}
+
+/** The mission name, edited in place. A rename is an ordinary draft edit: it lands on save, and undo reverts it. */
+function MissionName({ name }: { name: string }) {
+  const edit = useMissionStore((s) => s.edit)
+  const [value, setValue] = useState<string | null>(null)
+  const cancelled = useRef(false)
+  const shown = value ?? name
+
+  const commit = () => {
+    const next = cancelled.current ? undefined : value?.trim()
+    cancelled.current = false
+    setValue(null)
+    // A mission must have a name, so an emptied field falls back to the old one.
+    if (next && next !== name) {
+      edit((d) => {
+        d.meta.name = next
+      })
+    }
+  }
+
+  return (
+    <input
+      aria-label="Mission name"
+      title={shown}
+      value={shown}
+      size={Math.max(shown.length, 4)}
+      spellCheck={false}
+      onFocus={(e) => {
+        setValue(name)
+        e.currentTarget.select()
+      }}
+      onChange={(e) => setValue(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') e.currentTarget.blur()
+        else if (e.key === 'Escape') {
+          cancelled.current = true
+          e.currentTarget.blur()
+        }
+      }}
+      className="mr-2 max-w-64 min-w-0 truncate rounded-md border border-transparent bg-transparent px-1.5 py-0.5 text-sm text-muted-foreground field-sizing-content outline-none hover:border-border focus:border-ring focus:text-foreground max-lg:hidden"
+    />
   )
 }
 

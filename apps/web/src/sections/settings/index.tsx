@@ -85,6 +85,9 @@ const UNIT_ROWS: { q: Quantity; label: string; example: string }[] = [
   { q: 'pressure', label: 'Air pressure', example: 'weather profiles' },
   { q: 'temperature', label: 'Temperature', example: 'weather profiles' },
   { q: 'density', label: 'Density', example: 'propellant' },
+  { q: 'thickness', label: 'Thickness', example: 'fins' },
+  { q: 'modulus', label: 'Stiffness', example: 'fin shear modulus' },
+  { q: 'charge', label: 'Charge mass', example: 'black powder' },
 ]
 
 function Display() {

@@ -3,14 +3,16 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { useQuery } from '@tanstack/react-query'
 import { Pause, Play, RotateCcw } from 'lucide-react'
 import { useEffect, useMemo, useRef, type ComponentRef, type RefObject } from 'react'
-import { Vector3 } from 'three'
+import { DoubleSide, ExtrudeGeometry, LatheGeometry, Quaternion, Shape, Vector2, Vector3 } from 'three'
 import { Link } from 'react-router'
 import { create } from 'zustand'
 import { Explainer } from '@/components/Explainer'
 import { ProblemNotice } from '@/components/ProblemNotice'
 import { RequireMission } from '@/components/RequireMission'
+import { noseRadius } from '@/components/RocketSideView'
 import { Button } from '@/components/ui/button'
-import { api, type FlightPath } from '@/lib/api'
+import { api, type FlightPath, type RecoveryDevice, type Rocket } from '@/lib/api'
+import { finOutline, finSpan, rocketLength } from '@/lib/rocket'
 import { formatSI } from '@/lib/units'
 import { cn } from '@/lib/utils'
 import { useMissionStore } from '@/stores/mission'
@@ -92,6 +94,27 @@ function toScene(east: number, north: number, altitude: number): [number, number
   return [east, altitude, -north]
 }
 
+interface DeployEvent {
+  name: string
+  triggered_s: number
+}
+
+/** Canopy Cd on projected area, to turn a device's CdS into a size to draw. Typical of round canopies. */
+const CANOPY_CD = 1.5
+
+/**
+ * Each device that deploys in this flight, with how open it is at time t: 0 before its trigger fires, rising
+ * to 1 over the device's lag (or a short pop when it has none). In deployment order.
+ */
+function canopiesAt(events: DeployEvent[], devices: RecoveryDevice[], t: number) {
+  return events.flatMap((e) => {
+    const device = devices.find((d) => d.name === e.name)
+    if (!device) return []
+    const open = Math.max(0, Math.min(1, (t - e.triggered_s) / Math.max(device.lag_s ?? 0, 0.3)))
+    return [{ name: e.name, diameter: Math.sqrt((4 * device.cd_s_m2) / (Math.PI * CANOPY_CD)), open }]
+  })
+}
+
 function token(name: string): string {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim()
 }
@@ -124,12 +147,20 @@ function TrajectoryCentre() {
   return (
     <div className="relative h-full">
       <ProblemNotice error={lookup.error ?? path.error} />
-      {path.data && <Scene path={path.data} events={result.data?.summary.parachute_events ?? []} />}
+      {path.data && (
+        <Scene
+          path={path.data}
+          rocket={draft.rocket}
+          devices={draft.recovery?.devices ?? []}
+          events={result.data?.summary.parachute_events ?? []}
+        />
+      )}
       <div className="pointer-events-none absolute right-4 bottom-4 left-4 max-w-md">
         <div className="pointer-events-auto">
           <Explainer methodsHref="/docs/methods/flight">
             The single flight's path, east and north of the pad and height above it, to scale. The dashed line on the
-            ground is its track. Drag to orbit, scroll to zoom, right-drag to pan.
+            ground is its track. The rocket and its parachutes are enlarged together so they read at this scale, and
+            each canopy opens when its trigger fires. Drag to orbit, scroll to zoom, right-drag to pan.
           </Explainer>
         </div>
       </div>
@@ -154,7 +185,17 @@ interface SceneLabel {
   muted?: boolean
 }
 
-function Scene({ path, events }: { path: FlightPath; events: { name: string; triggered_s: number }[] }) {
+function Scene({
+  path,
+  rocket,
+  devices,
+  events,
+}: {
+  path: FlightPath
+  rocket: Rocket
+  devices: RecoveryDevice[]
+  events: DeployEvent[]
+}) {
   const theme = usePrefs((s) => s.theme)
   // Canvas colours come from the theme tokens; re-read them when the theme changes.
   const colors = useMemo(
@@ -209,9 +250,18 @@ function Scene({ path, events }: { path: FlightPath; events: { name: string; tri
         <gridHelper args={[gridSize, gridSize / 250, colors.grid, colors.grid]} />
         <Line points={ground} color={colors.ink} lineWidth={1} dashed dashSize={span / 80} gapSize={span / 120} />
         <Line points={[apogee.p, [apogee.p[0], 0, apogee.p[2]]]} color={colors.ink} lineWidth={1} transparent opacity={0.6} />
-        <Line points={points} color={colors.line} lineWidth={2.5} />
+        <Line points={points} color={colors.line} lineWidth={1} />
         <Line points={[[0, 0.5, 0], [0, 0.5, -gridSize / 2]]} color={colors.ink} lineWidth={1} transparent opacity={0.5} />
-        <Marker path={path} color={colors.fg} />
+        <hemisphereLight args={['#ffffff', '#808080', 2]} />
+        <directionalLight position={[span, span * 2, span]} intensity={1.5} />
+        <Marker
+          path={path}
+          rocket={rocket}
+          length={span / 10}
+          devices={devices}
+          events={events}
+          colors={{ canopy: colors.line, lines: colors.ink }}
+        />
         <CameraRig span={span} height={extent.height} />
         <LabelProjector labels={labels} elements={labelEls} />
       </Canvas>
@@ -268,16 +318,129 @@ function LabelProjector({
   return null
 }
 
-/** The rocket's position at the playback time. */
-function Marker({ path, color }: { path: FlightPath; color: string }) {
+/**
+ * The rocket at the playback time: the mission's airframe in true proportion, enlarged
+ * so it reads at the trajectory's scale, with any open parachutes enlarged by the same factor.
+ */
+function Marker({
+  path,
+  rocket,
+  length,
+  devices,
+  events,
+  colors,
+}: {
+  path: FlightPath
+  rocket: Rocket
+  length: number
+  devices: RecoveryDevice[]
+  events: DeployEvent[]
+  colors: { canopy: string; lines: string }
+}) {
   const t = useView((s) => s.t)
+  const model = useMemo(() => rocketGeometry(rocket), [rocket])
+  const apogeeTime = useMemo(() => path.t[path.altitude_agl_m.indexOf(Math.max(...path.altitude_agl_m))], [path])
+  const scale = length / model.length
   const s = sampleAt(path, t)
+  const axis = useMemo(() => {
+    // Nose along the direction of travel going up; lying level under the parachute coming down.
+    const dt = 0.25
+    const a = sampleAt(path, Math.max(0, t - dt))
+    const b = sampleAt(path, t + dt)
+    const d = new Vector3(...toScene(b.east - a.east, b.north - a.north, b.altitude - a.altitude))
+    if (t > apogeeTime) d.y = 0
+    if (d.lengthSq() < 1e-6) d.set(0, 1, 0)
+    return d.normalize()
+  }, [path, t, apogeeTime])
+  const quaternion = useMemo(() => new Quaternion().setFromUnitVectors(new Vector3(0, 1, 0), axis), [axis])
+  // The enlarged model is centred on the flight path, so near the ground it would sink into it. Lift it by
+  // however far its lowest point (an end, or a fin tip) reaches below its centre at this attitude.
+  const reach = (length / 2) * Math.abs(axis.y) + model.radius * scale * Math.sqrt(1 - axis.y ** 2)
+  const [x, , z] = toScene(s.east, s.north, s.altitude)
+  const position: [number, number, number] = [x, Math.max(s.altitude, reach), z]
+
+  const canopies = canopiesAt(events, devices, t)
+  const widest = Math.max(0, ...canopies.map((c) => c.diameter)) * scale
   return (
-    <mesh position={toScene(s.east, s.north, s.altitude)}>
-      <sphereGeometry args={[Math.max(...path.altitude_agl_m) / 120, 16, 16]} />
-      <meshBasicMaterial color={color} />
-    </mesh>
+    <group position={position}>
+      <group quaternion={quaternion}>
+        <group scale={scale}>
+          <mesh geometry={model.airframe}>
+            <meshStandardMaterial color="#ffffff" emissive="#ffffff" emissiveIntensity={0.35} roughness={0.5} />
+          </mesh>
+          {model.fins.map((g, i) => (
+            <mesh key={i} geometry={g}>
+              <meshStandardMaterial color="#ffffff" emissive="#ffffff" emissiveIntensity={0.35} roughness={0.5} />
+            </mesh>
+          ))}
+        </group>
+      </group>
+      {canopies.map((c, i) => {
+        if (c.open === 0) return null
+        // Side by side, in deployment order, so a main never hides its drogue.
+        const r = (c.diameter * scale) / 2
+        const at = new Vector3((i - (canopies.length - 1) / 2) * widest * 1.2, length * 0.9 + widest, 0)
+        const rim = [
+          [r, 0, 0],
+          [-r, 0, 0],
+          [0, 0, r],
+          [0, 0, -r],
+        ].map(([rx, , rz]) => [at.x + rx * c.open, at.y, at.z + rz * c.open] as [number, number, number])
+        return (
+          <group key={c.name}>
+            <mesh position={at} scale={[c.open, Math.max(c.open, 0.05), c.open]}>
+              <sphereGeometry args={[r, 32, 12, 0, Math.PI * 2, 0, Math.PI / 2]} />
+              <meshStandardMaterial color={colors.canopy} side={DoubleSide} roughness={0.8} />
+            </mesh>
+            {rim.map((p, k) => (
+              <Line key={k} points={[p, [0, 0, 0]]} color={colors.lines} lineWidth={1} transparent opacity={0.7} />
+            ))}
+          </group>
+        )
+      })}
+    </group>
   )
+}
+
+/** The airframe in metres, nose tip at the origin pointing +y, centred on its length. */
+function rocketGeometry(rocket: Rocket) {
+  const R = rocket.radius_m
+  const L = rocketLength(rocket)
+  // Positions along the axis are metres aft of the tip; the model has the tip up.
+  const y = (x: number) => L / 2 - x
+  const n = 24
+  const profile = Array.from({ length: n + 1 }, (_, i) => {
+    const x = (rocket.nose.length_m * i) / n
+    return new Vector2(noseRadius(rocket.nose.kind, x, rocket.nose.length_m, R), y(x))
+  })
+  if (rocket.tail) {
+    profile.push(new Vector2(R, y(rocket.tail.position_m)))
+    profile.push(new Vector2(rocket.tail.bottom_radius_m, y(rocket.tail.position_m + rocket.tail.length_m)))
+    profile.push(new Vector2(0, y(rocket.tail.position_m + rocket.tail.length_m)))
+  } else {
+    profile.push(new Vector2(R, y(L)), new Vector2(0, y(L)))
+  }
+  // Lathe faces point outward only when the profile runs bottom to top.
+  const airframe = new LatheGeometry(profile.reverse(), 32)
+
+  const fins = rocket.fins.flatMap((f) => {
+    // Fin in its own plane: x outward from the body tube, y along the axis.
+    const shape = new Shape()
+    finOutline(f).forEach(([fx, fy], i) =>
+      i === 0 ? shape.moveTo(R + fy, y(f.position_m + fx)) : shape.lineTo(R + fy, y(f.position_m + fx)),
+    )
+    shape.closePath()
+    const thickness = Math.max(R * 0.08, 0.002)
+    return Array.from({ length: f.count }, (_, k) => {
+      const g = new ExtrudeGeometry(shape, { depth: thickness, bevelEnabled: false })
+      g.translate(0, 0, -thickness / 2)
+      g.rotateY((2 * Math.PI * k) / f.count)
+      return g
+    })
+  })
+  // Furthest any part reaches from the axis: the body, or a fin tip.
+  const radius = R + Math.max(0, ...rocket.fins.map(finSpan))
+  return { airframe, fins, length: L, radius }
 }
 
 /** Orbit controls, plus the camera presets the pane asks for. */
@@ -309,7 +472,8 @@ export function Pane() {
 }
 
 function PlaybackPane() {
-  const { path } = useFlight()
+  const { path, result } = useFlight()
+  const devices = useMissionStore((s) => s.draft?.recovery?.devices ?? [])
   const { t, setT, playing, setPlaying, preset, setPreset } = useView()
   const units = usePrefs((s) => s.display)
   const p = path.data
@@ -338,6 +502,7 @@ function PlaybackPane() {
 
   if (!p) return <p className="p-4 text-sm text-muted-foreground">Run the single flight to see it in 3D.</p>
   const s = sampleAt(p, t)
+  const canopies = canopiesAt(result.data?.summary.parachute_events ?? [], devices, t).filter((c) => c.open > 0)
   return (
     <div className="space-y-6 p-4">
       <section className="space-y-3">
@@ -376,6 +541,14 @@ function PlaybackPane() {
           <Readout label="Altitude" value={formatSI(s.altitude, 'altitude', units)} />
           <Readout label="Speed" value={formatSI(s.speed, 'speed', units, 0)} />
           <Readout label="From the pad" value={formatSI(Math.hypot(s.east, s.north), 'distance', units)} />
+          <Readout
+            label="Parachutes"
+            value={
+              canopies.length === 0
+                ? 'None open'
+                : canopies.map((c) => (c.open < 1 ? `${c.name} opening` : c.name)).join(', ')
+            }
+          />
         </dl>
         <p className="text-xs text-muted-foreground">Plays in real time to apogee, then 8× for the descent.</p>
       </section>

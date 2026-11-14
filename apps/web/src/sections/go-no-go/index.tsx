@@ -1,14 +1,14 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { CircleCheck, CircleHelp, CircleX, Plus, ShieldAlert, Trash2 } from 'lucide-react'
 import { RuleTable } from '@/components/RuleTable'
-import { JUDGED, METRIC_QUANTITY, useMetricFormat } from '@/lib/metrics'
+import { CONDITION_METRICS, JUDGED, METRIC_QUANTITY, useMetricFormat } from '@/lib/metrics'
 import { useState, type ReactNode } from 'react'
 import { Link } from 'react-router'
 import { Explainer } from '@/components/Explainer'
 import { ProblemNotice } from '@/components/ProblemNotice'
 import { RequireMission } from '@/components/RequireMission'
 import { Button } from '@/components/ui/button'
-import { api, type ConstraintSettings } from '@/lib/api'
+import { api, type ConstraintSettings, type LaunchSummary, type Profile } from '@/lib/api'
 import { useCampaign } from '@/lib/campaign'
 import { fromSI, toSI, unitFor } from '@/lib/units'
 import { cn } from '@/lib/utils'
@@ -38,6 +38,12 @@ const METRIC_LABEL: Record<string, string> = {
   descent_time_s: 'Descent time',
   drift_m: 'Drift from the pad',
   flight_time_s: 'Flight time',
+  min_fin_flutter_margin: 'Fin flutter margin',
+  cloud_clearance_m: 'Cloud base above apogee',
+  cloud_cover_pct: 'Cloud cover (%)',
+  visibility_m: 'Visibility',
+  surface_wind_ms: 'Surface wind, gusts included',
+  sun_elevation_deg: "Sun's elevation at launch",
 }
 
 /** Where a new team rule starts (SI), to be edited: typical competition limits. */
@@ -61,6 +67,12 @@ const STARTING_LIMIT: Record<string, { min?: number; max?: number }> = {
   descent_time_s: { max: 180 },
   drift_m: { max: 1500 },
   flight_time_s: { max: 300 },
+  min_fin_flutter_margin: { min: 1.5 },
+  cloud_clearance_m: { min: 0 },
+  cloud_cover_pct: { max: 50 },
+  visibility_m: { min: 8046.72 },
+  surface_wind_ms: { max: 6.7056 },
+  sun_elevation_deg: { min: -0.833 },
 }
 
 function useBoard() {
@@ -99,7 +111,7 @@ function BoardCentre() {
   const settings = useMissionStore((s) => s.draft?.constraints)
   const formatMetric = useMetricFormat()
   const data = board.data
-  const noRules = !settings?.profile && !(settings?.additional ?? []).length
+  const noRules = !settings?.profile && !settings?.launch_rules && !(settings?.additional ?? []).length
 
   if (noRules) {
     return (
@@ -128,15 +140,20 @@ function BoardCentre() {
             <Basis data={data} />
           </header>
 
-          {data.board.profile && !data.board.profile.verified && (
-            <p className="flex items-start gap-2 rounded-md border border-caution/50 bg-caution/10 p-3 text-sm">
-              <ShieldAlert className="mt-0.5 size-4 shrink-0 text-caution" aria-hidden />
-              <span>
-                <strong>{data.board.profile.name}</strong> was transcribed from the rules documents but has not been
-                checked by the team. Check each rule against its reference before relying on this board.
-              </span>
-            </p>
+          {[data.board.profile, data.board.launch_rules].map(
+            (p) =>
+              p &&
+              !p.verified && (
+                <p key={p.id} className="flex items-start gap-2 rounded-md border border-caution/50 bg-caution/10 p-3 text-sm">
+                  <ShieldAlert className="mt-0.5 size-4 shrink-0 text-caution" aria-hidden />
+                  <span>
+                    <strong>{p.name}</strong> was transcribed from the rules documents but has not been checked by the
+                    team. Check each rule against its reference before relying on this board.
+                  </span>
+                </p>
+              ),
           )}
+          {data.board.launch_rules && <LaunchCard launch={data.launch} />}
 
           {data.board.score && <ScoreCard score={data.board.score} formatMetric={formatMetric} />}
 
@@ -179,6 +196,42 @@ function Basis({ data }: { data: NonNullable<ReturnType<typeof useBoard>['data']
         )}
       </dd>
     </dl>
+  )
+}
+
+/** How long between launch and the sun crossing the horizon, e.g. "3 h 20 min". */
+function span(fromIso: string, toIso: string): string {
+  const min = Math.round(Math.abs(new Date(toIso).getTime() - new Date(fromIso).getTime()) / 60_000)
+  return min >= 60 ? `${Math.floor(min / 60)} h ${min % 60} min` : `${min} min`
+}
+
+const clock = (iso: string) => new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+
+/** When the board says the launch is, and how it sits against the daylight. */
+function LaunchCard({ launch }: { launch: LaunchSummary }) {
+  const { launch_utc: at, previous_crossing_utc: before, next_crossing_utc: after } = launch
+  const up = (launch.values.sun_elevation_deg ?? 0) > -0.833
+  let daylight = ''
+  if (at && after) daylight = up ? `Sunset ${clock(after)}, ${span(at, after)} after launch.` : `Sunrise ${clock(after)}.`
+  if (at && before && !up) daylight = `${span(before, at)} after sunset. ${daylight}`
+  if (at && !before && !after) daylight = up ? 'The sun stays up all day.' : 'The sun stays down all day.'
+  return (
+    <section aria-label="Launch" className="flex flex-wrap items-baseline gap-x-6 gap-y-1 text-sm">
+      <span>
+        <span className="text-muted-foreground">Launch </span>
+        {at ? (
+          new Date(at).toLocaleString(undefined, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+        ) : (
+          <Link to="/weather" className="text-primary underline-offset-4 hover:underline">
+            Set the launch time
+          </Link>
+        )}
+      </span>
+      {daylight && <span className="text-muted-foreground">{daylight}</span>}
+      <Link to="/weather" className="text-primary underline-offset-4 hover:underline">
+        Launch conditions
+      </Link>
+    </section>
   )
 }
 
@@ -237,7 +290,10 @@ function RulesPane() {
   const settings = useMissionStore((s) => s.draft?.constraints) ?? {}
   const editConstraints = useEditConstraints()
   const profiles = useQuery({ queryKey: ['profiles'], queryFn: api.listProfiles, staleTime: Infinity })
-  const profile = profiles.data?.find((p) => p.id === settings.profile)
+  const competitions = profiles.data?.filter((p) => p.kind !== 'launch')
+  const launchSets = profiles.data?.filter((p) => p.kind === 'launch')
+  const profile = competitions?.find((p) => p.id === settings.profile)
+  const launch = launchSets?.find((p) => p.id === settings.launch_rules)
 
   return (
     <div className="space-y-6 p-4">
@@ -249,15 +305,17 @@ function RulesPane() {
             value={settings.profile ?? ''}
             onChange={(e) =>
               editConstraints((c) => {
+                // Overrides of the launch rules stay; the old profile's go with it.
+                const kept = new Set(launch?.constraints.map((r) => r.id))
                 c.profile = e.target.value || null
                 c.category = null
-                c.overrides = {}
+                c.overrides = Object.fromEntries(Object.entries(c.overrides ?? {}).filter(([id]) => kept.has(id)))
               })
             }
             className="h-9 w-full rounded-md border border-border bg-background px-2"
           >
             <option value="">None (team rules only)</option>
-            {profiles.data?.map((p) => (
+            {competitions?.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name}
               </option>
@@ -290,53 +348,105 @@ function RulesPane() {
         <ProblemNotice error={profiles.error} />
       </section>
 
-      {profile && (
-        <section className="space-y-2">
-          <h2 className="text-sm font-semibold">Profile rules</h2>
-          <p className="text-xs text-muted-foreground">Untick a rule to drop it for this mission, or judge it differently.</p>
-          <ul className="space-y-2">
-            {profile.constraints.map((rule) => {
-              const override = settings.overrides?.[rule.id]
-              const on = !override?.disabled
-              return (
-                <li key={rule.id} className="space-y-1">
-                  <label className="flex items-start gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      className="mt-1"
-                      checked={on}
-                      onChange={(e) =>
-                        editConstraints((c) => {
-                          const o = { ...(c.overrides?.[rule.id] ?? {}), disabled: !e.target.checked }
-                          c.overrides = { ...c.overrides, [rule.id]: o }
-                        })
-                      }
-                    />
-                    <span className={cn(!on && 'text-muted-foreground line-through')}>{rule.label || rule.id}</span>
-                  </label>
-                  {on && (
-                    <JudgedOnSelect
-                      label={`Judge ${rule.label || rule.id} on`}
-                      value={override?.evaluate_on ?? rule.evaluate_on ?? 'p95'}
-                      onChange={(v) =>
-                        editConstraints((c) => {
-                          c.overrides = {
-                            ...c.overrides,
-                            [rule.id]: { disabled: false, ...c.overrides?.[rule.id], evaluate_on: v },
-                          }
-                        })
-                      }
-                    />
-                  )}
-                </li>
-              )
-            })}
-          </ul>
-        </section>
-      )}
+      {profile && <ProfileRules title="Profile rules" profile={profile} settings={settings} />}
+
+      <section className="space-y-3">
+        <h2 className="text-sm font-semibold">Launch conditions</h2>
+        <label className="block space-y-1 text-sm">
+          <span>Launch rules</span>
+          <select
+            value={settings.launch_rules ?? ''}
+            onChange={(e) =>
+              editConstraints((c) => {
+                const dropped = new Set(launch?.constraints.map((r) => r.id))
+                c.launch_rules = e.target.value || null
+                c.overrides = Object.fromEntries(Object.entries(c.overrides ?? {}).filter(([id]) => !dropped.has(id)))
+              })
+            }
+            className="h-9 w-full rounded-md border border-border bg-background px-2"
+          >
+            <option value="">None</option>
+            {launchSets?.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        {launch ? (
+          <>
+            <p className="text-xs text-muted-foreground">
+              {launch.rules_version}. {launch.verified ? 'Checked against the rules.' : 'Not yet checked by the team.'}
+            </p>
+            {launch.notes && <p className="text-xs text-muted-foreground">{launch.notes}</p>}
+            <p className="text-xs text-muted-foreground">
+              Judged on the{' '}
+              <Link to="/weather" className="text-primary underline-offset-4 hover:underline">
+                launch conditions
+              </Link>{' '}
+              in the Weather section.
+            </p>
+          </>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            Cloud, visibility, wind and daylight at launch, as the range's regulations limit them.
+          </p>
+        )}
+      </section>
+
+      {launch && <ProfileRules title="Launch rules" profile={launch} settings={settings} />}
 
       <TeamRules settings={settings} />
     </div>
+  )
+}
+
+/** A rule set's rules: untick to drop one for this mission, or change what it's judged on. */
+function ProfileRules({ title, profile, settings }: { title: string; profile: Profile; settings: ConstraintSettings }) {
+  const editConstraints = useEditConstraints()
+  return (
+    <section className="space-y-2">
+      <h2 className="text-sm font-semibold">{title}</h2>
+      <p className="text-xs text-muted-foreground">Untick a rule to drop it for this mission, or judge it differently.</p>
+      <ul className="space-y-2">
+        {profile.constraints.map((rule) => {
+          const override = settings.overrides?.[rule.id]
+          const on = !override?.disabled
+          return (
+            <li key={rule.id} className="space-y-1">
+              <label className="flex items-start gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="mt-1"
+                  checked={on}
+                  onChange={(e) =>
+                    editConstraints((c) => {
+                      const o = { ...(c.overrides?.[rule.id] ?? {}), disabled: !e.target.checked }
+                      c.overrides = { ...c.overrides, [rule.id]: o }
+                    })
+                  }
+                />
+                <span className={cn(!on && 'text-muted-foreground line-through')}>{rule.label || rule.id}</span>
+              </label>
+              {on && !CONDITION_METRICS.has(rule.metric) && (
+                <JudgedOnSelect
+                  label={`Judge ${rule.label || rule.id} on`}
+                  value={override?.evaluate_on ?? rule.evaluate_on ?? 'p95'}
+                  onChange={(v) =>
+                    editConstraints((c) => {
+                      c.overrides = {
+                        ...c.overrides,
+                        [rule.id]: { disabled: false, ...c.overrides?.[rule.id], evaluate_on: v },
+                      }
+                    })
+                  }
+                />
+              )}
+            </li>
+          )
+        })}
+      </ul>
+    </section>
   )
 }
 
@@ -356,7 +466,9 @@ function JudgedOnSelect({
       onChange={(e) => onChange(e.target.value as Constraint['evaluate_on'])}
       className="ml-6 h-8 rounded-md border border-border bg-background px-2 text-sm"
     >
-      {Object.entries(JUDGED).map(([k, v]) => (
+      {Object.entries(JUDGED)
+        .filter(([k]) => k !== 'conditions')
+        .map(([k, v]) => (
         <option key={k} value={k}>
           {v}
         </option>
@@ -405,11 +517,15 @@ function TeamRules({ settings }: { settings: ConstraintSettings }) {
               <LimitField label={`At least${unit ? ` (${unit})` : ''}`} value={shown(rule.min)} onChange={(t) => setLimit(i, 'min', t)} />
               <LimitField label={`At most${unit ? ` (${unit})` : ''}`} value={shown(rule.max)} onChange={(t) => setLimit(i, 'max', t)} />
             </div>
-            <JudgedOnSelect
-              label={`Judge team rule ${i + 1} on`}
-              value={rule.evaluate_on ?? 'p95'}
-              onChange={(v) => editConstraints((c) => void (c.additional![i].evaluate_on = v))}
-            />
+            {CONDITION_METRICS.has(rule.metric) ? (
+              <p className="text-xs text-muted-foreground">Judged on the launch conditions.</p>
+            ) : (
+              <JudgedOnSelect
+                label={`Judge team rule ${i + 1} on`}
+                value={rule.evaluate_on ?? 'p95'}
+                onChange={(v) => editConstraints((c) => void (c.additional![i].evaluate_on = v))}
+              />
+            )}
           </div>
         )
       })}

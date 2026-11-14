@@ -11,6 +11,8 @@ import { useIssuesAt } from '@/lib/mission/validation'
 import { formatSI, toSI, unitFor } from '@/lib/units'
 import { useMissionStore } from '@/stores/mission'
 import { usePrefs } from '@/stores/prefs'
+import { EjectionCharges } from './EjectionCharges'
+import { Failures } from './Failures'
 
 type Device = RecoveryDevice
 
@@ -150,6 +152,8 @@ function RecoveryCentre() {
           simulation. These are sizing estimates: the single flight, with deployment lag, is the answer.
         </Explainer>
       </div>
+      <Failures />
+      <EjectionCharges />
     </div>
   )
 }

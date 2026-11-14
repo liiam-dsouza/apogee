@@ -1,6 +1,122 @@
 {
   "components": {
     "schemas": {
+      "AirframeJoint": {
+        "additionalProperties": false,
+        "description": "Where two airframe sections meet: a coupler, a nose shoulder, a switch band.",
+        "properties": {
+          "flexibility_cal": {
+            "default": 1.25,
+            "description": "Extra bending at the joint, as the length of the tube beside it that would bend as much, in calibers. 0 is as stiff as the tube.",
+            "maximum": 20.0,
+            "minimum": 0.0,
+            "title": "Flexibility Cal",
+            "type": "number",
+            "units": "cal"
+          },
+          "name": {
+            "description": "Joint name, for display.",
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "position_m": {
+            "description": "Where the sections meet, aft of the nose tip.",
+            "minimum": 0.0,
+            "title": "Position M",
+            "type": "number",
+            "units": "m"
+          }
+        },
+        "required": [
+          "name",
+          "position_m"
+        ],
+        "title": "AirframeJoint",
+        "type": "object"
+      },
+      "AirframeShell": {
+        "additionalProperties": false,
+        "description": "A length of tube that carries bending: body tube, coupler, motor tube, piece of nose.\n\nShells that overlap (a coupler inside two body tubes) add their stiffness.\nThe outer radius goes linearly from the forward end to the aft end.",
+        "properties": {
+          "aft_radius_m": {
+            "description": "Outer radius at the aft end.",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Aft Radius M",
+            "type": "number",
+            "units": "m"
+          },
+          "forward_radius_m": {
+            "description": "Outer radius at the forward end.",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Forward Radius M",
+            "type": "number",
+            "units": "m"
+          },
+          "length_m": {
+            "description": "Length along the axis.",
+            "exclusiveMinimum": 0.0,
+            "title": "Length M",
+            "type": "number",
+            "units": "m"
+          },
+          "material": {
+            "default": "",
+            "description": "Material name, for display.",
+            "title": "Material",
+            "type": "string"
+          },
+          "name": {
+            "description": "Part name, for display.",
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "position_m": {
+            "description": "Forward end, aft of the nose tip.",
+            "minimum": 0.0,
+            "title": "Position M",
+            "type": "number",
+            "units": "m"
+          },
+          "shear_modulus_pa": {
+            "description": "In-plane shear modulus of the wall. Composite tubes are soft in shear, which lowers the higher bending modes.",
+            "exclusiveMinimum": 0.0,
+            "title": "Shear Modulus Pa",
+            "type": "number",
+            "units": "Pa"
+          },
+          "wall_thickness_m": {
+            "description": "Wall thickness.",
+            "exclusiveMinimum": 0.0,
+            "maximum": 0.1,
+            "title": "Wall Thickness M",
+            "type": "number",
+            "units": "m"
+          },
+          "youngs_modulus_pa": {
+            "description": "Young's modulus along the axis. A layup's own or a tap-tested value is best.",
+            "exclusiveMinimum": 0.0,
+            "title": "Youngs Modulus Pa",
+            "type": "number",
+            "units": "Pa"
+          }
+        },
+        "required": [
+          "name",
+          "position_m",
+          "length_m",
+          "forward_radius_m",
+          "aft_radius_m",
+          "wall_thickness_m",
+          "youngs_modulus_pa",
+          "shear_modulus_pa"
+        ],
+        "title": "AirframeShell",
+        "type": "object"
+      },
       "Asset": {
         "additionalProperties": false,
         "properties": {
@@ -417,8 +533,139 @@
         "title": "BallastSolution",
         "type": "object"
       },
+      "BayCheck": {
+        "properties": {
+          "backup_charge_kg": {
+            "description": "The primary times the backup factor.",
+            "title": "Backup Charge Kg",
+            "type": "number",
+            "units": "kg"
+          },
+          "bulkhead_area_m2": {
+            "description": "Area the gas pushes on.",
+            "title": "Bulkhead Area M2",
+            "type": "number",
+            "units": "m\u00b2"
+          },
+          "design_pressure_pa": {
+            "description": "Pins plus the separation pressure.",
+            "title": "Design Pressure Pa",
+            "type": "number",
+            "units": "Pa"
+          },
+          "device": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The recovery device it releases.",
+            "title": "Device"
+          },
+          "drag_separation_n": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Most the joint is pulled apart during coast. None: not checked.",
+            "title": "Drag Separation N",
+            "units": "N"
+          },
+          "ejection_force_n": {
+            "description": "Force on the bulkhead at the design pressure.",
+            "title": "Ejection Force N",
+            "type": "number",
+            "units": "N"
+          },
+          "hold_margin": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pin strength over the drag separation force. Below 1, it comes apart in coast.",
+            "title": "Hold Margin",
+            "units": "1"
+          },
+          "name": {
+            "description": "Bay name.",
+            "title": "Name",
+            "type": "string"
+          },
+          "notes": {
+            "description": "What to look at, in words.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "pin_break_pressure_pa": {
+            "description": "Bay pressure that breaks every pin.",
+            "title": "Pin Break Pressure Pa",
+            "type": "number",
+            "units": "Pa"
+          },
+          "pins_hold_n": {
+            "description": "Force the pins resist before they break.",
+            "title": "Pins Hold N",
+            "type": "number",
+            "units": "N"
+          },
+          "primary_charge_kg": {
+            "description": "Black powder for the design pressure.",
+            "title": "Primary Charge Kg",
+            "type": "number",
+            "units": "kg"
+          },
+          "volume_m3": {
+            "description": "Free volume the gas fills.",
+            "title": "Volume M3",
+            "type": "number",
+            "units": "m\u00b3"
+          }
+        },
+        "required": [
+          "name",
+          "device",
+          "volume_m3",
+          "bulkhead_area_m2",
+          "pin_break_pressure_pa",
+          "design_pressure_pa",
+          "primary_charge_kg",
+          "backup_charge_kg",
+          "ejection_force_n",
+          "pins_hold_n",
+          "drag_separation_n",
+          "hold_margin",
+          "notes"
+        ],
+        "title": "BayCheck",
+        "type": "object"
+      },
       "Board": {
         "properties": {
+          "launch_rules": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProfileInfo"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The launch-condition rule set, if any."
+          },
           "profile": {
             "anyOf": [
               {
@@ -495,12 +742,17 @@
           "flight": {
             "$ref": "#/components/schemas/FlightBasis",
             "description": "The single flight it is based on."
+          },
+          "launch": {
+            "$ref": "#/components/schemas/LaunchSummary",
+            "description": "The launch conditions it is judged on."
           }
         },
         "required": [
           "board",
           "flight",
-          "campaign"
+          "campaign",
+          "launch"
         ],
         "title": "BoardResponse",
         "type": "object"
@@ -638,6 +890,23 @@
       },
       "CampaignRequest": {
         "properties": {
+          "failure": {
+            "anyOf": [
+              {
+                "enum": [
+                  "drogue_fails",
+                  "main_fails",
+                  "nothing_opens"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Fly every sample with this part of the recovery failed: where it lands then.",
+            "title": "Failure"
+          },
           "mission": {
             "$ref": "#/components/schemas/Mission",
             "description": "The mission, with its monte_carlo settings."
@@ -834,6 +1103,118 @@
         "title": "CampaignSummary",
         "type": "object"
       },
+      "Candidate": {
+        "description": "A motor from the ThrustCurve.org catalogue.",
+        "properties": {
+          "availability": {
+            "default": "",
+            "description": "regular, occasional or OOP.",
+            "title": "Availability",
+            "type": "string"
+          },
+          "average_thrust_n": {
+            "description": "Average thrust.",
+            "title": "Average Thrust N",
+            "type": "number",
+            "units": "N"
+          },
+          "burn_time_s": {
+            "description": "Burn time.",
+            "title": "Burn Time S",
+            "type": "number",
+            "units": "s"
+          },
+          "case_info": {
+            "default": "",
+            "description": "Case or hardware it needs.",
+            "title": "Case Info",
+            "type": "string"
+          },
+          "common_name": {
+            "description": "Class and average thrust, e.g. 'M1340'.",
+            "title": "Common Name",
+            "type": "string"
+          },
+          "designation": {
+            "description": "Designation, e.g. 'M1340W'.",
+            "title": "Designation",
+            "type": "string"
+          },
+          "diameter_mm": {
+            "description": "Case diameter.",
+            "title": "Diameter Mm",
+            "type": "number",
+            "units": "mm"
+          },
+          "impulse_class": {
+            "description": "Impulse class letter.",
+            "title": "Impulse Class",
+            "type": "string"
+          },
+          "length_mm": {
+            "description": "Case length.",
+            "title": "Length Mm",
+            "type": "number",
+            "units": "mm"
+          },
+          "manufacturer": {
+            "description": "Manufacturer, e.g. 'AeroTech'.",
+            "title": "Manufacturer",
+            "type": "string"
+          },
+          "motor_id": {
+            "description": "ThrustCurve.org motor id.",
+            "title": "Motor Id",
+            "type": "string"
+          },
+          "propellant": {
+            "default": "",
+            "description": "Propellant name.",
+            "title": "Propellant",
+            "type": "string"
+          },
+          "propellant_mass_kg": {
+            "description": "Propellant mass.",
+            "title": "Propellant Mass Kg",
+            "type": "number",
+            "units": "kg"
+          },
+          "total_impulse_ns": {
+            "description": "Total impulse.",
+            "title": "Total Impulse Ns",
+            "type": "number",
+            "units": "N\u00b7s"
+          },
+          "total_mass_kg": {
+            "description": "Loaded motor mass.",
+            "title": "Total Mass Kg",
+            "type": "number",
+            "units": "kg"
+          },
+          "type": {
+            "description": "SU (single use), reload or hybrid.",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "motor_id",
+          "manufacturer",
+          "designation",
+          "common_name",
+          "impulse_class",
+          "type",
+          "diameter_mm",
+          "length_mm",
+          "total_impulse_ns",
+          "average_thrust_n",
+          "burn_time_s",
+          "total_mass_kg",
+          "propellant_mass_kg"
+        ],
+        "title": "Candidate",
+        "type": "object"
+      },
       "Category": {
         "additionalProperties": false,
         "properties": {
@@ -865,6 +1246,89 @@
           "name"
         ],
         "title": "Category",
+        "type": "object"
+      },
+      "ChannelComparison": {
+        "properties": {
+          "ascent_only": {
+            "description": "Compared from launch to apogee only.",
+            "title": "Ascent Only",
+            "type": "boolean"
+          },
+          "derived": {
+            "description": "Not in the log: derived from its altitude.",
+            "title": "Derived",
+            "type": "boolean"
+          },
+          "max_error": {
+            "description": "Largest simulated minus measured, signed, SI.",
+            "title": "Max Error",
+            "type": "number"
+          },
+          "max_error_t": {
+            "description": "When the largest error happens.",
+            "title": "Max Error T",
+            "type": "number",
+            "units": "s"
+          },
+          "mean_error": {
+            "description": "Mean of simulated minus measured (bias), SI.",
+            "title": "Mean Error",
+            "type": "number"
+          },
+          "measured": {
+            "description": "The log, SI.",
+            "items": {
+              "type": "number"
+            },
+            "title": "Measured",
+            "type": "array"
+          },
+          "name": {
+            "description": "Trajectory channel, as in a flight result.",
+            "enum": [
+              "altitude_agl_m",
+              "vertical_velocity_ms",
+              "acceleration_ms2"
+            ],
+            "title": "Name",
+            "type": "string"
+          },
+          "rms_error": {
+            "description": "RMS of simulated minus measured, SI.",
+            "title": "Rms Error",
+            "type": "number"
+          },
+          "simulated": {
+            "description": "The simulation, SI.",
+            "items": {
+              "type": "number"
+            },
+            "title": "Simulated",
+            "type": "array"
+          },
+          "t": {
+            "description": "Time since launch, s.",
+            "items": {
+              "type": "number"
+            },
+            "title": "T",
+            "type": "array"
+          }
+        },
+        "required": [
+          "name",
+          "derived",
+          "ascent_only",
+          "t",
+          "measured",
+          "simulated",
+          "rms_error",
+          "mean_error",
+          "max_error",
+          "max_error_t"
+        ],
+        "title": "ChannelComparison",
         "type": "object"
       },
       "ChannelInfo": {
@@ -963,7 +1427,13 @@
               "drogue_descent_rate_ms",
               "descent_time_s",
               "drift_m",
-              "flight_time_s"
+              "flight_time_s",
+              "min_fin_flutter_margin",
+              "cloud_clearance_m",
+              "cloud_cover_pct",
+              "visibility_m",
+              "surface_wind_ms",
+              "sun_elevation_deg"
             ],
             "title": "Metric",
             "type": "string"
@@ -1060,7 +1530,13 @@
               "drogue_descent_rate_ms",
               "descent_time_s",
               "drift_m",
-              "flight_time_s"
+              "flight_time_s",
+              "min_fin_flutter_margin",
+              "cloud_clearance_m",
+              "cloud_cover_pct",
+              "visibility_m",
+              "surface_wind_ms",
+              "sun_elevation_deg"
             ],
             "title": "Metric",
             "type": "string"
@@ -1277,6 +1753,18 @@
             ],
             "description": "Category within the profile.",
             "title": "Category"
+          },
+          "launch_rules": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Launch-condition rules id, e.g. 'faa-101'. None: conditions not checked.",
+            "title": "Launch Rules"
           },
           "overrides": {
             "additionalProperties": {
@@ -1616,23 +2104,25 @@
           },
           "power_off": {
             "$ref": "#/components/schemas/DragCurve",
+            "default": {
+              "estimate": true
+            },
             "description": "Drag coefficient after burnout."
           },
           "power_on": {
             "$ref": "#/components/schemas/DragCurve",
+            "default": {
+              "estimate": true
+            },
             "description": "Drag coefficient while the motor burns."
           }
         },
-        "required": [
-          "power_off",
-          "power_on"
-        ],
         "title": "Drag",
         "type": "object"
       },
       "DragCurve": {
         "additionalProperties": false,
-        "description": "Drag coefficient against Mach: a table asset, or a constant.",
+        "description": "Drag coefficient: estimated from the rocket's shape, a table asset, or a constant.",
         "properties": {
           "constant_cd": {
             "anyOf": [
@@ -1647,6 +2137,12 @@
             "description": "A constant drag coefficient, if there is no table.",
             "title": "Constant Cd"
           },
+          "estimate": {
+            "default": false,
+            "description": "Estimate drag from the rocket's shape (component build-up, as OpenRocket does). Depends on Mach, Reynolds number and angle of attack.",
+            "title": "Estimate",
+            "type": "boolean"
+          },
           "table": {
             "anyOf": [
               {
@@ -1658,11 +2154,135 @@
                 "type": "null"
               }
             ],
-            "description": "CSV asset of (Mach, CD) rows. Takes precedence over constant_cd.",
+            "description": "CSV asset of (Mach, CD) rows.",
             "title": "Table"
           }
         },
         "title": "DragCurve",
+        "type": "object"
+      },
+      "DragPoint": {
+        "properties": {
+          "base": {
+            "description": "Estimated power-off CD from the base.",
+            "title": "Base",
+            "type": "number",
+            "units": "1"
+          },
+          "estimate_off": {
+            "description": "Estimated power-off CD, multiplier applied.",
+            "title": "Estimate Off",
+            "type": "number",
+            "units": "1"
+          },
+          "estimate_on": {
+            "description": "Estimated power-on CD, multiplier applied.",
+            "title": "Estimate On",
+            "type": "number",
+            "units": "1"
+          },
+          "fins": {
+            "description": "Estimated CD from fin leading and trailing edges.",
+            "title": "Fins",
+            "type": "number",
+            "units": "1"
+          },
+          "friction": {
+            "description": "Estimated power-off CD from skin friction.",
+            "title": "Friction",
+            "type": "number",
+            "units": "1"
+          },
+          "mach": {
+            "description": "Mach number.",
+            "title": "Mach",
+            "type": "number",
+            "units": "1"
+          },
+          "nose": {
+            "description": "Estimated CD from nose pressure drag.",
+            "title": "Nose",
+            "type": "number",
+            "units": "1"
+          },
+          "power_off": {
+            "description": "The mission's power-off CD, multiplier applied.",
+            "title": "Power Off",
+            "type": "number",
+            "units": "1"
+          },
+          "power_on": {
+            "description": "The mission's power-on CD, multiplier applied.",
+            "title": "Power On",
+            "type": "number",
+            "units": "1"
+          },
+          "tail": {
+            "description": "Estimated CD from the boat-tail.",
+            "title": "Tail",
+            "type": "number",
+            "units": "1"
+          }
+        },
+        "required": [
+          "mach",
+          "power_off",
+          "power_on",
+          "estimate_off",
+          "estimate_on",
+          "friction",
+          "nose",
+          "tail",
+          "fins",
+          "base"
+        ],
+        "title": "DragPoint",
+        "type": "object"
+      },
+      "DragRequest": {
+        "properties": {
+          "mission": {
+            "$ref": "#/components/schemas/Mission",
+            "description": "The mission, saved or not."
+          }
+        },
+        "required": [
+          "mission"
+        ],
+        "title": "DragRequest",
+        "type": "object"
+      },
+      "DragResponse": {
+        "properties": {
+          "elevation_m": {
+            "description": "Site elevation the curves are taken at (standard atmosphere); 0 with no site.",
+            "title": "Elevation M",
+            "type": "number",
+            "units": "m"
+          },
+          "notes": {
+            "description": "Assumptions behind the estimate, in plain language.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "points": {
+            "description": "CD against Mach, every 0.05 to Mach 2.5.",
+            "items": {
+              "$ref": "#/components/schemas/DragPoint"
+            },
+            "title": "Points",
+            "type": "array"
+          }
+        },
+        "required": [
+          "elevation_m",
+          "points",
+          "notes"
+        ],
+        "title": "DragResponse",
         "type": "object"
       },
       "EffectiveProfile": {
@@ -1706,6 +2326,165 @@
           "elevation_m"
         ],
         "title": "EffectiveProfileRequest",
+        "type": "object"
+      },
+      "Ejection": {
+        "additionalProperties": false,
+        "properties": {
+          "bays": {
+            "description": "Separation joints and their charges.",
+            "items": {
+              "$ref": "#/components/schemas/EjectionBay"
+            },
+            "title": "Bays",
+            "type": "array"
+          }
+        },
+        "title": "Ejection",
+        "type": "object"
+      },
+      "EjectionBay": {
+        "additionalProperties": false,
+        "description": "A compartment a black-powder charge pressurises to separate the rocket.",
+        "properties": {
+          "backup_factor": {
+            "default": 1.25,
+            "description": "Backup charge as a multiple of the primary.",
+            "maximum": 3.0,
+            "minimum": 1.0,
+            "title": "Backup Factor",
+            "type": "number",
+            "units": "1"
+          },
+          "device": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The recovery device it releases, by name. For display.",
+            "title": "Device"
+          },
+          "forward_mass_kg": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Mass the joint holds on to during coast: everything on the far side from the motor, e.g. the nose and payload for a forward bay. Unset: drag separation isn't checked.",
+            "title": "Forward Mass Kg",
+            "units": "kg"
+          },
+          "free_length_m": {
+            "description": "Length of the empty space the gas fills: the bay's length less what is packed in it.",
+            "exclusiveMinimum": 0.0,
+            "maximum": 5.0,
+            "title": "Free Length M",
+            "type": "number",
+            "units": "m"
+          },
+          "inner_diameter_m": {
+            "description": "Inside diameter of the bay: the bulkhead the gas pushes on.",
+            "exclusiveMinimum": 0.0,
+            "maximum": 1.0,
+            "title": "Inner Diameter M",
+            "type": "number",
+            "units": "m"
+          },
+          "name": {
+            "description": "Bay name, e.g. 'Drogue bay'.",
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "pin_strength_n": {
+            "default": 0.0,
+            "description": "Shear strength of one pin. Use a tested or de-rated value.",
+            "minimum": 0.0,
+            "title": "Pin Strength N",
+            "type": "number",
+            "units": "N"
+          },
+          "separation_pressure_pa": {
+            "default": 103421.0,
+            "description": "Pressure the charge must reach over what breaks the pins, to push the section off against friction and the packed recovery gear. 15 psi is a common start.",
+            "exclusiveMinimum": 0.0,
+            "title": "Separation Pressure Pa",
+            "type": "number",
+            "units": "Pa"
+          },
+          "shear_pins": {
+            "default": 0,
+            "description": "Shear pins across the joint.",
+            "maximum": 24.0,
+            "minimum": 0.0,
+            "title": "Shear Pins",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "inner_diameter_m",
+          "free_length_m"
+        ],
+        "title": "EjectionBay",
+        "type": "object"
+      },
+      "EjectionRequest": {
+        "properties": {
+          "mission": {
+            "$ref": "#/components/schemas/Mission",
+            "description": "The mission, saved or not."
+          }
+        },
+        "required": [
+          "mission"
+        ],
+        "title": "EjectionRequest",
+        "type": "object"
+      },
+      "EjectionResponse": {
+        "properties": {
+          "bays": {
+            "description": "One per bay, in the mission's order.",
+            "items": {
+              "$ref": "#/components/schemas/BayCheck"
+            },
+            "title": "Bays",
+            "type": "array"
+          },
+          "coast_drag_deceleration_ms2": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Highest drag deceleration in coast, from that flight.",
+            "title": "Coast Drag Deceleration Ms2",
+            "units": "m/s\u00b2"
+          },
+          "flight_run": {
+            "description": "The mission's single flight has been run.",
+            "title": "Flight Run",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "flight_run",
+          "coast_drag_deceleration_ms2",
+          "bays"
+        ],
+        "title": "EjectionResponse",
         "type": "object"
       },
       "Ellipse": {
@@ -1801,6 +2580,716 @@
           }
         },
         "title": "Environment",
+        "type": "object"
+      },
+      "Estimate": {
+        "description": "The screen's point-mass flight. For ranking: the full flight is the number to trust.",
+        "properties": {
+          "apogee_agl_m": {
+            "description": "Estimated apogee above the pad.",
+            "title": "Apogee Agl M",
+            "type": "number",
+            "units": "m"
+          },
+          "liftoff_mass_kg": {
+            "description": "Rocket, ballast and loaded motor.",
+            "title": "Liftoff Mass Kg",
+            "type": "number",
+            "units": "kg"
+          },
+          "max_mach": {
+            "description": "Estimated highest Mach number.",
+            "title": "Max Mach",
+            "type": "number",
+            "units": "1"
+          },
+          "rail_exit_velocity_ms": {
+            "description": "Estimated speed off the rail.",
+            "title": "Rail Exit Velocity Ms",
+            "type": "number",
+            "units": "m/s"
+          },
+          "thrust_to_weight": {
+            "description": "Average thrust over the weight at ignition.",
+            "title": "Thrust To Weight",
+            "type": "number",
+            "units": "1"
+          }
+        },
+        "required": [
+          "apogee_agl_m",
+          "rail_exit_velocity_ms",
+          "thrust_to_weight",
+          "max_mach",
+          "liftoff_mass_kg"
+        ],
+        "title": "Estimate",
+        "type": "object"
+      },
+      "EventComparison": {
+        "properties": {
+          "measured_agl_m": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Altitude in the log at the event.",
+            "title": "Measured Agl M",
+            "units": "m"
+          },
+          "measured_s": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "From the log, since launch.",
+            "title": "Measured S",
+            "units": "s"
+          },
+          "name": {
+            "description": "Event.",
+            "title": "Name",
+            "type": "string"
+          },
+          "simulated_agl_m": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Simulated altitude at the event.",
+            "title": "Simulated Agl M",
+            "units": "m"
+          },
+          "simulated_s": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "From the simulation, since ignition.",
+            "title": "Simulated S",
+            "units": "s"
+          }
+        },
+        "required": [
+          "name",
+          "measured_s",
+          "simulated_s",
+          "measured_agl_m",
+          "simulated_agl_m"
+        ],
+        "title": "EventComparison",
+        "type": "object"
+      },
+      "Excitation": {
+        "additionalProperties": false,
+        "description": "What shakes the airframe, as fractions of the load that drives each source.\n\nDefaults are fitted to one flight log (Luke, a 5\" rocket on a CTI K940;\ndocs/methods/vibration.md). Motor roughness depends on the propellant, so\nfit it to a log of the same motor where there is one.",
+        "properties": {
+          "aero_load": {
+            "default": 0.0031,
+            "description": "Random side load along the airframe, RMS per metre, over dynamic pressure times the projected width.",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Aero Load",
+            "type": "number",
+            "units": "1"
+          },
+          "band_hz": {
+            "default": 2000,
+            "description": "Motor roughness is spread evenly from 0 to this frequency.",
+            "exclusiveMinimum": 0.0,
+            "title": "Band Hz",
+            "type": "number",
+            "units": "Hz"
+          },
+          "motor_roughness": {
+            "default": 0.0064,
+            "description": "Axial thrust fluctuation, RMS over the band, as a fraction of the thrust.",
+            "maximum": 0.5,
+            "minimum": 0.0,
+            "title": "Motor Roughness",
+            "type": "number",
+            "units": "1"
+          },
+          "motor_side_load": {
+            "default": 0.0016,
+            "description": "Side force at the nozzle, RMS over the band, as a fraction of the thrust.",
+            "maximum": 0.5,
+            "minimum": 0.0,
+            "title": "Motor Side Load",
+            "type": "number",
+            "units": "1"
+          },
+          "transonic_factor": {
+            "default": 2.0,
+            "description": "How much stronger the aerodynamic load is at Mach 1 than either side of it (shocks moving on the airframe). 0 is no transonic rise.",
+            "maximum": 20.0,
+            "minimum": 0.0,
+            "title": "Transonic Factor",
+            "type": "number",
+            "units": "1"
+          }
+        },
+        "title": "Excitation",
+        "type": "object"
+      },
+      "FailureOutcome": {
+        "properties": {
+          "devices": {
+            "description": "The devices still in the mission.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Devices",
+            "type": "array"
+          },
+          "drift_m": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "How far from the pad it lands.",
+            "title": "Drift M",
+            "units": "m"
+          },
+          "label": {
+            "description": "What fails, in words.",
+            "title": "Label",
+            "type": "string"
+          },
+          "landing_energy_j": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Touchdown energy, whole rocket as one body.",
+            "title": "Landing Energy J",
+            "units": "J"
+          },
+          "landing_lon_lat": {
+            "anyOf": [
+              {
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ],
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Where it lands, [longitude, latitude].",
+            "title": "Landing Lon Lat"
+          },
+          "landing_speed_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Touchdown speed, once flown.",
+            "title": "Landing Speed Ms",
+            "units": "m/s"
+          },
+          "mode": {
+            "description": "What fails.",
+            "enum": [
+              "drogue_fails",
+              "main_fails",
+              "nothing_opens"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "opening_speed_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Speed when the first remaining device opens: the shock it takes.",
+            "title": "Opening Speed Ms",
+            "units": "m/s"
+          },
+          "outside_boundary": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Lands outside the range boundary. None without a boundary or a flight.",
+            "title": "Outside Boundary"
+          },
+          "run": {
+            "$ref": "#/components/schemas/RunState",
+            "description": "The flight of the mission with that failure."
+          }
+        },
+        "required": [
+          "mode",
+          "label",
+          "devices",
+          "run",
+          "landing_speed_ms",
+          "landing_energy_j",
+          "drift_m",
+          "landing_lon_lat",
+          "outside_boundary",
+          "opening_speed_ms"
+        ],
+        "title": "FailureOutcome",
+        "type": "object"
+      },
+      "FailuresRequest": {
+        "properties": {
+          "mission": {
+            "$ref": "#/components/schemas/Mission",
+            "description": "The mission, saved or not."
+          }
+        },
+        "required": [
+          "mission"
+        ],
+        "title": "FailuresRequest",
+        "type": "object"
+      },
+      "FailuresResponse": {
+        "properties": {
+          "nominal_landing_speed_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Touchdown speed with everything working, if that flight has been run.",
+            "title": "Nominal Landing Speed Ms",
+            "units": "m/s"
+          },
+          "outcomes": {
+            "description": "One per failure the recovery can have.",
+            "items": {
+              "$ref": "#/components/schemas/FailureOutcome"
+            },
+            "title": "Outcomes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "nominal_landing_speed_ms",
+          "outcomes"
+        ],
+        "title": "FailuresResponse",
+        "type": "object"
+      },
+      "FinFlutter": {
+        "properties": {
+          "altitude_agl_m": {
+            "description": "Altitude above the pad where the margin is lowest.",
+            "title": "Altitude Agl M",
+            "type": "number",
+            "units": "m"
+          },
+          "fin_set": {
+            "description": "Which fin set, from 1, in the mission's order.",
+            "title": "Fin Set",
+            "type": "integer"
+          },
+          "flutter_speed_ms": {
+            "description": "Flutter speed where the margin is lowest.",
+            "title": "Flutter Speed Ms",
+            "type": "number",
+            "units": "m/s"
+          },
+          "material": {
+            "description": "Material name, as in the mission.",
+            "title": "Material",
+            "type": "string"
+          },
+          "min_margin": {
+            "description": "Lowest flutter speed over flight speed during the ascent. Above 1 is no flutter.",
+            "title": "Min Margin",
+            "type": "number",
+            "units": "1"
+          },
+          "shear_modulus_pa": {
+            "description": "Shear modulus used.",
+            "title": "Shear Modulus Pa",
+            "type": "number",
+            "units": "Pa"
+          },
+          "speed_ms": {
+            "description": "Rocket speed where the margin is lowest.",
+            "title": "Speed Ms",
+            "type": "number",
+            "units": "m/s"
+          },
+          "thickness_m": {
+            "description": "Fin thickness checked.",
+            "title": "Thickness M",
+            "type": "number",
+            "units": "m"
+          },
+          "time_s": {
+            "description": "When the margin is lowest.",
+            "title": "Time S",
+            "type": "number",
+            "units": "s"
+          }
+        },
+        "required": [
+          "fin_set",
+          "material",
+          "thickness_m",
+          "shear_modulus_pa",
+          "min_margin",
+          "time_s",
+          "altitude_agl_m",
+          "speed_ms",
+          "flutter_speed_ms"
+        ],
+        "title": "FinFlutter",
+        "type": "object"
+      },
+      "FinMaterial": {
+        "additionalProperties": false,
+        "description": "What the fins are made of, as far as flutter cares: the shear modulus.",
+        "properties": {
+          "name": {
+            "description": "Material name, for display.",
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "shear_modulus_pa": {
+            "description": "Shear modulus G of the fin as built. Composite layups vary a lot: use a measured or supplier value where there is one.",
+            "exclusiveMinimum": 0.0,
+            "title": "Shear Modulus Pa",
+            "type": "number",
+            "units": "Pa"
+          }
+        },
+        "required": [
+          "name",
+          "shear_modulus_pa"
+        ],
+        "title": "FinMaterial",
+        "type": "object"
+      },
+      "FinMaterialPreset": {
+        "properties": {
+          "id": {
+            "description": "Stable id.",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "description": "Material name.",
+            "title": "Name",
+            "type": "string"
+          },
+          "note": {
+            "default": "",
+            "description": "Where the value comes from, or its caveat.",
+            "title": "Note",
+            "type": "string"
+          },
+          "shear_modulus_pa": {
+            "description": "Typical shear modulus.",
+            "title": "Shear Modulus Pa",
+            "type": "number",
+            "units": "Pa"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "shear_modulus_pa"
+        ],
+        "title": "FinMaterialPreset",
+        "type": "object"
+      },
+      "FinSetFlutter": {
+        "properties": {
+          "checked": {
+            "description": "The fin set has a thickness and material.",
+            "title": "Checked",
+            "type": "boolean"
+          },
+          "fin_set": {
+            "description": "Which fin set, from 1.",
+            "title": "Fin Set",
+            "type": "integer"
+          },
+          "flutter": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FinFlutter"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "From this mission's single flight, if it has been run and the set is checked."
+          },
+          "thinnest_m": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Thinnest fin of this material that keeps the required margin on this flight.",
+            "title": "Thinnest M",
+            "units": "m"
+          }
+        },
+        "required": [
+          "fin_set",
+          "checked",
+          "flutter",
+          "thinnest_m"
+        ],
+        "title": "FinSetFlutter",
+        "type": "object"
+      },
+      "FinderRequest": {
+        "properties": {
+          "also_fly": {
+            "description": "ThrustCurve.org motor ids to fly as well, wherever they screened.",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Also Fly",
+            "type": "array"
+          },
+          "discontinued": {
+            "default": false,
+            "description": "Include motors that are out of production.",
+            "title": "Discontinued",
+            "type": "boolean"
+          },
+          "flights": {
+            "default": 8,
+            "description": "How many of the best-screened motors to fly.",
+            "maximum": 20.0,
+            "minimum": 0.0,
+            "title": "Flights",
+            "type": "integer"
+          },
+          "mission": {
+            "$ref": "#/components/schemas/Mission",
+            "description": "The mission, saved or not."
+          },
+          "mount": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Mount"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The motor mount. Unset: the current motor's diameter and length."
+          },
+          "target_apogee_m": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Apogee to aim for, above the pad. Unset: the category's target.",
+            "title": "Target Apogee M",
+            "units": "m"
+          }
+        },
+        "required": [
+          "mission"
+        ],
+        "title": "FinderRequest",
+        "type": "object"
+      },
+      "FinderResponse": {
+        "properties": {
+          "catalogue_count": {
+            "description": "ThrustCurve.org motors of that diameter.",
+            "title": "Catalogue Count",
+            "type": "integer"
+          },
+          "catalogue_fetched_at": {
+            "description": "When that list was fetched from ThrustCurve.org (Unix seconds).",
+            "title": "Catalogue Fetched At",
+            "type": "number"
+          },
+          "curves_fetched": {
+            "description": "False if some curves couldn't be fetched: those motors are only screened.",
+            "title": "Curves Fetched",
+            "type": "boolean"
+          },
+          "mount": {
+            "$ref": "#/components/schemas/Mount",
+            "description": "The mount searched for."
+          },
+          "rows": {
+            "description": "Every motor that fits: flown ones first (GO, then nearest the target), then the rest by screened apogee nearest the target.",
+            "items": {
+              "$ref": "#/components/schemas/FinderRow"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "target_apogee_m": {
+            "description": "Apogee aimed for.",
+            "title": "Target Apogee M",
+            "type": "number",
+            "units": "m"
+          },
+          "target_from": {
+            "description": "Where the target came from.",
+            "enum": [
+              "request",
+              "category"
+            ],
+            "title": "Target From",
+            "type": "string"
+          }
+        },
+        "required": [
+          "target_apogee_m",
+          "target_from",
+          "mount",
+          "catalogue_count",
+          "catalogue_fetched_at",
+          "curves_fetched",
+          "rows"
+        ],
+        "title": "FinderResponse",
+        "type": "object"
+      },
+      "FinderRow": {
+        "properties": {
+          "asset": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AssetInfo"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Its stored thrust curve."
+          },
+          "candidate": {
+            "$ref": "#/components/schemas/Candidate",
+            "description": "The motor."
+          },
+          "estimate": {
+            "$ref": "#/components/schemas/Estimate",
+            "description": "The screen's estimate."
+          },
+          "flown": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Flown"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What the full flight gives, once done."
+          },
+          "judgement": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Judgement"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The flight against the rules, once done."
+          },
+          "motor": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GenericMotor"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The motor section it flies with, to put in the mission."
+          },
+          "run": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RunState"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Its full flight, if it is being flown."
+          }
+        },
+        "required": [
+          "candidate",
+          "estimate",
+          "run",
+          "flown",
+          "judgement",
+          "motor",
+          "asset"
+        ],
+        "title": "FinderRow",
         "type": "object"
       },
       "FitCurve": {
@@ -2074,6 +3563,14 @@
             "title": "Drogue Descent Rate Ms",
             "units": "m/s"
           },
+          "fin_flutter": {
+            "description": "Flutter check per fin set with a thickness and material. Empty: not checked.",
+            "items": {
+              "$ref": "#/components/schemas/FinFlutter"
+            },
+            "title": "Fin Flutter",
+            "type": "array"
+          },
           "landing": {
             "anyOf": [
               {
@@ -2102,6 +3599,19 @@
             "description": "Highest acceleration magnitude.",
             "title": "Max Acceleration Ms2",
             "type": "number",
+            "units": "m/s\u00b2"
+          },
+          "max_coast_drag_deceleration_ms2": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Highest deceleration from drag alone between burnout and apogee: what pulls a separation joint apart. None for results stored before it was recorded.",
+            "title": "Max Coast Drag Deceleration Ms2",
             "units": "m/s\u00b2"
           },
           "max_dynamic_pressure_pa": {
@@ -2203,9 +3713,121 @@
         "title": "FlightSummary",
         "type": "object"
       },
+      "Flown": {
+        "properties": {
+          "apogee_agl_m": {
+            "description": "Apogee above the pad.",
+            "title": "Apogee Agl M",
+            "type": "number",
+            "units": "m"
+          },
+          "max_mach": {
+            "description": "Highest Mach number.",
+            "title": "Max Mach",
+            "type": "number",
+            "units": "1"
+          },
+          "min_stability_margin_cal": {
+            "description": "Lowest stability margin.",
+            "title": "Min Stability Margin Cal",
+            "type": "number",
+            "units": "cal"
+          },
+          "rail_exit_velocity_ms": {
+            "description": "Speed off the rail.",
+            "title": "Rail Exit Velocity Ms",
+            "type": "number",
+            "units": "m/s"
+          },
+          "stability_margin_at_rail_exit_cal": {
+            "description": "Stability at rail exit.",
+            "title": "Stability Margin At Rail Exit Cal",
+            "type": "number",
+            "units": "cal"
+          },
+          "thrust_to_weight": {
+            "description": "Thrust to weight.",
+            "title": "Thrust To Weight",
+            "type": "number",
+            "units": "1"
+          }
+        },
+        "required": [
+          "apogee_agl_m",
+          "rail_exit_velocity_ms",
+          "stability_margin_at_rail_exit_cal",
+          "min_stability_margin_cal",
+          "thrust_to_weight",
+          "max_mach"
+        ],
+        "title": "Flown",
+        "type": "object"
+      },
+      "FlutterRequest": {
+        "properties": {
+          "mission": {
+            "$ref": "#/components/schemas/Mission",
+            "description": "The mission, saved or not."
+          }
+        },
+        "required": [
+          "mission"
+        ],
+        "title": "FlutterRequest",
+        "type": "object"
+      },
+      "FlutterResponse": {
+        "properties": {
+          "fin_sets": {
+            "description": "One per fin set, in the mission's order.",
+            "items": {
+              "$ref": "#/components/schemas/FinSetFlutter"
+            },
+            "title": "Fin Sets",
+            "type": "array"
+          },
+          "flight_run": {
+            "description": "The mission's single flight has been run.",
+            "title": "Flight Run",
+            "type": "boolean"
+          },
+          "required_by": {
+            "description": "The rule that sets it, or why it is the default.",
+            "title": "Required By",
+            "type": "string"
+          },
+          "required_margin": {
+            "description": "Flutter speed over flight speed the check asks for.",
+            "title": "Required Margin",
+            "type": "number",
+            "units": "1"
+          }
+        },
+        "required": [
+          "required_margin",
+          "required_by",
+          "flight_run",
+          "fin_sets"
+        ],
+        "title": "FlutterResponse",
+        "type": "object"
+      },
       "ForecastInfo": {
         "description": "A cached forecast: when it was fetched, where for, and which hours it covers.",
         "properties": {
+          "day": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The past day fetched from the archive; None for a forecast.",
+            "title": "Day"
+          },
           "fetched_utc": {
             "description": "When it was downloaded, UTC.",
             "format": "date-time",
@@ -2273,6 +3895,19 @@
       },
       "ForecastRequest": {
         "properties": {
+          "day": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A past day (e.g. an earlier launch) to fetch from the archive, instead of the seven-day forecast. Upper-air history starts in 2021.",
+            "title": "Day"
+          },
           "latitude": {
             "description": "WGS84 latitude, degrees.",
             "maximum": 90.0,
@@ -2293,6 +3928,104 @@
           "longitude"
         ],
         "title": "ForecastRequest",
+        "type": "object"
+      },
+      "FreeFormFins": {
+        "additionalProperties": false,
+        "properties": {
+          "cant_angle_deg": {
+            "default": 0.0,
+            "description": "Fin cant angle.",
+            "maximum": 10.0,
+            "minimum": -10.0,
+            "title": "Cant Angle Deg",
+            "type": "number",
+            "units": "deg"
+          },
+          "count": {
+            "description": "Number of fins in the set.",
+            "maximum": 8.0,
+            "minimum": 2.0,
+            "title": "Count",
+            "type": "integer"
+          },
+          "cross_section": {
+            "default": "square",
+            "description": "Shape of the fin edges, for the drag estimate: square, rounded or airfoil.",
+            "enum": [
+              "square",
+              "rounded",
+              "airfoil"
+            ],
+            "title": "Cross Section",
+            "type": "string"
+          },
+          "kind": {
+            "const": "free_form",
+            "description": "Fin set with an arbitrary outline.",
+            "title": "Kind",
+            "type": "string"
+          },
+          "material": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FinMaterial"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Fin material, for the flutter check. Unset: not checked."
+          },
+          "points": {
+            "description": "One fin's outline as [x, y] in metres: x aft of the root leading edge, y outward from the body tube. Starts at [0, 0] (root leading edge) and ends on the body tube at the root trailing edge, [root chord, 0].",
+            "items": {
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "type": "array"
+            },
+            "minItems": 3,
+            "title": "Points",
+            "type": "array",
+            "units": "m"
+          },
+          "position_m": {
+            "description": "Position of the root chord's leading edge, aft of the nose tip.",
+            "minimum": 0.0,
+            "title": "Position M",
+            "type": "number",
+            "units": "m"
+          },
+          "thickness_m": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Fin thickness. With a material, every flight checks fin flutter.",
+            "title": "Thickness M",
+            "units": "m"
+          }
+        },
+        "required": [
+          "kind",
+          "count",
+          "points",
+          "position_m"
+        ],
+        "title": "FreeFormFins",
         "type": "object"
       },
       "GenericMotor": {
@@ -2672,6 +4405,48 @@
         "title": "JobState",
         "type": "object"
       },
+      "Judgement": {
+        "description": "One candidate's flight against the mission's rules.",
+        "properties": {
+          "failing": {
+            "description": "Rules it fails, hard ones first.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Failing",
+            "type": "array"
+          },
+          "points": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Apogee score, if the profile scores apogee.",
+            "title": "Points"
+          },
+          "verdict": {
+            "description": "no_go if a hard rule fails; incomplete if one can't be judged.",
+            "enum": [
+              "go",
+              "no_go",
+              "incomplete"
+            ],
+            "title": "Verdict",
+            "type": "string"
+          }
+        },
+        "required": [
+          "verdict",
+          "failing",
+          "points"
+        ],
+        "title": "Judgement",
+        "type": "object"
+      },
       "Landing": {
         "properties": {
           "drift_distance_m": {
@@ -2768,8 +4543,193 @@
         "title": "LandingPoint",
         "type": "object"
       },
+      "LaunchConditions": {
+        "additionalProperties": false,
+        "description": "The sky at launch, for launch-condition rules. A flight doesn't depend on it.",
+        "properties": {
+          "cloud_base_m": {
+            "anyOf": [
+              {
+                "maximum": 30000.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Height of the lowest cloud base above the pad.",
+            "title": "Cloud Base M",
+            "units": "m"
+          },
+          "cloud_cover_pct": {
+            "anyOf": [
+              {
+                "maximum": 100.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Share of the sky covered by cloud.",
+            "title": "Cloud Cover Pct",
+            "units": "%"
+          },
+          "launch_utc": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Planned launch time, UTC. Unset: the forecast hour the atmosphere is from.",
+            "title": "Launch Utc"
+          },
+          "source": {
+            "default": "",
+            "description": "Where the numbers came from, e.g. a forecast or the RSO's briefing.",
+            "title": "Source",
+            "type": "string"
+          },
+          "visibility_m": {
+            "anyOf": [
+              {
+                "maximum": 200000.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Horizontal visibility.",
+            "title": "Visibility M",
+            "units": "m"
+          },
+          "wind_gust_ms": {
+            "anyOf": [
+              {
+                "maximum": 100.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Strongest surface gust.",
+            "title": "Wind Gust Ms",
+            "units": "m/s"
+          },
+          "wind_speed_ms": {
+            "anyOf": [
+              {
+                "maximum": 80.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Sustained surface wind. Unset: the flight's wind at the surface.",
+            "title": "Wind Speed Ms",
+            "units": "m/s"
+          }
+        },
+        "title": "LaunchConditions",
+        "type": "object"
+      },
+      "LaunchSummary": {
+        "description": "The launch conditions the board judged, with the daylight around the launch.",
+        "properties": {
+          "launch_utc": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Launch time used, UTC.",
+            "title": "Launch Utc"
+          },
+          "next_crossing_utc": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The sunset (in daylight) or sunrise (at night) after launch, within a day.",
+            "title": "Next Crossing Utc"
+          },
+          "previous_crossing_utc": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The sunrise (in daylight) or sunset (at night) before launch, within a day.",
+            "title": "Previous Crossing Utc"
+          },
+          "values": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "description": "Each condition metric there is a value for.",
+            "title": "Values",
+            "type": "object"
+          }
+        },
+        "required": [
+          "launch_utc",
+          "values",
+          "previous_crossing_utc",
+          "next_crossing_utc"
+        ],
+        "title": "LaunchSummary",
+        "type": "object"
+      },
       "LogPreview": {
         "properties": {
+          "acceleration_column": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Guessed acceleration column.",
+            "title": "Acceleration Column"
+          },
+          "acceleration_units": {
+            "default": "m/s2",
+            "description": "Guessed acceleration units.",
+            "enum": [
+              "m/s2",
+              "ft/s2",
+              "g"
+            ],
+            "title": "Acceleration Units",
+            "type": "string"
+          },
           "altitude_column": {
             "anyOf": [
               {
@@ -2831,6 +4791,28 @@
             ],
             "description": "Guessed time column.",
             "title": "Time Column"
+          },
+          "velocity_column": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Guessed velocity column.",
+            "title": "Velocity Column"
+          },
+          "velocity_units": {
+            "default": "m/s",
+            "description": "Guessed velocity units.",
+            "enum": [
+              "m/s",
+              "ft/s"
+            ],
+            "title": "Velocity Units",
+            "type": "string"
           }
         },
         "required": [
@@ -2943,6 +4925,96 @@
         "title": "ManualWindLevel",
         "type": "object"
       },
+      "Metric": {
+        "properties": {
+          "derived": {
+            "default": false,
+            "description": "Measured from a derived channel.",
+            "title": "Derived",
+            "type": "boolean"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Simulated minus measured, SI.",
+            "title": "Error"
+          },
+          "error_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The error as a percentage of the measured value.",
+            "title": "Error Pct"
+          },
+          "key": {
+            "description": "Stable identifier.",
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "description": "What is compared.",
+            "title": "Label",
+            "type": "string"
+          },
+          "measured": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "From the log, SI; None if it can't show it.",
+            "title": "Measured"
+          },
+          "quantity": {
+            "description": "How to display the values.",
+            "enum": [
+              "altitude",
+              "speed",
+              "acceleration",
+              "time"
+            ],
+            "title": "Quantity",
+            "type": "string"
+          },
+          "simulated": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "From the simulation, SI.",
+            "title": "Simulated"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "quantity",
+          "measured",
+          "simulated",
+          "error",
+          "error_pct"
+        ],
+        "title": "Metric",
+        "type": "object"
+      },
       "Mission": {
         "additionalProperties": false,
         "description": "A complete mission config. Serialised as YAML (or JSON).",
@@ -2963,6 +5035,10 @@
             "$ref": "#/components/schemas/ConstraintSettings",
             "description": "Competition profile and team rules the go/no-go board checks."
           },
+          "ejection": {
+            "$ref": "#/components/schemas/Ejection",
+            "description": "Ejection charges and shear pins. A flight doesn't depend on them."
+          },
           "environment": {
             "$ref": "#/components/schemas/Environment",
             "description": "Atmosphere and wind."
@@ -2976,8 +5052,12 @@
                 "type": "null"
               }
             ],
-            "description": "Path of a base config this one overrides (not yet supported).",
+            "description": "Reserved for config inheritance, which is not supported: must be unset. To reuse a launch site, save it as a site preset.",
             "title": "Extends"
+          },
+          "launch_conditions": {
+            "$ref": "#/components/schemas/LaunchConditions",
+            "description": "Cloud, visibility, gusts and launch time, for launch-condition rules."
           },
           "meta": {
             "$ref": "#/components/schemas/MissionMeta",
@@ -3029,8 +5109,8 @@
             "description": "Airframe, without the motor."
           },
           "schema_version": {
-            "const": 3,
-            "default": 3,
+            "const": 4,
+            "default": 4,
             "description": "Config schema version. Older configs are migrated on load.",
             "title": "Schema Version",
             "type": "integer"
@@ -3051,6 +5131,10 @@
             "description": "Not modelled yet: accepted as-is so configs round-trip.",
             "title": "Solver",
             "type": "object"
+          },
+          "structure": {
+            "$ref": "#/components/schemas/Structure",
+            "description": "The airframe as a beam, for vibration. A flight doesn't depend on it."
           }
         },
         "required": [
@@ -3297,6 +5381,30 @@
         "title": "MotorReference",
         "type": "object"
       },
+      "Mount": {
+        "properties": {
+          "diameter_mm": {
+            "description": "Motor mount tube inside diameter (nominal).",
+            "exclusiveMinimum": 0.0,
+            "title": "Diameter Mm",
+            "type": "number",
+            "units": "mm"
+          },
+          "max_length_mm": {
+            "description": "Longest motor case the mount takes.",
+            "exclusiveMinimum": 0.0,
+            "title": "Max Length Mm",
+            "type": "number",
+            "units": "mm"
+          }
+        },
+        "required": [
+          "diameter_mm",
+          "max_length_mm"
+        ],
+        "title": "Mount",
+        "type": "object"
+      },
       "NoseCone": {
         "additionalProperties": false,
         "properties": {
@@ -3383,11 +5491,16 @@
           "rocket": {
             "$ref": "#/components/schemas/Rocket",
             "description": "Draft rocket section."
+          },
+          "structure": {
+            "$ref": "#/components/schemas/Structure",
+            "description": "Draft structure: the airframe as a beam."
           }
         },
         "required": [
           "rocket",
           "recovery",
+          "structure",
           "motor",
           "motor_reference",
           "rail",
@@ -3527,6 +5640,19 @@
             "title": "Name",
             "type": "string"
           },
+          "speed_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Rocket speed when the trigger fired: what the canopy opens into. None for results stored before it was recorded.",
+            "title": "Speed Ms",
+            "units": "m/s"
+          },
           "triggered_agl_m": {
             "description": "Altitude above ground when the trigger fired.",
             "title": "Triggered Agl M",
@@ -3643,6 +5769,77 @@
         "title": "PostflightFit",
         "type": "object"
       },
+      "PostflightReport": {
+        "properties": {
+          "channels": {
+            "description": "Channels on a common time base.",
+            "items": {
+              "$ref": "#/components/schemas/ChannelComparison"
+            },
+            "title": "Channels",
+            "type": "array"
+          },
+          "drag_multiplier": {
+            "description": "The mission's drag multiplier, as flown.",
+            "title": "Drag Multiplier",
+            "type": "number"
+          },
+          "events": {
+            "description": "Flight events, in order.",
+            "items": {
+              "$ref": "#/components/schemas/EventComparison"
+            },
+            "title": "Events",
+            "type": "array"
+          },
+          "launch_s": {
+            "description": "When the log leaves the pad, in the log's own time.",
+            "title": "Launch S",
+            "type": "number",
+            "units": "s"
+          },
+          "log_end_s": {
+            "description": "Where the log ends, since launch.",
+            "title": "Log End S",
+            "type": "number",
+            "units": "s"
+          },
+          "metrics": {
+            "description": "Key numbers, measured against simulated.",
+            "items": {
+              "$ref": "#/components/schemas/Metric"
+            },
+            "title": "Metrics",
+            "type": "array"
+          },
+          "shift_s": {
+            "description": "Time offset applied to match the ascent.",
+            "title": "Shift S",
+            "type": "number",
+            "units": "s"
+          },
+          "warnings": {
+            "description": "What the comparison could not do.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "launch_s",
+          "shift_s",
+          "log_end_s",
+          "drag_multiplier",
+          "metrics",
+          "events",
+          "channels",
+          "warnings"
+        ],
+        "title": "PostflightReport",
+        "type": "object"
+      },
       "Probability": {
         "properties": {
           "count": {
@@ -3751,8 +5948,18 @@
             "title": "Id",
             "type": "string"
           },
+          "kind": {
+            "default": "competition",
+            "description": "competition: a contest's rules. launch: launch-condition rules for a region.",
+            "enum": [
+              "competition",
+              "launch"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
           "name": {
-            "description": "Competition name.",
+            "description": "Competition or rule set name.",
             "title": "Name",
             "type": "string"
           },
@@ -4156,6 +6363,92 @@
         "title": "ReportItem",
         "type": "object"
       },
+      "ReportRequest": {
+        "properties": {
+          "acceleration_column": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Column holding acceleration; derived from altitude if none.",
+            "title": "Acceleration Column"
+          },
+          "acceleration_units": {
+            "default": "m/s2",
+            "description": "Units of the acceleration column.",
+            "enum": [
+              "m/s2",
+              "ft/s2",
+              "g"
+            ],
+            "title": "Acceleration Units",
+            "type": "string"
+          },
+          "altitude_column": {
+            "description": "Column holding altitude.",
+            "title": "Altitude Column",
+            "type": "string"
+          },
+          "altitude_units": {
+            "description": "Units of the altitude column.",
+            "enum": [
+              "m",
+              "ft"
+            ],
+            "title": "Altitude Units",
+            "type": "string"
+          },
+          "log_sha256": {
+            "description": "The uploaded log.",
+            "title": "Log Sha256",
+            "type": "string"
+          },
+          "mission": {
+            "$ref": "#/components/schemas/Mission",
+            "description": "The mission as flown."
+          },
+          "time_column": {
+            "description": "Column holding time, in seconds.",
+            "title": "Time Column",
+            "type": "string"
+          },
+          "velocity_column": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Column holding vertical velocity; derived from altitude if none.",
+            "title": "Velocity Column"
+          },
+          "velocity_units": {
+            "default": "m/s",
+            "description": "Units of the velocity column.",
+            "enum": [
+              "m/s",
+              "ft/s"
+            ],
+            "title": "Velocity Units",
+            "type": "string"
+          }
+        },
+        "required": [
+          "mission",
+          "log_sha256",
+          "time_column",
+          "altitude_column",
+          "altitude_units"
+        ],
+        "title": "ReportRequest",
+        "type": "object"
+      },
       "ResolvedProfile": {
         "additionalProperties": false,
         "properties": {
@@ -4279,7 +6572,16 @@
         "properties": {
           "drag": {
             "$ref": "#/components/schemas/Drag",
-            "description": "Aerodynamic drag."
+            "default": {
+              "multiplier": 1.0,
+              "power_off": {
+                "estimate": true
+              },
+              "power_on": {
+                "estimate": true
+              }
+            },
+            "description": "Aerodynamic drag. Unset: estimated from the shape."
           },
           "dry_cg_m": {
             "description": "Centre of mass without the motor, aft of the nose tip.",
@@ -4314,9 +6616,23 @@
             "units": "kg"
           },
           "fins": {
-            "description": "Fin sets.",
+            "description": "Fin sets: trapezoidal, or free-form with any outline.",
             "items": {
-              "$ref": "#/components/schemas/TrapezoidalFins"
+              "discriminator": {
+                "mapping": {
+                  "free_form": "#/components/schemas/FreeFormFins",
+                  "trapezoidal": "#/components/schemas/TrapezoidalFins"
+                },
+                "propertyName": "kind"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/TrapezoidalFins"
+                },
+                {
+                  "$ref": "#/components/schemas/FreeFormFins"
+                }
+              ]
             },
             "minItems": 1,
             "title": "Fins",
@@ -4352,6 +6668,23 @@
             ],
             "description": "Rail buttons. Without them the rail is a single point."
           },
+          "surface_finish": {
+            "default": "normal",
+            "description": "Outside surface finish, for the drag estimate's skin friction. normal is regular paint.",
+            "enum": [
+              "mirror",
+              "polished",
+              "sheet_metal",
+              "optimum",
+              "smooth",
+              "normal",
+              "unfinished",
+              "rough_unfinished",
+              "rough"
+            ],
+            "title": "Surface Finish",
+            "type": "string"
+          },
           "tail": {
             "anyOf": [
               {
@@ -4371,8 +6704,7 @@
           "dry_cg_m",
           "nose",
           "fins",
-          "motor_position_m",
-          "drag"
+          "motor_position_m"
         ],
         "title": "Rocket",
         "type": "object"
@@ -4380,7 +6712,7 @@
       "RuleResult": {
         "properties": {
           "evaluate_on": {
-            "description": "nominal, p50, p95, p99 or worst.",
+            "description": "nominal, p50, p95, p99 or worst; conditions for a launch-condition metric.",
             "title": "Evaluate On",
             "type": "string"
           },
@@ -4451,9 +6783,10 @@
             "type": "string"
           },
           "source": {
-            "description": "profile, a team override of it, or a team rule.",
+            "description": "profile, launch rules, a team override of either, or a team rule.",
             "enum": [
               "profile",
+              "launch",
               "override",
               "team"
             ],
@@ -4885,6 +7218,61 @@
         "title": "Site",
         "type": "object"
       },
+      "SitePreset": {
+        "properties": {
+          "id": {
+            "description": "Preset id (ULID).",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "description": "Name shown in the picker.",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "site": {
+            "$ref": "#/components/schemas/Site",
+            "description": "The launch site and range geometry."
+          },
+          "updated_utc": {
+            "description": "Last saved, UTC.",
+            "format": "date-time",
+            "title": "Updated Utc",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "site",
+          "id",
+          "updated_utc"
+        ],
+        "title": "SitePreset",
+        "type": "object"
+      },
+      "SitePresetInput": {
+        "properties": {
+          "name": {
+            "description": "Name shown in the picker.",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "site": {
+            "$ref": "#/components/schemas/Site",
+            "description": "The launch site and range geometry."
+          }
+        },
+        "required": [
+          "name",
+          "site"
+        ],
+        "title": "SitePresetInput",
+        "type": "object"
+      },
       "SolidMotor": {
         "additionalProperties": false,
         "description": "A solid motor with known grain geometry (team-built, or a published spec).",
@@ -5123,6 +7511,99 @@
           "recomputable"
         ],
         "title": "StoreUsage",
+        "type": "object"
+      },
+      "StructuralMass": {
+        "additionalProperties": false,
+        "description": "Mass the airframe carries, spread evenly over its length (zero length: a point).",
+        "properties": {
+          "length_m": {
+            "default": 0.0,
+            "description": "Length it is spread over.",
+            "minimum": 0.0,
+            "title": "Length M",
+            "type": "number",
+            "units": "m"
+          },
+          "mass_kg": {
+            "description": "Mass.",
+            "minimum": 0.0,
+            "title": "Mass Kg",
+            "type": "number",
+            "units": "kg"
+          },
+          "name": {
+            "description": "Part name, for display.",
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "position_m": {
+            "description": "Forward end, aft of the nose tip.",
+            "title": "Position M",
+            "type": "number",
+            "units": "m"
+          }
+        },
+        "required": [
+          "name",
+          "mass_kg",
+          "position_m"
+        ],
+        "title": "StructuralMass",
+        "type": "object"
+      },
+      "Structure": {
+        "additionalProperties": false,
+        "description": "The airframe as a free beam, for its vibration modes and the vibration in flight.\n\nImported from OpenRocket. Masses here are everything but the motor, which is\nadded from the mission's motor as it burns.",
+        "properties": {
+          "damping_ratio": {
+            "default": 0.04,
+            "description": "Damping of every mode, as a fraction of critical. 0.02 to 0.05 for a bonded composite airframe with joints.",
+            "exclusiveMinimum": 0.0,
+            "maximum": 0.3,
+            "title": "Damping Ratio",
+            "type": "number",
+            "units": "1"
+          },
+          "excitation": {
+            "$ref": "#/components/schemas/Excitation",
+            "description": "What shakes the airframe."
+          },
+          "joints": {
+            "description": "Where airframe sections meet.",
+            "items": {
+              "$ref": "#/components/schemas/AirframeJoint"
+            },
+            "title": "Joints",
+            "type": "array"
+          },
+          "masses": {
+            "description": "Every part's mass, the tubes' own included.",
+            "items": {
+              "$ref": "#/components/schemas/StructuralMass"
+            },
+            "title": "Masses",
+            "type": "array"
+          },
+          "shells": {
+            "description": "Tubes that carry bending.",
+            "items": {
+              "$ref": "#/components/schemas/AirframeShell"
+            },
+            "title": "Shells",
+            "type": "array"
+          },
+          "stations": {
+            "description": "Where vibration is predicted.",
+            "items": {
+              "$ref": "#/components/schemas/VibrationStation"
+            },
+            "title": "Stations",
+            "type": "array"
+          }
+        },
+        "title": "Structure",
         "type": "object"
       },
       "SurfaceWind": {
@@ -5468,6 +7949,34 @@
             "title": "Count",
             "type": "integer"
           },
+          "cross_section": {
+            "default": "square",
+            "description": "Shape of the fin edges, for the drag estimate: square, rounded or airfoil.",
+            "enum": [
+              "square",
+              "rounded",
+              "airfoil"
+            ],
+            "title": "Cross Section",
+            "type": "string"
+          },
+          "kind": {
+            "const": "trapezoidal",
+            "description": "Fin set defined by chords, span and sweep.",
+            "title": "Kind",
+            "type": "string"
+          },
+          "material": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FinMaterial"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Fin material, for the flutter check. Unset: not checked."
+          },
           "position_m": {
             "description": "Position of the root chord's leading edge, aft of the nose tip.",
             "minimum": 0.0,
@@ -5498,8 +8007,22 @@
                 "type": "null"
               }
             ],
-            "description": "Axial distance from root leading edge to tip leading edge. Unset means the tip chord is centred on the root chord.",
+            "description": "Axial distance from root leading edge to tip leading edge. Unset means the trailing edge is square: the tip ends level with the root (sweep = root chord - tip chord), as RocketPy flies it.",
             "title": "Sweep Length M",
+            "units": "m"
+          },
+          "thickness_m": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Fin thickness. With a material, every flight checks fin flutter.",
+            "title": "Thickness M",
             "units": "m"
           },
           "tip_chord_m": {
@@ -5511,6 +8034,7 @@
           }
         },
         "required": [
+          "kind",
           "count",
           "root_chord_m",
           "tip_chord_m",
@@ -5580,6 +8104,31 @@
           "valid"
         ],
         "title": "ValidationReport",
+        "type": "object"
+      },
+      "VibrationStation": {
+        "additionalProperties": false,
+        "description": "A place on the airframe whose vibration is predicted: a payload, a flight computer.",
+        "properties": {
+          "name": {
+            "description": "Station name, e.g. 'Payload'.",
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "position_m": {
+            "description": "Position, aft of the nose tip.",
+            "minimum": 0.0,
+            "title": "Position M",
+            "type": "number",
+            "units": "m"
+          }
+        },
+        "required": [
+          "name",
+          "position_m"
+        ],
+        "title": "VibrationStation",
         "type": "object"
       }
     }
@@ -6362,7 +8911,7 @@
     },
     "/api/missions/import": {
       "post": {
-        "description": "Import a mission.yaml or a .mission.zip bundle (any schema version).\n\nA bundle's assets are hash-checked and added to the asset store, so the\nmission can be flown straight away.",
+        "description": "Import a mission.yaml or an .apg bundle (any schema version).\n\nOlder .mission.zip bundles are accepted too.\n\nA bundle's assets are hash-checked and added to the asset store, so the\nmission can be flown straight away.",
         "operationId": "importMission",
         "requestBody": {
           "content": {
@@ -6427,6 +8976,28 @@
           }
         },
         "summary": "Import Mission",
+        "tags": [
+          "missions"
+        ]
+      }
+    },
+    "/api/missions/tour": {
+      "post": {
+        "description": "The guided tour's mission: Calisto, ready to fly. Created, or reset if it exists.",
+        "operationId": "tourMission",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MissionDocument"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Tour Mission Endpoint",
         "tags": [
           "missions"
         ]
@@ -6682,7 +9253,7 @@
               "default": "yaml",
               "enum": [
                 "yaml",
-                "zip"
+                "apg"
               ],
               "title": "Format",
               "type": "string"
@@ -6692,8 +9263,8 @@
         "responses": {
           "200": {
             "content": {
-              "application/yaml": {},
-              "application/zip": {}
+              "application/vnd.apogee.mission+zip": {},
+              "application/yaml": {}
             },
             "description": "The mission file, or a bundle with its assets."
           },
@@ -6731,6 +9302,141 @@
         "summary": "Export Mission",
         "tags": [
           "missions"
+        ]
+      }
+    },
+    "/api/missions/{mission_id}/yaml": {
+      "put": {
+        "description": "Replace a mission with hand-edited YAML (any schema version).\n\nThe YAML is parsed, migrated and checked like an import, then stored in\ncanonical form, so comments and key order are not kept.",
+        "operationId": "updateMissionYaml",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "mission_id",
+            "required": true,
+            "schema": {
+              "title": "Mission Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/yaml": {
+              "schema": {
+                "type": "string"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MissionDocument"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No mission with that id."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflicts with a stored mission."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The mission is not valid."
+          }
+        },
+        "summary": "Update Mission Yaml",
+        "tags": [
+          "missions"
+        ]
+      }
+    },
+    "/api/motors/finder": {
+      "post": {
+        "description": "Screen every catalogue motor that fits, and fly the best. Ask again until they land.\n\nFlights are cached like any other, so asking again only starts what hasn't\nbeen flown.",
+        "operationId": "findMotors",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FinderRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FinderResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No rocket, site, target or mount."
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "ThrustCurve.org refused the request."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "ThrustCurve.org unreachable with nothing cached, or no job queue."
+          }
+        },
+        "summary": "Find Motors",
+        "tags": [
+          "motors"
         ]
       }
     },
@@ -6880,9 +9586,113 @@
         ]
       }
     },
+    "/api/postflight/report": {
+      "post": {
+        "description": "Compare the log with a full flight of the mission, or return the stored report.",
+        "operationId": "reportPostflight",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FitRun"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The mission can't be flown, or no such log."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No job queue."
+          }
+        },
+        "summary": "Start Report",
+        "tags": [
+          "post-flight"
+        ]
+      }
+    },
+    "/api/postflight/reports/{result_id}": {
+      "get": {
+        "operationId": "getPostflightReport",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "result_id",
+            "required": true,
+            "schema": {
+              "title": "Result Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PostflightReport"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not compared (yet)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Report",
+        "tags": [
+          "post-flight"
+        ]
+      }
+    },
     "/api/profiles": {
       "get": {
-        "description": "Every competition profile, with its rules.",
+        "description": "Every competition profile and launch-condition rule set, with its rules.",
         "operationId": "listProfiles",
         "responses": {
           "200": {
@@ -6943,6 +9753,100 @@
           }
         },
         "summary": "Descent",
+        "tags": [
+          "recovery"
+        ]
+      }
+    },
+    "/api/recovery/ejection": {
+      "post": {
+        "description": "Black-powder charge per bay, and whether its pins hold the joint through coast.",
+        "operationId": "ejectionCharges",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EjectionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EjectionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Ejection",
+        "tags": [
+          "recovery"
+        ]
+      }
+    },
+    "/api/recovery/failures": {
+      "post": {
+        "description": "Fly the mission with each part of its recovery failed. Starts what isn't stored yet.",
+        "operationId": "recoveryFailures",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FailuresRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FailuresResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No job queue."
+          }
+        },
+        "summary": "Failures",
         "tags": [
           "recovery"
         ]
@@ -7276,6 +10180,48 @@
         ]
       }
     },
+    "/api/rocket/drag": {
+      "post": {
+        "description": "CD against Mach: the curves the mission flies, the estimate, and what makes it up.\n\nReynolds number follows Mach through the standard atmosphere at the site,\nwhich is what a flight sees near the pad.",
+        "operationId": "rocketDrag",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DragRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DragResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No rocket yet, or a drag table is missing."
+          }
+        },
+        "summary": "Drag",
+        "tags": [
+          "rocket"
+        ]
+      }
+    },
     "/api/sim/flight": {
       "post": {
         "description": "Simulate one deterministic flight.\n\nIdentical requests (same mission, versions and mode) reuse the stored\nresult. With ``wait_s`` the request waits for the job and usually returns\nit done; otherwise it returns 202 with a job to poll.",
@@ -7445,6 +10391,283 @@
         "summary": "Run Monte Carlo",
         "tags": [
           "monte carlo"
+        ]
+      }
+    },
+    "/api/sites": {
+      "get": {
+        "operationId": "listSitePresets",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SitePreset"
+                  },
+                  "title": "Response Listsitepresets",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Site Presets",
+        "tags": [
+          "sites"
+        ]
+      },
+      "post": {
+        "operationId": "createSitePreset",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SitePresetInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SitePreset"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No preset with that id."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Another preset has that name."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The site is not valid."
+          }
+        },
+        "summary": "Create Site Preset",
+        "tags": [
+          "sites"
+        ]
+      }
+    },
+    "/api/sites/{preset_id}": {
+      "delete": {
+        "operationId": "deleteSitePreset",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "preset_id",
+            "required": true,
+            "schema": {
+              "title": "Preset Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No preset with that id."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Another preset has that name."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The site is not valid."
+          }
+        },
+        "summary": "Delete Site Preset",
+        "tags": [
+          "sites"
+        ]
+      },
+      "put": {
+        "operationId": "updateSitePreset",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "preset_id",
+            "required": true,
+            "schema": {
+              "title": "Preset Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SitePresetInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SitePreset"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No preset with that id."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Another preset has that name."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The site is not valid."
+          }
+        },
+        "summary": "Update Site Preset",
+        "tags": [
+          "sites"
+        ]
+      }
+    },
+    "/api/structures/fin-materials": {
+      "get": {
+        "description": "Typical fin materials and their shear moduli, to start from.",
+        "operationId": "listFinMaterials",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/FinMaterialPreset"
+                  },
+                  "title": "Response Listfinmaterials",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Fin Materials",
+        "tags": [
+          "structures"
+        ]
+      }
+    },
+    "/api/structures/flutter": {
+      "post": {
+        "description": "Flutter margin per fin set from the mission's single flight, and the thinnest safe fin.",
+        "operationId": "finFlutter",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FlutterRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FlutterResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No rocket yet."
+          }
+        },
+        "summary": "Flutter",
+        "tags": [
+          "structures"
         ]
       }
     },
@@ -7653,7 +10876,7 @@
         ]
       },
       "post": {
-        "description": "Fetch a seven-day hourly forecast for a point from Open-Meteo, and cache it.",
+        "description": "Fetch a seven-day hourly forecast, or a past day, for a point from Open-Meteo; cache it.",
         "operationId": "fetchForecast",
         "requestBody": {
           "content": {
@@ -7680,11 +10903,11 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/Problem"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "A day in the future, or with no upper-air data."
           },
           "502": {
             "content": {
@@ -7708,6 +10931,71 @@
           }
         },
         "summary": "Fetch Forecast",
+        "tags": [
+          "weather"
+        ]
+      }
+    },
+    "/api/weather/forecasts/{forecast_id}/conditions": {
+      "get": {
+        "description": "Cloud, visibility, wind and gusts for one hour of a cached forecast.\n\nA forecast cached before these were fetched has none of them: fetch it again.",
+        "operationId": "forecastConditions",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "forecast_id",
+            "required": true,
+            "schema": {
+              "title": "Forecast Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The launch time; the nearest hour is used.",
+            "in": "query",
+            "name": "valid_utc",
+            "required": true,
+            "schema": {
+              "description": "The launch time; the nearest hour is used.",
+              "format": "date-time",
+              "title": "Valid Utc",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LaunchConditions"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No such cached forecast."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The forecast does not cover that time."
+          }
+        },
+        "summary": "Forecast Conditions",
         "tags": [
           "weather"
         ]

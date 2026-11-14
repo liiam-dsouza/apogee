@@ -7,6 +7,7 @@ import { RequireMission } from '@/components/RequireMission'
 import { Button } from '@/components/ui/button'
 import type { FlightSummary, ResultRecord, Series } from '@/lib/api'
 import { formatSI, fromSI, unitFor, type Quantity, type Units } from '@/lib/units'
+import { fixLink } from '@/lib/mission/fixLink'
 import { useMissionStore } from '@/stores/mission'
 import { usePrefs } from '@/stores/prefs'
 import { useFlightRuns, useResult, useRunFlight, useSeries } from './run'
@@ -31,20 +32,6 @@ const CHANNELS: Channel[] = [
   { name: 'dynamic_pressure_pa', title: 'Dynamic pressure', quantity: 'dynamic_pressure', ascentOnly: true },
   { name: 'stability_margin_cal', title: 'Stability margin', quantity: null, unit: 'cal', ascentOnly: true },
 ]
-
-/** Issue paths -> the section that fixes them. */
-function fixLink(path: string) {
-  const section = path.split(/[.[]/)[0]
-  const map: Record<string, [string, string]> = {
-    rocket: ['/rocket', 'Edit the rocket'],
-    motor: ['/motor', 'Edit the motor'],
-    site: ['/site', 'Edit the site'],
-    recovery: ['/recovery', 'Edit recovery'],
-    environment: ['/weather', 'Edit the weather'],
-  }
-  const hit = map[section]
-  return hit ? { href: hit[0], label: hit[1] } : null
-}
 
 function useCurrentRun() {
   const draft = useMissionStore((s) => s.draft)
@@ -342,7 +329,7 @@ function RunPane() {
         {run?.cached && !mutation.isPending && (
           <p className="text-xs text-muted-foreground">Same inputs as an earlier run, so its stored result was reused.</p>
         )}
-        <ProblemNotice error={mutation.error} fixLink={fixLink} />
+        <ProblemNotice error={mutation.error} fixLink={(path) => fixLink(path, draft?.meta.id)} />
       </section>
       {result.data && <ProvenancePanel record={result.data} />}
       <Explainer methodsHref="/docs/methods/flight">

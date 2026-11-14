@@ -39,6 +39,7 @@ const OUTCOME = {
 
 const SOURCE: Record<RuleResult['source'], string> = {
   profile: 'Profile',
+  launch: 'Launch rules',
   override: 'Team override',
   team: 'Team rule',
 }

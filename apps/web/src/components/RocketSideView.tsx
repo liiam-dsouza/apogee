@@ -1,7 +1,8 @@
 import type { Rocket } from '@/lib/api'
+import { finOutline, finSpan, rocketLength } from '@/lib/rocket'
 
 /** Nose radius at distance x from the tip (same profiles as the importer and RocketPy). */
-function noseRadius(kind: Rocket['nose']['kind'], x: number, L: number, R: number): number {
+export function noseRadius(kind: Rocket['nose']['kind'], x: number, L: number, R: number): number {
   const u = Math.min(Math.max(x / L, 0), 1)
   switch (kind) {
     case 'conical':
@@ -29,13 +30,8 @@ function noseRadius(kind: Rocket['nose']['kind'], x: number, L: number, R: numbe
  */
 export function RocketSideView({ rocket }: { rocket: Rocket }) {
   const R = rocket.radius_m
-  const L = Math.max(
-    rocket.nose.length_m,
-    rocket.motor_position_m,
-    ...rocket.fins.map((f) => f.position_m + f.root_chord_m),
-    rocket.tail ? rocket.tail.position_m + rocket.tail.length_m : 0,
-  )
-  const span = Math.max(0, ...rocket.fins.map((f) => f.span_m))
+  const L = rocketLength(rocket)
+  const span = Math.max(0, ...rocket.fins.map(finSpan))
   const half = R + span
   const pad = half * 0.25
   const vb = { x: -pad, y: -half - pad, w: L + 2 * pad, h: 2 * (half + pad) }
@@ -56,10 +52,9 @@ export function RocketSideView({ rocket }: { rocket: Rocket }) {
   ].join(' ')
 
   const finPaths = rocket.fins.flatMap((f, i) => {
-    const sweep = f.sweep_length_m ?? (f.root_chord_m - f.tip_chord_m) / 2
-    const le = f.position_m
+    const outline = finOutline(f)
     const fin = (sign: number) =>
-      `M${le},${sign * R} L${le + sweep},${sign * (R + f.span_m)} L${le + sweep + f.tip_chord_m},${sign * (R + f.span_m)} L${le + f.root_chord_m},${sign * R} Z`
+      `M${outline.map(([x, y]) => `${f.position_m + x},${sign * (R + y)}`).join(' L')} Z`
     return [<path key={`${i}u`} d={fin(-1)} />, <path key={`${i}d`} d={fin(1)} />]
   })
 

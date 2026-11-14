@@ -8,11 +8,14 @@ import { RequireMission } from '@/components/RequireMission'
 import { RocketSideView } from '@/components/RocketSideView'
 import { Button } from '@/components/ui/button'
 import { api, type CrossCheck, type ImportReport, type OpenRocketImport } from '@/lib/api'
+import { finRootChord, rocketLength, type FinSet } from '@/lib/rocket'
 import { formatSI, systemOf } from '@/lib/units'
 import { cn } from '@/lib/utils'
 import { useMissionStore } from '@/stores/mission'
 import { usePrefs } from '@/stores/prefs'
 import { useSectionLayout } from '@/app/sectionLayout'
+import { DragCard } from './DragCard'
+import { FinFlutter } from './FinFlutter'
 
 /** An import awaiting review. Nothing touches the mission until it is applied. */
 interface PendingImport {
@@ -53,22 +56,24 @@ function RocketCentre() {
   return <RocketSummary />
 }
 
+function describeFins(f: FinSet): string {
+  const mm = (m: number) => (m * 1000).toFixed(0)
+  return f.kind === 'free_form'
+    ? `${f.count} × free-form, ${mm(finRootChord(f))} mm root`
+    : `${f.count} × ${mm(f.root_chord_m)}/${mm(f.tip_chord_m)} mm`
+}
+
 function RocketSummary() {
   const rocket = useMissionStore((s) => s.draft!.rocket!)
   const units = usePrefs((s) => s.display)
-  const length = Math.max(
-    rocket.nose.length_m,
-    rocket.motor_position_m,
-    ...rocket.fins.map((f) => f.position_m + f.root_chord_m),
-    rocket.tail ? rocket.tail.position_m + rocket.tail.length_m : 0,
-  )
+  const length = rocketLength(rocket)
   const facts: [string, string][] = [
     ['Length', formatSI(length, 'distance', units, 2)],
     ['Diameter', formatSI(rocket.radius_m * 2, 'length', units, systemOf(units) === 'metric' ? 3 : 2)],
     ['Dry mass', formatSI(rocket.dry_mass_kg, 'mass', units, 2)],
     ['Dry centre of mass', `${formatSI(rocket.dry_cg_m, 'distance', units, 3)} from the tip`],
     ['Nose', `${rocket.nose.kind.replace('_', ' ')}, ${formatSI(rocket.nose.length_m, 'distance', units, 2)}`],
-    ['Fins', rocket.fins.map((f) => `${f.count} × ${(f.root_chord_m * 1000).toFixed(0)}/${(f.tip_chord_m * 1000).toFixed(0)} mm`).join(', ')],
+    ['Fins', rocket.fins.map(describeFins).join(', ')],
   ]
   return (
     <div className="space-y-6 p-6">
@@ -88,6 +93,8 @@ function RocketSummary() {
           and stability margin depend on Mach and the motor, so they are shown with each flight.
         </Explainer>
       </div>
+      <DragCard />
+      <FinFlutter />
     </div>
   )
 }
@@ -265,6 +272,7 @@ function ImportPane() {
     edit((d) => {
       d.rocket = r.rocket
       d.recovery = r.recovery
+      d.structure = r.structure
       if (r.motor) d.motor = r.motor
       d.assets = { ...d.assets, ...r.assets }
       if (applyRail && r.rail && d.site) {

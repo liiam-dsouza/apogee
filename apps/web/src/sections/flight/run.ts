@@ -19,24 +19,26 @@ export const useFlightRuns = create<FlightRuns>()((set) => ({
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
 /**
- * Runs the draft as it is now (saved or not). Waits up to 30 s server-side,
+ * Flies the draft as it is now (saved or not). Waits up to 30 s server-side,
  * then polls the job, so a ~300 ms flight returns in one request.
  */
+export async function flyMission(draft: Mission, ascentOnly: boolean) {
+  let run = await api.runFlight(draft, { ascentOnly, waitS: 30 })
+  while (run.status === 'queued' || run.status === 'running') {
+    await sleep(500)
+    const job = await api.getJob(run.job_id!)
+    if (job.status === 'done') run = { ...run, status: 'done' }
+    else if (job.status === 'failed' || job.status === 'not_found')
+      run = { ...run, status: 'failed', error: job.error ?? 'The job was lost.' }
+  }
+  if (run.status === 'failed') throw new Error(`The simulation failed: ${run.error}`)
+  return { draft, run }
+}
+
 export function useRunFlight() {
   const record = useFlightRuns((s) => s.record)
   return useMutation({
-    mutationFn: async ({ draft, ascentOnly }: { draft: Mission; ascentOnly: boolean }) => {
-      let run = await api.runFlight(draft, { ascentOnly, waitS: 30 })
-      while (run.status === 'queued' || run.status === 'running') {
-        await sleep(500)
-        const job = await api.getJob(run.job_id!)
-        if (job.status === 'done') run = { ...run, status: 'done' }
-        else if (job.status === 'failed' || job.status === 'not_found')
-          run = { ...run, status: 'failed', error: job.error ?? 'The job was lost.' }
-      }
-      if (run.status === 'failed') throw new Error(`The simulation failed: ${run.error}`)
-      return { draft, run }
-    },
+    mutationFn: ({ draft, ascentOnly }: { draft: Mission; ascentOnly: boolean }) => flyMission(draft, ascentOnly),
     onSuccess: ({ draft, run }) => record(draft, run),
   })
 }

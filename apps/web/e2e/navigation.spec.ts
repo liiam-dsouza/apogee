@@ -43,3 +43,14 @@ test('every rail button fits on a short laptop screen', async ({ page }) => {
     expect(box.y + box.height, await link.getAttribute('href') ?? '').toBeLessThanOrEqual(700)
   }
 })
+
+test('the rail expands to show section names, and stays expanded after a reload', async ({ page }) => {
+  await page.goto('/missions')
+  await expect(rail(page).getByText('Rocket', { exact: true })).toBeHidden()
+  await page.getByRole('button', { name: 'Expand sections' }).click()
+  await expect(rail(page).getByText('Rocket', { exact: true })).toBeVisible()
+  await page.reload()
+  await expect(rail(page).getByText('Rocket', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Collapse sections' }).click()
+  await expect(rail(page).getByText('Rocket', { exact: true })).toBeHidden()
+})
