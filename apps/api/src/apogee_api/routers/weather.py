@@ -1,14 +1,15 @@
 """Weather: fetch and cache forecasts, resolve one hour into a profile, preview the flown profile.
 
 Fetching needs internet; everything else works from the cache, so the field
-laptop flies the last forecast it fetched.
+laptop flies the last forecast it fetched. A past day (to re-fly an earlier
+launch) is fetched from Open-Meteo's archive and cached the same way.
 """
 
 import json
 import urllib.error
 import urllib.parse
 import urllib.request
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime, timedelta
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Query
@@ -16,23 +17,25 @@ from pydantic import BaseModel, Field
 
 from apogee_api.deps import SettingsDep
 from apogee_api.problems import ApiProblem, Problem
-from simcore.mission.models import Environment, ProfileLevel, ResolvedProfile
+from simcore.mission.models import Environment, LaunchConditions, ProfileLevel, ResolvedProfile
 from simcore.weather import (
     CachedForecast,
     ForecastCache,
     ForecastError,
     ForecastNotFound,
+    conditions_at,
     effective_levels,
     forecast_hours,
     forecast_params,
+    has_upper_air,
+    history_params,
     profile_at,
 )
-from simcore.weather.openmeteo import FORECAST_URL
+from simcore.weather.openmeteo import FORECAST_SOURCE, FORECAST_URL, HISTORY_SOURCE, HISTORY_URL
 
 router = APIRouter(prefix="/api/weather", tags=["weather"])
 
 USER_AGENT = "Apogee/0.1 (rocketry flight simulation; launch-site forecast)"
-SOURCE = "Open-Meteo forecast (best match)"
 
 Latitude = Annotated[float, Field(ge=-90, le=90, description="WGS84 latitude, degrees.")]
 Longitude = Annotated[float, Field(ge=-180, le=180, description="WGS84 longitude, degrees.")]
@@ -54,6 +57,9 @@ class ForecastInfo(BaseModel):
     grid_longitude: float = Field(description="The model grid point used, degrees.")
     grid_elevation_m: float = Field(description="Model terrain height at the grid point.")
     hours: list[datetime] = Field(description="Times it has a forecast for, UTC, hourly.")
+    day: date | None = Field(
+        default=None, description="The past day fetched from the archive; None for a forecast."
+    )
 
 
 def _info(entry: CachedForecast) -> ForecastInfo:
@@ -68,17 +74,30 @@ def _info(entry: CachedForecast) -> ForecastInfo:
         grid_longitude=r["longitude"],
         grid_elevation_m=r.get("elevation", 0.0),
         hours=forecast_hours(r),
+        day=entry.day,
     )
 
 
 class ForecastRequest(BaseModel):
     latitude: Latitude
     longitude: Longitude
+    day: date | None = Field(
+        default=None,
+        description="A past day (e.g. an earlier launch) to fetch from the archive, instead of "
+        "the seven-day forecast. Upper-air history starts in 2021.",
+    )
 
 
-def _open_meteo(latitude: float, longitude: float) -> dict[str, Any]:
-    query = urllib.parse.urlencode(forecast_params(latitude, longitude))
-    req = urllib.request.Request(f"{FORECAST_URL}?{query}", headers={"User-Agent": USER_AGENT})
+def _open_meteo(latitude: float, longitude: float, day: date | None = None) -> dict[str, Any]:
+    if day is None:
+        url, params = FORECAST_URL, forecast_params(latitude, longitude)
+    else:
+        url, params = (
+            HISTORY_URL,
+            history_params(latitude, longitude, day, datetime.now(UTC).date()),
+        )
+    query = urllib.parse.urlencode(params)
+    req = urllib.request.Request(f"{url}?{query}", headers={"User-Agent": USER_AGENT})
     with urllib.request.urlopen(req, timeout=20) as resp:
         parsed: dict[str, Any] = json.loads(resp.read())
         return parsed
@@ -88,14 +107,20 @@ def _open_meteo(latitude: float, longitude: float) -> dict[str, Any]:
     "/forecasts",
     operation_id="fetchForecast",
     responses={
+        422: {"model": Problem, "description": "A day in the future, or with no upper-air data."},
         502: {"model": Problem, "description": "Open-Meteo refused the request."},
         503: {"model": Problem, "description": "Open-Meteo is not reachable (offline?)."},
     },
 )
 def fetch_forecast(body: ForecastRequest, settings: SettingsDep) -> ForecastInfo:
-    """Fetch a seven-day hourly forecast for a point from Open-Meteo, and cache it."""
+    """Fetch a seven-day hourly forecast, or a past day, for a point from Open-Meteo; cache it."""
+    # A local date can be a day ahead of UTC: today there may be tomorrow here.
+    if body.day is not None and body.day > datetime.now(UTC).date() + timedelta(days=1):
+        raise ApiProblem(
+            422, "day_in_future", "That day hasn't happened yet", "Fetch the forecast instead."
+        )
     try:
-        response = _open_meteo(body.latitude, body.longitude)
+        response = _open_meteo(body.latitude, body.longitude, body.day)
     except urllib.error.HTTPError as e:
         raise ApiProblem(
             502,
@@ -112,7 +137,15 @@ def fetch_forecast(body: ForecastRequest, settings: SettingsDep) -> ForecastInfo
         ) from e
     if "hourly" not in response:
         raise ApiProblem(502, "forecast_unreadable", "Open-Meteo returned no hourly forecast")
-    entry = _cache(settings).put(body.latitude, body.longitude, SOURCE, response)
+    if body.day is not None and not has_upper_air(response):
+        raise ApiProblem(
+            422,
+            "no_upper_air",
+            f"Open-Meteo has no upper-air data for {body.day:%d %b %Y}",
+            "Its archive has winds aloft from 2021 on. Enter the wind by hand for earlier days.",
+        )
+    source = FORECAST_SOURCE if body.day is None else HISTORY_SOURCE
+    entry = _cache(settings).put(body.latitude, body.longitude, source, response, body.day)
     return _info(entry)
 
 
@@ -148,7 +181,42 @@ def forecast_profile(
     if valid_utc.tzinfo is None:
         valid_utc = valid_utc.replace(tzinfo=UTC)
     try:
-        return profile_at(entry.response, valid_utc, elevation_m, fetched_utc=entry.fetched_utc)
+        return profile_at(
+            entry.response,
+            valid_utc,
+            elevation_m,
+            fetched_utc=entry.fetched_utc,
+            source=entry.source,
+        )
+    except ForecastError as e:
+        raise ApiProblem(422, "forecast_out_of_range", str(e)) from e
+
+
+@router.get(
+    "/forecasts/{forecast_id}/conditions",
+    operation_id="forecastConditions",
+    responses={
+        404: {"model": Problem, "description": "No such cached forecast."},
+        422: {"model": Problem, "description": "The forecast does not cover that time."},
+    },
+)
+def forecast_conditions(
+    forecast_id: str,
+    valid_utc: Annotated[datetime, Query(description="The launch time; the nearest hour is used.")],
+    settings: SettingsDep,
+) -> LaunchConditions:
+    """Cloud, visibility, wind and gusts for one hour of a cached forecast.
+
+    A forecast cached before these were fetched has none of them: fetch it again.
+    """
+    try:
+        entry = _cache(settings).get(forecast_id)
+    except ForecastNotFound as e:
+        raise ApiProblem(404, "forecast_not_found", "That forecast is not cached") from e
+    if valid_utc.tzinfo is None:
+        valid_utc = valid_utc.replace(tzinfo=UTC)
+    try:
+        return conditions_at(entry.response, valid_utc)
     except ForecastError as e:
         raise ApiProblem(422, "forecast_out_of_range", str(e)) from e
 

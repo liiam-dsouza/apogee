@@ -98,6 +98,37 @@ def test_duplicate_import_conflicts(client: TestClient) -> None:
     assert r.json()["code"] == "mission_exists"
 
 
+def test_yaml_edit_replaces_the_mission(client: TestClient) -> None:
+    doc = client.post("/api/missions", json=mission()).json()
+    mission_id = doc["mission"]["meta"]["id"]
+    url = f"/api/missions/{mission_id}/yaml"
+    yaml_text = client.get(f"/api/missions/{mission_id}/export").text
+    headers = {"content-type": "application/yaml"}
+
+    edited = yaml_text.replace("authors: []", "authors:\n  - Ada # a comment\n")
+    r = client.put(url, content=edited, headers=headers)
+    assert r.status_code == 200
+    assert r.json()["mission"]["meta"]["authors"] == ["Ada"]
+    # Stored canonically: the comment is gone.
+    assert "# a comment" not in client.get(f"/api/missions/{mission_id}/export").text
+
+    r = client.put(url, content="meta: [unclosed", headers=headers)
+    assert r.status_code == 422
+    assert r.json()["code"] == "unreadable_yaml"
+
+    r = client.put(
+        url, content=edited.replace("rail_length_m: 6.0", "rail_length_m: -1"), headers=headers
+    )
+    assert r.status_code == 422
+    assert [i["path"] for i in r.json()["issues"]] == ["site.rail_length_m"]
+
+    r = client.put(
+        url, content=edited.replace(mission_id, "01JOTHER0000000000000000000"), headers=headers
+    )
+    assert r.status_code == 422
+    assert r.json()["code"] == "id_mismatch"
+
+
 def _local_redis_up() -> bool:
     import socket
 

@@ -7,8 +7,8 @@ from typing import Any
 import pytest
 from fastapi.testclient import TestClient
 
+from apogee_api import thrustcurve
 from apogee_api.main import create_app
-from apogee_api.routers import imports
 from apogee_api.settings import get_settings
 
 ROOT = Path(__file__).parents[3]
@@ -73,7 +73,7 @@ def test_thrustcurve_fetch_parses_and_stores(
         data = base64.b64encode(M1340W.read_bytes()).decode()
         return {"results": [{"format": "RASP", "data": data, "source": "cert", "license": "PD"}]}
 
-    monkeypatch.setattr(imports, "_thrustcurve", fake)
+    monkeypatch.setattr(thrustcurve, "_post", fake)
     r = client.post(
         "/api/imports/thrustcurve", json={"manufacturer": "AeroTech", "designation": "M1340W"}
     )
@@ -90,7 +90,7 @@ def test_thrustcurve_offline_says_what_to_do(
     def offline(path: str, body: dict[str, Any]) -> dict[str, Any]:
         raise urllib.error.URLError("no route to host")
 
-    monkeypatch.setattr(imports, "_thrustcurve", offline)
+    monkeypatch.setattr(thrustcurve, "_post", offline)
     r = client.post(
         "/api/imports/thrustcurve", json={"manufacturer": "AeroTech", "designation": "M1340W"}
     )
@@ -120,7 +120,7 @@ def test_thrustcurve_refusal_is_not_called_offline(
     def refused(path: str, body: dict[str, Any]) -> dict[str, Any]:
         raise urllib.error.HTTPError("https://x", 403, "Forbidden", None, None)  # type: ignore[arg-type]
 
-    monkeypatch.setattr(imports, "_thrustcurve", refused)
+    monkeypatch.setattr(thrustcurve, "_post", refused)
     r = client.post(
         "/api/imports/thrustcurve", json={"manufacturer": "AeroTech", "designation": "M1340W"}
     )

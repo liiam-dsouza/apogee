@@ -71,6 +71,12 @@ async def fit_postflight(ctx: dict[str, Any], **kwargs: Any) -> str:
     return await loop.run_in_executor(ctx["pool"], partial(jobs.fit_postflight, **kwargs))
 
 
+async def postflight_report(ctx: dict[str, Any], **kwargs: Any) -> str:
+    """Compare a flight log with the mission; returns the stored report id."""
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(ctx["pool"], partial(jobs.postflight_report, **kwargs))
+
+
 async def _heartbeat(ctx: dict[str, Any]) -> None:
     key = ctx["heartbeat_key"]
     while True:
@@ -100,6 +106,7 @@ class WorkerSettings:
         monte_carlo_chunk,
         solve_ballast,
         fit_postflight,
+        postflight_report,
     ]
     on_startup = startup
     on_shutdown = shutdown

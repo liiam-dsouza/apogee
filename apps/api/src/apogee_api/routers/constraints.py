@@ -14,11 +14,14 @@ from apogee_api.deps import SettingsDep
 from apogee_api.problems import ApiProblem, Problem
 from simcore.constraints import (
     Board,
+    LaunchSummary,
     Profile,
     ProfileError,
     board,
+    condition_values,
     from_row,
     from_summary,
+    launch_summary,
     load_profiles,
 )
 from simcore.mission import Mission
@@ -30,7 +33,7 @@ router = APIRouter(prefix="/api", tags=["constraints"])
 
 @router.get("/profiles", operation_id="listProfiles")
 def list_profiles() -> list[Profile]:
-    """Every competition profile, with its rules."""
+    """Every competition profile and launch-condition rule set, with its rules."""
     return list(load_profiles().values())
 
 
@@ -53,6 +56,7 @@ class BoardResponse(BaseModel):
     board: Board = Field(description="Every rule, judged.")
     flight: FlightBasis = Field(description="The single flight it is based on.")
     campaign: CampaignBasis = Field(description="The campaign it is based on.")
+    launch: LaunchSummary = Field(description="The launch conditions it is judged on.")
 
 
 @router.post(
@@ -77,7 +81,13 @@ def go_no_go(body: BoardRequest, settings: SettingsDep) -> BoardResponse:
         done = len(rows)
         samples = [from_row(r) for r in rows if r.get("error") is None]
     try:
-        judged = board(mission.constraints, nominal, samples)
+        judged = board(
+            mission.constraints,
+            nominal,
+            samples,
+            condition_values(mission),
+            mission.launch_conditions.cloud_base_m,
+        )
     except (ProfileError, ValueError) as e:
         raise ApiProblem(422, "bad_constraints", "The constraint settings are wrong", str(e)) from e
     return BoardResponse(
@@ -88,4 +98,5 @@ def go_no_go(body: BoardRequest, settings: SettingsDep) -> BoardResponse:
             samples=mission.monte_carlo.samples,
             samples_done=done,
         ),
+        launch=launch_summary(mission),
     )

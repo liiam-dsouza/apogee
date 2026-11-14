@@ -30,7 +30,7 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClie
 
 @pytest.fixture
 def online(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(weather, "_open_meteo", lambda lat, lon: RESPONSE)
+    monkeypatch.setattr(weather, "_open_meteo", lambda lat, lon, day=None: RESPONSE)
 
 
 def test_fetch_caches_and_lists_by_site(client: TestClient, online: None) -> None:
@@ -56,6 +56,23 @@ def test_profile_from_the_cache(client: TestClient, online: None) -> None:
     assert profile["valid_utc"] == info["hours"][1]
     assert profile["fetched_utc"] == info["fetched_utc"]
     assert profile["levels"][0]["altitude_m"] == 220
+
+
+def test_launch_conditions_from_the_cache(client: TestClient, online: None) -> None:
+    info = client.post("/api/weather/forecasts", json=PAD).json()
+    r = client.get(
+        f"/api/weather/forecasts/{info['id']}/conditions", params={"valid_utc": info["hours"][1]}
+    )
+    assert r.status_code == 200, r.text
+    c = r.json()
+    assert c["launch_utc"] == info["hours"][1]
+    # The fixture predates the condition fields: only the 10 m wind is there.
+    assert c["wind_speed_ms"] is not None
+    assert c["cloud_cover_pct"] is None
+    missing = client.get(
+        "/api/weather/forecasts/nope/conditions", params={"valid_utc": info["hours"][1]}
+    )
+    assert missing.status_code == 404
 
 
 def test_profile_outside_the_forecast_is_a_clear_422(client: TestClient, online: None) -> None:
@@ -98,3 +115,39 @@ def test_effective_profile_blends_the_surface_wind(client: TestClient) -> None:
     levels = r.json()["levels"]
     at_2m = next(lv for lv in levels if lv["altitude_m"] == 222)
     assert at_2m["wind_u_ms"] == pytest.approx(5)
+
+
+def test_a_past_day_comes_from_the_archive(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    asked: list[Any] = []
+
+    def archive(lat: float, lon: float, day: Any = None) -> dict[str, Any]:
+        asked.append(day)
+        return RESPONSE
+
+    monkeypatch.setattr(weather, "_open_meteo", archive)
+    info = client.post("/api/weather/forecasts", json={**PAD, "day": "2025-06-14"}).json()
+    assert info["day"] == "2025-06-14" and str(asked[0]) == "2025-06-14"
+    assert client.get("/api/weather/forecasts", params=PAD).json()[0]["day"] == "2025-06-14"
+    profile = client.get(
+        f"/api/weather/forecasts/{info['id']}/profile",
+        params={"valid_utc": info["hours"][0], "elevation_m": 220},
+    ).json()
+    assert profile["source"].startswith("Open-Meteo historical forecast")
+
+
+def test_a_future_day_or_one_without_upper_air_is_refused(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    r = client.post("/api/weather/forecasts", json={**PAD, "day": "2999-01-01"})
+    assert r.status_code == 422 and r.json()["code"] == "day_in_future"
+    surface_only = {
+        **RESPONSE,
+        "hourly": {
+            k: ([None] * len(v) if k.endswith("hPa") else v) for k, v in RESPONSE["hourly"].items()
+        },
+    }
+    monkeypatch.setattr(weather, "_open_meteo", lambda lat, lon, day=None: surface_only)
+    r = client.post("/api/weather/forecasts", json={**PAD, "day": "2019-06-14"})
+    assert r.status_code == 422 and r.json()["code"] == "no_upper_air"

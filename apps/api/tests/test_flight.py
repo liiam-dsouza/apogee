@@ -121,18 +121,23 @@ def test_unknown_series_channel_is_a_problem(client: TestClient) -> None:
 
 
 def test_bundle_import_brings_assets_and_flies(client: TestClient) -> None:
-    bundle = (
-        Path(__file__).parents[3] / "missions" / "examples" / "calisto.mission.zip"
-    ).read_bytes()
-    r = client.post("/api/missions/import", files={"file": ("calisto.mission.zip", bundle)})
+    bundle = (Path(__file__).parents[3] / "missions" / "examples" / "calisto.apg").read_bytes()
+    r = client.post("/api/missions/import", files={"file": ("calisto.apg", bundle)})
     assert r.status_code == 201, r.text
     mission = r.json()["mission"]
     run = client.post("/api/sim/flight?wait_s=30", json={"mission": mission}).json()
     assert run["status"] == "done"
 
-    exported = client.get(f"/api/missions/{mission['meta']['id']}/export?format=zip")
-    assert exported.headers["content-type"] == "application/zip"
+    exported = client.get(f"/api/missions/{mission['meta']['id']}/export?format=apg")
+    assert exported.headers["content-type"] == "application/vnd.apogee.mission+zip"
+    assert exported.headers["content-disposition"] == 'attachment; filename="calisto-reference.apg"'
     assert exported.content[:2] == b"PK"
+
+
+def test_legacy_mission_zip_still_imports(client: TestClient) -> None:
+    bundle = (Path(__file__).parents[3] / "missions" / "examples" / "calisto.apg").read_bytes()
+    r = client.post("/api/missions/import", files={"file": ("calisto.mission.zip", bundle)})
+    assert r.status_code == 201, r.text
 
 
 def test_v1_stored_mission_is_migrated_on_read(client: TestClient) -> None:

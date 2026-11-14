@@ -29,6 +29,7 @@ ORK_CROSS_CHECK_TASK = "openrocket_cross_check"
 MONTE_CARLO_CHUNK_TASK = "monte_carlo_chunk"
 BALLAST_TASK = "solve_ballast"
 POSTFLIGHT_TASK = "fit_postflight"
+POSTFLIGHT_REPORT_TASK = "postflight_report"
 
 
 class JobState(BaseModel):
