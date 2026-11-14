@@ -346,14 +346,19 @@ def run_flight(
     if len(events) >= 2:
         descent_rate = abs(float(flight.vz(events[-1].triggered_s)))
 
-    coast = times[(times >= float(motor.burn_out_time)) & (times <= float(flight.apogee_time))]
-    coast_drag = (
-        float(
-            np.max(_array(flight.aerodynamic_drag, coast) / _array(flight.rocket.total_mass, coast))
-        )
-        if coast.size
-        else None
-    )
+    burnout = float(motor.burn_out_time)
+    coast = times[(times >= burnout) & (times <= float(flight.apogee_time))]
+    coast_drag = None
+    if coast.size:
+        decel = _array(flight.aerodynamic_drag, coast) / _array(flight.rocket.total_mass, coast)
+        coast_drag = float(np.max(decel))
+        # Power-off drag steps up at burnout, so the peak is usually there, but the
+        # first solver step lands just after it, a little differently per platform:
+        # extrapolate the start of the coast back to burnout itself.
+        early = coast < burnout + 0.05
+        if np.count_nonzero(early) >= 2:
+            _slope, intercept = np.polyfit(coast[early] - burnout, decel[early], 1)
+            coast_drag = max(coast_drag, float(intercept))
 
     flutter, flutter_speed = check_flutter(
         rocket.fins,
