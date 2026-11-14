@@ -355,9 +355,9 @@ def run_flight(
         # Power-off drag steps up at burnout, so the peak is usually there, but the
         # first solver step lands just after it, a little differently per platform:
         # extrapolate the start of the coast back to burnout itself.
-        early = coast < burnout + 0.05
-        if np.count_nonzero(early) >= 2:
-            _slope, intercept = np.polyfit(coast[early] - burnout, decel[early], 1)
+        just_after = coast < burnout + 0.05
+        if np.count_nonzero(just_after) >= 2:
+            _slope, intercept = np.polyfit(coast[just_after] - burnout, decel[just_after], 1)
             coast_drag = max(coast_drag, float(intercept))
 
     flutter, flutter_speed = check_flutter(
